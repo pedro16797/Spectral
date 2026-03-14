@@ -45,3 +45,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Windows related
+/windows/flutter/ephemeral/
+/windows/flutter/generated_config.cmake
+
+# Linux related
+/linux/flutter/ephemeral/
+
+# macOS related
+/macos/Flutter/ephemeral/
+/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Crashlytics related
+ios/Runner/FirebaseRelease.config

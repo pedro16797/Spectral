@@ -17,11 +17,55 @@ Spectral aims to provide users with a powerful yet user-friendly tool to observe
 
 ## 🛠 Project Status
 
-Spectral is currently in the **early planning and setup phase**. We are establishing the project structure and defining the roadmap for the MVP.
+Spectral is currently in the **early development phase**. We have initialized the project with core audio visualization capabilities.
+
+## 🛠 Getting Started
+
+### Prerequisites
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (latest stable version)
+- Android Studio / VS Code with Flutter extensions
+- Android/iOS emulator or a physical device for testing
+
+### Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-repo/spectral.git
+   cd spectral
+   ```
+2. Install dependencies:
+   ```bash
+   flutter pub get
+   ```
+
+### Running the App
+- **Run on a specific device:**
+  ```bash
+  flutter run
+  ```
+- **Run for Web:**
+  ```bash
+  flutter run -d chrome
+  ```
+
+### Building the App
+- **Build Android APK:**
+  ```bash
+  flutter build apk --release
+  ```
+- **Build Web:**
+  ```bash
+  flutter build web --release
+  ```
+
+### Running Tests
+- **Run all tests:**
+  ```bash
+  flutter test
+  ```
 
 ## 📂 Project Structure
 
-- `src/`: Core application source code.
+- `lib/src/`: Core application source code.
 - `docs/`: Detailed documentation and planning.
 - `config/`: Configuration settings.
 - `resources/`: Static assets and localization files.
