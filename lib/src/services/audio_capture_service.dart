@@ -16,6 +16,8 @@ class AudioCaptureService {
   }
 
   Future<void> startCapture() async {
+    if (await _audioRecorder.isRecording()) return;
+
     if (await _audioRecorder.hasPermission()) {
       const config = RecordConfig(
         encoder: AudioEncoder.pcm16bits,
@@ -25,15 +27,21 @@ class AudioCaptureService {
 
       final stream = await _audioRecorder.startStream(config);
 
+      await _audioStreamSubscription?.cancel();
       _audioStreamSubscription = stream.listen((data) {
-        _audioDataController.add(data);
+        if (!_audioDataController.isClosed) {
+          _audioDataController.add(data);
+        }
       });
     }
   }
 
   Future<void> stopCapture() async {
     await _audioStreamSubscription?.cancel();
-    await _audioRecorder.stop();
+    _audioStreamSubscription = null;
+    if (await _audioRecorder.isRecording()) {
+      await _audioRecorder.stop();
+    }
   }
 
   void dispose() {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'src/services/audio_capture_service.dart';
@@ -33,6 +34,7 @@ class SpectralHomePage extends StatefulWidget {
 
 class _SpectralHomePageState extends State<SpectralHomePage> {
   final AudioCaptureService _audioService = AudioCaptureService();
+  StreamSubscription<Uint8List>? _audioSubscription;
   Uint8List _currentAudioData = Uint8List(0);
   bool _isCapturing = false;
 
@@ -43,7 +45,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
   }
 
   void _setupAudio() {
-    _audioService.audioDataStream.listen((data) {
+    _audioSubscription = _audioService.audioDataStream.listen((data) {
       if (mounted) {
         setState(() {
           _currentAudioData = data;
@@ -78,6 +80,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
 
   @override
   void dispose() {
+    _audioSubscription?.cancel();
     _audioService.dispose();
     super.dispose();
   }

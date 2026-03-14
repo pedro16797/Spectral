@@ -25,9 +25,12 @@ class WaveformPainter extends CustomPainter {
     final sampleCount = audioData.length ~/ 2;
     if (sampleCount == 0) return;
 
-    final step = width / sampleCount;
+    // To optimize performance, we can skip samples if there are too many to draw
+    const maxSamplesToDraw = 1000;
+    final skip = (sampleCount / maxSamplesToDraw).ceil();
+    final step = width / (sampleCount / skip);
 
-    for (var i = 0; i < sampleCount; i++) {
+    for (var i = 0; i < sampleCount; i += skip) {
       // Convert two bytes to a 16-bit signed integer (Little Endian)
       final byteLow = audioData[i * 2];
       final byteHigh = audioData[i * 2 + 1];
@@ -36,7 +39,7 @@ class WaveformPainter extends CustomPainter {
 
       // Normalize sample to [-1.0, 1.0]
       final normalizedSample = sample / 32768.0;
-      final x = i * step;
+      final x = (i / skip) * step;
       final y = centerY + (normalizedSample * centerY);
 
       if (i == 0) {
