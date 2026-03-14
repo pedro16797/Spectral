@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "name": "English (US)",
+    "code": "en-US"
+  },
+  "app": {
+    "name": "Spectral",
+    "tagline": "Modern Spectral Visualization"
+  },
+  "visualizations": {
+    "waveform": "Waveform",
+    "fft": "FFT",
+    "waterfall": "Waterfall"
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": "Theme",
+    "language": "Language",
+    "range": "Range",
+    "mode": "Mode"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "error": "Error",
+    "loading": "Loading..."
+  }
+}
