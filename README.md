@@ -63,19 +63,6 @@ Spectral is currently in the **early development phase**. We have initialized th
   flutter test
   ```
 
-### Generating Screenshots
-The project includes a script to automatically generate screenshots of the app in different states for documentation purposes. This requires the [Playwright](https://playwright.dev/python/) library.
-
-1.  **Build the Web App:**
-    ```bash
-    flutter build web --profile
-    ```
-2.  **Run the Screenshot Script:**
-    ```bash
-    python3 scripts/generate_screenshots.py
-    ```
-    The screenshots will be saved in `resources/screenshots/`.
-
 ## 📂 Project Structure
 
 - `lib/src/`: Core application source code.
