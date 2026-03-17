@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  record: ^5.2.0
+  record: ^6.2.0
   fftea: ^1.5.0
 
 dev_dependencies:
