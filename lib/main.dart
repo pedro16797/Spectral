@@ -6,6 +6,7 @@ import 'src/audio/audio_capture_service.dart';
 import 'src/core/fft_service.dart';
 import 'src/ui/waveform_painter.dart';
 import 'src/ui/fft_bar_chart_painter.dart';
+import 'src/ui/waterfall_painter.dart';
 import 'src/utils/localization_helper.dart';
 
 void main() async {
@@ -46,6 +47,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
   StreamSubscription<Float64List>? _audioSubscription;
   Float64List _currentAudioData = Float64List(0);
   List<double> _currentFftData = [];
+  final List<List<double>> _fftHistory = [];
+  static const int _maxHistory = 50;
   bool _isCapturing = false;
   bool _isDemoMode = false;
   Timer? _demoTimer;
@@ -62,7 +65,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
       if (mounted) {
         setState(() {
           _currentAudioData = data;
-          _currentFftData = _fftService.processAudioData(data);
+          final fft = _fftService.processAudioData(data);
+          _currentFftData = fft;
+          if (fft.isNotEmpty) {
+            _fftHistory.insert(0, fft);
+            if (_fftHistory.length > _maxHistory) {
+              _fftHistory.removeLast();
+            }
+          }
         });
       }
     });
@@ -81,7 +91,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
       if (mounted) {
         setState(() {
           _currentAudioData = samples;
-          _currentFftData = _fftService.processAudioData(samples);
+          final fft = _fftService.processAudioData(samples);
+          _currentFftData = fft;
+          if (fft.isNotEmpty) {
+            _fftHistory.insert(0, fft);
+            if (_fftHistory.length > _maxHistory) {
+              _fftHistory.removeLast();
+            }
+          }
         });
       }
     });
@@ -100,6 +117,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
           _isCapturing = false;
           _currentAudioData = Float64List(0);
           _currentFftData = [];
+          _fftHistory.clear();
         });
       } else {
         if (_isDemoMode) {
@@ -165,6 +183,25 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
                       painter: WaveformPainter(
                         audioData: _currentAudioData,
                         color: Colors.green,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.black12,
+                ),
+                child: ClipRect(
+                  child: SizedBox.expand(
+                    child: CustomPaint(
+                      painter: WaterfallPainter(
+                        fftHistory: List.from(_fftHistory),
                       ),
                     ),
                   ),
