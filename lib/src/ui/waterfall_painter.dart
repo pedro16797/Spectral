@@ -33,7 +33,8 @@ class WaterfallPainter extends CustomPainter {
 
         final paint = Paint()
           ..color = _getColorForNormalizedValue(normalized)
-          ..style = PaintingStyle.fill;
+          ..style = PaintingStyle.fill
+          ..isAntiAlias = true;
 
         final x = j * barWidth;
         // i=0 is the oldest or newest?
@@ -41,7 +42,7 @@ class WaterfallPainter extends CustomPainter {
         final y = i * rowHeight;
 
         canvas.drawRect(
-          Rect.fromLTWH(x, y, barWidth + 0.5, rowHeight + 0.5),
+          Rect.fromLTWH(x, y, barWidth + 0.2, rowHeight + 0.2),
           paint,
         );
       }

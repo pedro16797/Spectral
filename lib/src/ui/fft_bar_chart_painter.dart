@@ -12,8 +12,8 @@ class FftBarChartPainter extends CustomPainter {
     if (fftData.isEmpty) return;
 
     final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
 
     final width = size.width;
     final height = size.height;
@@ -44,8 +44,22 @@ class FftBarChartPainter extends CustomPainter {
       final x = i * barWidth;
       final y = height - barHeight;
 
-      canvas.drawRect(
-        Rect.fromLTWH(x, y, barWidth - 1, barHeight),
+      final rect = Rect.fromLTWH(x, y, barWidth - 1, barHeight);
+      paint.shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color,
+          color.withOpacity(0.3),
+        ],
+      ).createShader(rect);
+
+      canvas.drawRRect(
+        RRect.fromRectAndCorners(
+          rect,
+          topLeft: const Radius.circular(4),
+          topRight: const Radius.circular(4),
+        ),
         paint,
       );
     }

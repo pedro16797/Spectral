@@ -28,11 +28,11 @@ The goal of the MVP is to provide a functional and performant audio spectral vis
 - [x] **Localization:** Full support for English, ready for other languages.
 
 ## Phase 3: UI Modernization & UX Streamlining
-- [ ] **Responsive Layout:** Optimize visualization stacking and sizing for different screen aspects.
-- [ ] **Custom UI Components:** Implement slick, tailor-made controls for Gain, Sensitivity, and Theme toggling.
-- [ ] **Modern Visual Language:** Update the interface with subtle gradients, shadows, and smooth transitions.
-- [ ] **Streamlined Navigation:** Refine the settings access and mode switching for a frictionless experience.
-- [ ] **Polished Painters:** Improve the visual fidelity of Waveform, FFT, and Waterfall renderings with anti-aliasing and color blending.
+- [x] **Responsive Layout:** Optimize visualization stacking and sizing for different screen aspects.
+- [x] **Custom UI Components:** Implement slick, tailor-made controls for Gain, Sensitivity, and Theme toggling.
+- [x] **Modern Visual Language:** Update the interface with subtle gradients, shadows, and smooth transitions.
+- [x] **Streamlined Navigation:** Refine the settings access and mode switching for a frictionless experience.
+- [x] **Polished Painters:** Improve the visual fidelity of Waveform, FFT, and Waterfall renderings with anti-aliasing and color blending.
 
 ## Phase 4: Future Upgrades
 - [ ] **RF Support:** Integration with SDR (Software Defined Radio) for RF spectrum visualization.

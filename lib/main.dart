@@ -194,6 +194,52 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
     super.dispose();
   }
 
+  Widget _buildVisualizationCard({required String title, required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.05),
+                child: child,
+              ),
+            ),
+            Positioned(
+              top: 8,
+              left: 12,
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,27 +277,51 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(LocalizationHelper.get('settings.gain')),
+                  Row(
+                    children: [
+                      const Icon(Icons.graphic_eq, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        LocalizationHelper.get('settings.gain'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      Text(_gain.toStringAsFixed(1)),
+                    ],
+                  ),
                   Slider(
                     value: _gain,
                     min: 0.1,
                     max: 5.0,
+                    divisions: 49,
                     onChanged: (value) {
                       setState(() {
                         _gain = value;
                       });
                     },
                   ),
-                  const SizedBox(height: 16),
-                  Text(LocalizationHelper.get('settings.sensitivity')),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Icon(Icons.shutter_speed, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        LocalizationHelper.get('settings.sensitivity'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      Text(_sensitivity.toStringAsFixed(1)),
+                    ],
+                  ),
                   Slider(
                     value: _sensitivity,
                     min: 0.1,
                     max: 5.0,
+                    divisions: 49,
                     onChanged: (value) {
                       setState(() {
                         _sensitivity = value;
@@ -264,80 +334,83 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
           ],
         ),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.black12,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 600;
+
+          final visualizations = [
+            _buildVisualizationCard(
+              title: LocalizationHelper.get('visualizations.waveform'),
+              child: CustomPaint(
+                painter: WaveformPainter(
+                  audioData: _currentAudioData,
+                  color: Colors.greenAccent,
                 ),
-                child: ClipRect(
-                  child: SizedBox.expand(
-                    child: CustomPaint(
-                      painter: WaveformPainter(
-                        audioData: _currentAudioData,
-                        color: Colors.green,
+              ),
+            ),
+            _buildVisualizationCard(
+              title: LocalizationHelper.get('visualizations.waterfall'),
+              child: CustomPaint(
+                painter: WaterfallPainter(
+                  fftHistory: List.from(_fftHistory),
+                ),
+              ),
+            ),
+            _buildVisualizationCard(
+              title: LocalizationHelper.get('visualizations.fft'),
+              child: CustomPaint(
+                painter: FftBarChartPainter(
+                  fftData: _currentFftData,
+                  color: Colors.blueAccent,
+                ),
+              ),
+            ),
+          ];
+
+          return Column(
+            children: [
+              Expanded(
+                child: isWide
+                    ? GridView.count(
+                        crossAxisCount: 2,
+                        padding: const EdgeInsets.all(8),
+                        children: visualizations,
+                      )
+                    : Column(
+                        children: visualizations.map((v) => Expanded(child: v)).toList(),
                       ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton.icon(
+                    onPressed: _toggleCapture,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isCapturing
+                          ? Colors.redAccent.withOpacity(0.1)
+                          : Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor: _isCapturing
+                          ? Colors.redAccent
+                          : Theme.of(context).colorScheme.onPrimaryContainer,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: Icon(_isCapturing ? Icons.stop : Icons.play_arrow),
+                    label: Text(
+                      _isCapturing
+                          ? LocalizationHelper.get('common.stop_capture')
+                          : LocalizationHelper.get('common.start_capture'),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.black12,
-                ),
-                child: ClipRect(
-                  child: SizedBox.expand(
-                    child: CustomPaint(
-                      painter: WaterfallPainter(
-                        fftHistory: List.from(_fftHistory),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.black12,
-                ),
-                child: ClipRect(
-                  child: SizedBox.expand(
-                    child: CustomPaint(
-                      painter: FftBarChartPainter(
-                        fftData: _currentFftData,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton(
-                onPressed: _toggleCapture,
-                child: Text(_isCapturing
-                    ? LocalizationHelper.get('common.stop_capture')
-                    : LocalizationHelper.get('common.start_capture')),
-              ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }
