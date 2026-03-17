@@ -39,8 +39,13 @@ class FftBarChartPainter extends CustomPainter {
     const maxBars = 80;
     final binCount = visibleData.length;
     final skip = (binCount / maxBars).ceil();
-    final actualBarCount = (binCount / skip).floor();
-    final barWidth = width / actualBarCount;
+    final actualBarCount = (binCount / skip).floor().clamp(1, binCount);
+
+    // Limit bar width for better aesthetics when few bars are present
+    final rawBarWidth = width / actualBarCount;
+    final barWidth = actualBarCount < 10 ? math.min(rawBarWidth, 40.0) : rawBarWidth;
+    final totalBarsWidth = barWidth * actualBarCount;
+    final offset = (width - totalBarsWidth) / 2;
 
     for (var i = 0; i < actualBarCount; i++) {
       var maxMag = 0.0;
@@ -54,10 +59,10 @@ class FftBarChartPainter extends CustomPainter {
       final normalizedHeight = (math.log(maxMag + 1) / 4.5).clamp(0.0, 1.0);
       final barHeight = normalizedHeight * (height - 20); // Leave room for labels
 
-      final x = i * barWidth;
+      final x = offset + i * barWidth;
       final y = (height - 20) - barHeight;
 
-      final rect = Rect.fromLTWH(x + 1, y, barWidth - 2, barHeight);
+      final rect = Rect.fromLTWH(x + 2, y, barWidth - 4, barHeight);
 
       paint.shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -91,12 +96,23 @@ class FftBarChartPainter extends CustomPainter {
     );
 
     final labelCount = 5;
+    double lastLabelEndX = -20.0;
+    String lastLabelText = "";
+
     for (var i = 0; i < labelCount; i++) {
       final ratio = i / (labelCount - 1);
       final freq = minFreq + (maxFreq - minFreq) * ratio;
       final x = ratio * size.width;
 
-      final label = freq >= 1000 ? "${(freq / 1000).toStringAsFixed(1)}k" : "${freq.toInt()}";
+      String label;
+      if (maxFreq - minFreq < 100) {
+        label = freq >= 1000 ? "${(freq / 1000).toStringAsFixed(3)}k" : freq.toStringAsFixed(1);
+      } else {
+        label = freq >= 1000 ? "${(freq / 1000).toStringAsFixed(1)}k" : "${freq.toInt()}";
+      }
+
+      // Skip redundant labels if they are identical to the last one (unless it's the first)
+      if (i > 0 && label == lastLabelText && maxFreq - minFreq < 1) continue;
 
       final textPainter = TextPainter(
         text: TextSpan(text: label, style: textStyle),
@@ -108,7 +124,12 @@ class FftBarChartPainter extends CustomPainter {
       if (i == 0) drawX = 0;
       if (i == labelCount - 1) drawX = size.width - textPainter.width;
 
-      textPainter.paint(canvas, Offset(drawX, size.height - 15));
+      // Only paint if it doesn't overlap with the previous label
+      if (drawX > lastLabelEndX + 5 || i == 0) {
+        textPainter.paint(canvas, Offset(drawX, size.height - 15));
+        lastLabelEndX = drawX + textPainter.width;
+        lastLabelText = label;
+      }
     }
   }
 

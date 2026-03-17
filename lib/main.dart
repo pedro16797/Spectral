@@ -476,13 +476,33 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           const Text("FOCUS", style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold)),
           const SizedBox(width: 12),
           Expanded(
-            child: RangeSlider(
-              values: _freqRange,
-              min: 0,
-              max: 22050,
-              activeColor: const Color(0xFF007AFF),
-              inactiveColor: Colors.white10,
-              onChanged: (values) => setState(() => _freqRange = values),
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 2,
+                rangeThumbShape: const RoundRangeSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                activeTrackColor: const Color(0xFF007AFF),
+                inactiveTrackColor: Colors.white10,
+                thumbColor: Colors.white,
+              ),
+              child: RangeSlider(
+                values: _freqRange,
+                min: 0,
+                max: 22050,
+                onChanged: (values) {
+                  // Enforce minimum range of 500Hz to prevent broken visualizations
+                  if (values.end - values.start >= 500) {
+                    setState(() => _freqRange = values);
+                  } else {
+                    // Try to maintain the center if possible
+                    if (values.start != _freqRange.start) {
+                      setState(() => _freqRange = RangeValues(values.end - 500, values.end));
+                    } else {
+                      setState(() => _freqRange = RangeValues(values.start, values.start + 500));
+                    }
+                  }
+                },
+              ),
             ),
           ),
           const SizedBox(width: 12),
