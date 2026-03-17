@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'src/audio/audio_capture_service.dart';
 import 'src/core/fft_service.dart';
@@ -38,11 +39,11 @@ class _SpectralAppState extends State<SpectralApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF020204),
+        scaffoldBackgroundColor: const Color(0xFF000000),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF00E5FF),
-          secondary: Color(0xFF7000FF),
-          surface: Color(0xFF050508),
+          primary: Colors.white,
+          secondary: Color(0xFF007AFF),
+          surface: Color(0xFF1C1C1E),
         ),
         useMaterial3: true,
       ),
@@ -80,9 +81,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   double _gain = 1.0;
   double _sensitivity = 1.0;
+  RangeValues _freqRange = const RangeValues(0, 22050);
 
-  late AnimationController _coreController;
-  late AnimationController _rotationController;
+  late AnimationController _pulseController;
 
   @override
   void initState() {
@@ -90,15 +91,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     _isDemoMode = Uri.base.queryParameters['demo'] == 'true';
     _setupAudio();
 
-    _coreController = AnimationController(
+    _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
-
-    _rotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
+      duration: const Duration(seconds: 2),
+    );
   }
 
   void _setupAudio() {
@@ -155,6 +151,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         } else {
           await _audioService.stopCapture();
         }
+        _pulseController.stop();
         setState(() {
           _isCapturing = false;
           _currentAudioData = Float64List(0);
@@ -164,11 +161,13 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       } else {
         if (_isDemoMode) {
           _startDemoData();
+          _pulseController.repeat(reverse: true);
           setState(() => _isCapturing = true);
         } else {
           final hasPermission = await _audioService.checkPermission();
           if (hasPermission) {
             await _audioService.startCapture();
+            _pulseController.repeat(reverse: true);
             setState(() => _isCapturing = true);
           }
         }
@@ -182,8 +181,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   void dispose() {
     _audioSubscription?.cancel();
     _demoTimer?.cancel();
-    _coreController.dispose();
-    _rotationController.dispose();
+    _pulseController.dispose();
     _audioService.dispose();
     super.dispose();
   }
@@ -193,324 +191,225 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return Scaffold(
       body: Stack(
         children: [
-          // Background - Deep Space
+          // Background Liquid Gradient
           Positioned.fill(
-            child: Container(color: const Color(0xFF020204)),
-          ),
-
-          // Sector: Waterfall (Background Projection)
-          Positioned(
-            top: 0, bottom: 0, left: 0, right: 0,
-            child: Opacity(
-              opacity: 0.15,
-              child: Transform(
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.001)
-                  ..rotateX(-0.5),
-                alignment: Alignment.center,
-                child: CustomPaint(
-                  painter: WaterfallPainter(fftHistory: List.from(_fftHistory)),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(-0.8, -0.6),
+                  radius: 1.5,
+                  colors: [Color(0xFF001A33), Colors.black],
                 ),
               ),
             ),
           ),
 
-          // Grid Overlay
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.05,
-              child: CustomPaint(painter: _TacticalGridPainter()),
-            ),
-          ),
+          // Main Content Layout
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top Minimalist Header
+                  _buildMinimalHeader(),
+                  const SizedBox(height: 20),
 
-          // Top Info
-          Positioned(
-            top: 40, left: 24,
-            child: _buildHeaderInfo(),
-          ),
+                  // Waveform Glass Card
+                  Expanded(
+                    flex: 2,
+                    child: _buildGlassCard(
+                      child: CustomPaint(
+                        painter: WaveformPainter(
+                          audioData: _currentAudioData,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-          // Main Center: SPECTRAL CORE
-          Center(
-            child: _buildSpectralCore(),
-          ),
+                  // FFT Focus Card
+                  Expanded(
+                    flex: 3,
+                    child: _buildGlassCard(
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: CustomPaint(
+                              painter: FftBarChartPainter(
+                                fftData: _currentFftData,
+                                color: const Color(0xFF007AFF),
+                                minFreq: _freqRange.start,
+                                maxFreq: _freqRange.end,
+                                sampleRate: 44100,
+                              ),
+                            ),
+                          ),
+                          _buildFrequencyFocusSlider(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-          // Sector: Waveform (Floating Projection)
-          Positioned(
-            top: 100, left: 0, right: 0,
-            height: 120,
-            child: _buildFloatingProjection(
-              child: CustomPaint(
-                painter: WaveformPainter(
-                  audioData: _currentAudioData,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                  // Waterfall Background-ish Card
+                  Expanded(
+                    flex: 2,
+                    child: _buildGlassCard(
+                      child: CustomPaint(
+                        painter: WaterfallPainter(
+                          fftHistory: List.from(_fftHistory),
+                          minFreq: _freqRange.start,
+                          maxFreq: _freqRange.end,
+                          sampleRate: 44100,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Interaction Bar
+                  const SizedBox(height: 24),
+                  _buildInteractionBar(),
+                ],
               ),
             ),
           ),
-
-          // Sector: FFT (Floating Projection Bottom)
-          Positioned(
-            bottom: 120, left: 0, right: 0,
-            height: 100,
-            child: _buildFloatingProjection(
-              child: CustomPaint(
-                painter: FftBarChartPainter(
-                  fftData: _currentFftData,
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-            ),
-          ),
-
-          // Integrated Holographic Controls
-          _buildHolographicControls(),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildMinimalHeader() {
+    return Row(
       children: [
-        Text(
-          LocalizationHelper.get('app.name').toUpperCase(),
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.primary,
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 8,
-            shadows: [Shadow(color: Theme.of(context).colorScheme.primary, blurRadius: 20)],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-          child: Text(
-            "COORD_SYS_V4 // ${_isCapturing ? 'STREAMING' : 'IDLE'}",
-            style: const TextStyle(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSpectralCore() {
-    return GestureDetector(
-      onTap: _toggleCapture,
-      child: AnimatedBuilder(
-        animation: _coreController,
-        builder: (context, child) {
-          final pulse = 1.0 + (0.1 * math.sin(_coreController.value * 2 * math.pi));
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              // Outer Rotating Ring
-              RotationTransition(
-                turns: _rotationController,
-                child: CustomPaint(
-                  size: const Size(260, 260),
-                  painter: _CoreRingPainter(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
-                ),
-              ),
-              // Inner Pulsing Core
-              Container(
-                width: 120 * pulse, height: 120 * pulse,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      (_isCapturing ? Colors.redAccent : Theme.of(context).colorScheme.primary).withOpacity(0.4),
-                      Colors.transparent,
-                    ],
-                  ),
-                  border: Border.all(
-                    color: _isCapturing ? Colors.redAccent : Theme.of(context).colorScheme.primary,
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (_isCapturing ? Colors.redAccent : Theme.of(context).colorScheme.primary).withOpacity(0.5),
-                      blurRadius: 30,
-                    )
-                  ],
-                ),
-                child: Icon(
-                  _isCapturing ? Icons.stop_circle_outlined : Icons.radio_button_checked,
-                  color: Colors.white,
-                  size: 40,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildFloatingProjection({required Widget child}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 40),
-      child: child,
-    );
-  }
-
-  Widget _buildHolographicControls() {
-    return Positioned.fill(
-      child: IgnorePointer(
-        ignoring: false,
-        child: Stack(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gain Arc (Left Side)
-            Positioned(
-              left: -80, top: 0, bottom: 0,
-              width: 200,
-              child: _buildArcControl(
-                label: "GAIN",
-                value: _gain,
-                onChanged: (v) => setState(() => _gain = v),
-              ),
+            const Text(
+              "SPECTRAL ANALYSIS",
+              style: TextStyle(fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.w900, color: Colors.white24),
             ),
-            // Sensitivity Arc (Right Side)
-            Positioned(
-              right: -80, top: 0, bottom: 0,
-              width: 200,
-              child: _buildArcControl(
-                label: "SENS",
-                value: _sensitivity,
-                isRight: true,
-                onChanged: (v) => setState(() => _sensitivity = v),
-              ),
+            Text(
+              _isCapturing ? "LIVE SIGNAL" : "SIGNAL IDLE",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.8)),
             ),
           ],
         ),
+        const Spacer(),
+        _buildHeaderAction(icon: Icons.tune_rounded, onPressed: () {}),
+        const SizedBox(width: 12),
+        _buildHeaderAction(icon: widget.themeMode == ThemeMode.dark ? Icons.wb_sunny_outlined : Icons.nightlight_outlined, onPressed: widget.onToggleTheme),
+      ],
+    );
+  }
+
+  Widget _buildHeaderAction({required IconData icon, required VoidCallback onPressed}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: IconButton(
+        icon: Icon(icon, size: 20, color: Colors.white70),
+        onPressed: onPressed,
       ),
     );
   }
 
-  Widget _buildArcControl({
-    required String label,
-    required double value,
-    required ValueChanged<double> onChanged,
-    bool isRight = false,
-  }) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildGlassCard({required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFrequencyFocusSlider() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          const Text("FOCUS", style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RangeSlider(
+              values: _freqRange,
+              min: 0,
+              max: 22050,
+              activeColor: const Color(0xFF007AFF),
+              inactiveColor: Colors.white10,
+              onChanged: (values) => setState(() => _freqRange = values),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text("${(_freqRange.end / 1000).toStringAsFixed(1)}kHz", style: const TextStyle(fontSize: 10, color: Colors.white38)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInteractionBar() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        RotatedBox(
-          quarterTurns: isRight ? 1 : 3,
-          child: Column(
-            children: [
-              Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.bold, color: Colors.white24)),
-              SizedBox(
-                width: 300,
-                child: SliderTheme(
-                  data: SliderThemeData(
-                    trackHeight: 2,
-                    activeTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-                    inactiveTrackColor: Colors.white10,
-                    thumbColor: Theme.of(context).colorScheme.primary,
-                    thumbShape: const RectangularSliderThumbShape(enabledThumbRadius: 6),
-                  ),
-                  child: Slider(value: value, min: 0.1, max: 5.0, onChanged: onChanged),
+        _buildSliderControl("GAIN", _gain, (v) => setState(() => _gain = v)),
+        GestureDetector(
+          onTap: _toggleCapture,
+          child: AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              return Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
+                  border: Border.all(color: _isCapturing ? Colors.red.withOpacity(0.5) : Colors.white24, width: 2),
+                  boxShadow: [
+                    if (_isCapturing) BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10 + 10 * _pulseController.value)
+                  ],
                 ),
-              ),
-              Text(value.toStringAsFixed(1), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
-            ],
+                child: Icon(
+                  _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                  color: _isCapturing ? Colors.redAccent : Colors.white,
+                  size: 32,
+                ),
+              );
+            },
           ),
         ),
+        _buildSliderControl("SENS", _sensitivity, (v) => setState(() => _sensitivity = v)),
       ],
     );
   }
-}
 
-class _CoreRingPainter extends CustomPainter {
-  final Color color;
-  _CoreRingPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2, paint);
-
-    // Draw tick marks
-    for (var i = 0; i < 8; i++) {
-      final angle = i * math.pi / 4;
-      final start = Offset(
-        size.width / 2 + (size.width / 2 - 10) * math.cos(angle),
-        size.height / 2 + (size.width / 2 - 10) * math.sin(angle),
-      );
-      final end = Offset(
-        size.width / 2 + (size.width / 2 + 5) * math.cos(angle),
-        size.height / 2 + (size.width / 2 + 5) * math.sin(angle),
-      );
-      canvas.drawLine(start, end, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _TacticalGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF00E5FF).withOpacity(0.15)
-      ..strokeWidth = 0.5;
-
-    for (var i = 0.0; i < size.width; i += 50) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-    for (var i = 0.0; i < size.height; i += 50) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class RectangularSliderThumbShape extends SliderComponentShape {
-  final double enabledThumbRadius;
-  const RectangularSliderThumbShape({this.enabledThumbRadius = 6.0});
-
-  @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) => Size.fromRadius(enabledThumbRadius);
-
-  @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
-    final canvas = context.canvas;
-    final paint = Paint()
-      ..color = sliderTheme.thumbColor!
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRect(
-      Rect.fromCenter(center: center, width: 4, height: 16),
-      paint,
-    );
-
-    // Glow
-    canvas.drawRect(
-      Rect.fromCenter(center: center, width: 8, height: 20),
-      Paint()..color = sliderTheme.thumbColor!.withOpacity(0.2)..style = PaintingStyle.fill,
+  Widget _buildSliderControl(String label, double value, ValueChanged<double> onChanged) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24)),
+        SizedBox(
+          width: 100,
+          child: Slider(
+            value: value,
+            min: 0.1,
+            max: 5.0,
+            activeColor: Colors.white70,
+            inactiveColor: Colors.white10,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     );
   }
 }

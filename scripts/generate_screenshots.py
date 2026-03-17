@@ -50,8 +50,8 @@ def generate_screenshots():
             page.wait_for_timeout(10000)
 
             print("Clicking Start Capture...")
-            # Click center (Spectral Core)
-            page.mouse.click(225, 400)
+            # Click bottom center (New Capture Button)
+            page.mouse.click(225, 750)
 
             print("Capturing active waveform...")
             # Wait longer for data generation and rendering

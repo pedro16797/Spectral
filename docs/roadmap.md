@@ -28,11 +28,11 @@ The goal of the MVP is to provide a functional and performant audio spectral vis
 - [x] **Localization:** Full support for English, ready for other languages.
 
 ## Phase 3: UI Modernization & UX Streamlining
-- [x] **Advanced Tactical HUD:** Transitioned from a generic layout to a stack-based radial holographic interface.
-- [x] **Integrated Holographic Controls:** Replaced standard sliders with side-docked, integrated arc-style controls for GAIN and SENS.
-- [x] **The Spectral Core:** Implemented a central, multi-layered interactive hub for capture control and status monitoring.
-- [x] **Light Projection Visuals:** Refined all painters (Waveform, FFT, Waterfall) with glow effects, sub-pixel rendering, and depth-based perspective.
-- [x] **Atmospheric Polish:** Added tactical grids, scanline textures, and time-based data fading for a premium sci-fi experience.
+- [x] **Liquid Glass Aesthetic:** Implemented a minimalist, high-end UI using frosted glass containers (`BackdropFilter`), radial gradients, and organic glows.
+- [x] **Frequency Focus (Zoom):** Added ability to focus and zoom into specific spectral bands (0–22,050Hz) with dynamic frequency labeling.
+- [x] **Refined Interactions:** Standardized circular controls and minimalist interaction bars for GAIN and SENS.
+- [x] **Modernized Typography & Layout:** Shifted to a de-emphasized branding approach with clean, high-contrast layouts.
+- [x] **Optimized Visualizations:** Enhanced Waveform, FFT, and Waterfall painters with anti-aliasing, soft gradients, and sub-pixel clarity.
 
 ## Phase 4: Future Upgrades
 - [ ] **RF Support:** Integration with SDR (Software Defined Radio) for RF spectrum visualization.

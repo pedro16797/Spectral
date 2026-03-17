@@ -42,10 +42,13 @@ void main() {
     // Use pump instead for non-animating verification.
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('SPECTRAL'), findsOneWidget);
+    expect(find.text('SPECTRAL ANALYSIS'), findsOneWidget);
 
     // Verify GAIN and SENS controls are present
     expect(find.text('GAIN'), findsOneWidget);
     expect(find.text('SENS'), findsOneWidget);
+
+    // Verify Frequency Focus control is present
+    expect(find.text('FOCUS'), findsOneWidget);
   });
 }
