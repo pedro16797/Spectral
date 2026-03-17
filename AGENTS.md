@@ -27,7 +27,8 @@ To maintain the quality and performance of this visualization tool:
 1.  **Plan:** Propose a detailed plan before making changes.
 2.  **Isolate:** Work on the minimum subset of code needed.
 3.  **Validate:** Run tests and use frontend verification tools where applicable.
-4.  **Review:** Perform a self-review or request a review on your diff before finalizing.
+4.  **Visualize:** Assess if the change has a visual impact. If so, it is **imperative** to update the project's screenshots using `scripts/generate_screenshots.py`.
+5.  **Review:** Perform a self-review or request a review on your diff before finalizing.
 
 ## Documentation Maintenance
 Keep the project documentation accurate:

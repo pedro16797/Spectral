@@ -23,6 +23,27 @@ We value stability and performance. Changes should be tightly scoped and well-te
 
 ---
 
+## Visual Documentation
+
+Maintaining up-to-date visual documentation is critical for Spectral. When introducing new features or modifying the UI, it is **imperative** to evaluate whether new screenshots are needed or if existing ones must be updated.
+
+### Generating Screenshots
+We use an automated script to capture consistent screenshots of the app. This requires [Playwright](https://playwright.dev/python/).
+
+1.  **Build the Web App:**
+    ```bash
+    flutter build web --profile
+    ```
+2.  **Run the Screenshot Script:**
+    ```bash
+    python3 scripts/generate_screenshots.py
+    ```
+    Generated images are saved to `resources/screenshots/`.
+
+Contributors are expected to include updated screenshots in their PRs if their changes impact the visual state of the application.
+
+---
+
 ## AI-Assisted Workflow
 
 If you are using an AI agent to contribute, please follow these guidelines:
