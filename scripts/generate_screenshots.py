@@ -50,8 +50,8 @@ def generate_screenshots():
             page.wait_for_timeout(10000)
 
             print("Clicking Start Capture...")
-            # Click bottom center
-            page.mouse.click(225, 760)
+            # Click bottom center (New Capture Button)
+            page.mouse.click(225, 750)
 
             print("Capturing active waveform...")
             # Wait longer for data generation and rendering

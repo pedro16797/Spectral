@@ -3,8 +3,16 @@ import 'dart:math' as math;
 
 class WaterfallPainter extends CustomPainter {
   final List<List<double>> fftHistory;
+  final double minFreq;
+  final double maxFreq;
+  final int sampleRate;
 
-  WaterfallPainter({required this.fftHistory});
+  WaterfallPainter({
+    required this.fftHistory,
+    this.minFreq = 0,
+    this.maxFreq = 22050,
+    this.sampleRate = 44100,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -15,29 +23,36 @@ class WaterfallPainter extends CustomPainter {
     final historyCount = fftHistory.length;
     final rowHeight = height / historyCount;
 
+    final totalNyquist = sampleRate / 2;
+
     for (var i = 0; i < historyCount; i++) {
       final fftData = fftHistory[i];
       if (fftData.isEmpty) continue;
 
-      final binCount = fftData.length;
-      // For performance, we might want to limit binCount or draw fewer rects
-      // but let's start simple.
+      // Filter based on frequency range
+      final startIndex = ((minFreq / totalNyquist) * fftData.length).floor().clamp(0, fftData.length - 1);
+      final endIndex = ((maxFreq / totalNyquist) * fftData.length).ceil().clamp(startIndex + 1, fftData.length);
+
+      final visibleData = fftData.sublist(startIndex, endIndex);
+      if (visibleData.isEmpty) continue;
+
+      final binCount = visibleData.length;
       final barWidth = width / binCount;
 
       for (var j = 0; j < binCount; j++) {
-        final magnitude = fftData[j];
-        // Normalize magnitude for display.
+        final magnitude = visibleData[j];
         final normalized = (math.log(magnitude + 1) / 5.0).clamp(0.0, 1.0);
 
-        if (normalized < 0.05) continue; // Optimization: skip very low values
+        if (normalized < 0.05) continue;
+
+        final ageFade = 1.0 - (i / historyCount);
 
         final paint = Paint()
-          ..color = _getColorForNormalizedValue(normalized)
-          ..style = PaintingStyle.fill;
+          ..color = _getLiquidColor(normalized).withOpacity(ageFade * 0.6)
+          ..style = PaintingStyle.fill
+          ..isAntiAlias = true;
 
         final x = j * barWidth;
-        // i=0 is the oldest or newest?
-        // If we want newest at top, then i=0 should be newest.
         final y = i * rowHeight;
 
         canvas.drawRect(
@@ -48,26 +63,19 @@ class WaterfallPainter extends CustomPainter {
     }
   }
 
-  Color _getColorForNormalizedValue(double value) {
-    // Simple heatmap: Black -> Blue -> Cyan -> Green -> Yellow -> Red
-    if (value < 0.2) {
-      return Color.lerp(Colors.black, Colors.blue, value * 5)!;
-    } else if (value < 0.4) {
-      return Color.lerp(Colors.blue, Colors.cyan, (value - 0.2) * 5)!;
-    } else if (value < 0.6) {
-      return Color.lerp(Colors.cyan, Colors.green, (value - 0.4) * 5)!;
-    } else if (value < 0.8) {
-      return Color.lerp(Colors.green, Colors.yellow, (value - 0.6) * 5)!;
+  Color _getLiquidColor(double value) {
+    // Liquid minimalism palette: Deep blue -> Bright Azure -> Soft White
+    if (value < 0.33) {
+      return Color.lerp(const Color(0xFF001A33), const Color(0xFF007AFF), value * 3)!;
+    } else if (value < 0.66) {
+      return Color.lerp(const Color(0xFF007AFF), const Color(0xFF5AC8FA), (value - 0.33) * 3)!;
     } else {
-      return Color.lerp(Colors.yellow, Colors.red, (value - 0.8) * 5)!;
+      return Color.lerp(const Color(0xFF5AC8FA), Colors.white, (value - 0.66) * 3)!;
     }
   }
 
   @override
   bool shouldRepaint(covariant WaterfallPainter oldDelegate) {
-    // In a real app, we might check if the content changed,
-    // but for now, we'll assume it changes if the reference is different or
-    // simply return true since it's a real-time visualization.
     return true;
   }
 }
