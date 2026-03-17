@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 class LocalizationHelper {
   static Map<String, dynamic> _localizedStrings = {};
 
-  static Future<void> load(String locale) async {
+  static Future<void> load(String locale, [AssetBundle? bundle]) async {
     try {
-      final String jsonString = await rootBundle.loadString('resources/locales/$locale.json');
+      final String jsonString = await (bundle ?? rootBundle).loadString('resources/locales/$locale.json');
       _localizedStrings = json.decode(jsonString);
     } catch (e) {
       // Fallback or log error

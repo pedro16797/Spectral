@@ -27,6 +27,9 @@ class MockAssetBundle extends CachingAssetBundle {
 
 void main() {
   testWidgets('Spectral app loads and shows title', (WidgetTester tester) async {
+    // Let's manually initialize it for the test environment.
+    await LocalizationHelper.load('en', MockAssetBundle());
+
     // Provide the mock asset bundle to the widget tree
     await tester.pumpWidget(
       DefaultAssetBundle(
@@ -35,17 +38,12 @@ void main() {
       ),
     );
 
-    // LocalizationHelper.load('en') is called in main(), but here we might need to trigger it manually
-    // or just rely on the fact that SpectralApp calls it.
-    // However, main() is async and calls await LocalizationHelper.load('en').
-    // In our test, SpectralApp is just a StatelessWidget.
-
-    // Let's manually initialize it for the test environment.
-    await LocalizationHelper.load('en');
-
     await tester.pumpAndSettle();
 
     expect(find.text('Spectral'), findsOneWidget);
     expect(find.text('Start Capture'), findsOneWidget);
+
+    // Verify Settings icon is present
+    expect(find.byIcon(Icons.settings), findsOneWidget);
   });
 }
