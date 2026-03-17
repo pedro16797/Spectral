@@ -27,15 +27,16 @@ The goal of the MVP is to provide a functional and performant audio spectral vis
 - [x] **Signal Processing:** Efficient FFT implementation and windowing.
 - [x] **Localization:** Full support for English, ready for other languages.
 
-## Phase 3: Future Upgrades
+## Phase 3: UI Modernization & UX Streamlining
+- [ ] **Responsive Layout:** Optimize visualization stacking and sizing for different screen aspects.
+- [ ] **Custom UI Components:** Implement slick, tailor-made controls for Gain, Sensitivity, and Theme toggling.
+- [ ] **Modern Visual Language:** Update the interface with subtle gradients, shadows, and smooth transitions.
+- [ ] **Streamlined Navigation:** Refine the settings access and mode switching for a frictionless experience.
+- [ ] **Polished Painters:** Improve the visual fidelity of Waveform, FFT, and Waterfall renderings with anti-aliasing and color blending.
+
+## Phase 4: Future Upgrades
 - [ ] **RF Support:** Integration with SDR (Software Defined Radio) for RF spectrum visualization.
 - [ ] **Advanced Tools:** Markers, peak detection, harmonic analysis.
 - [ ] **Expanded Themes:** More color palettes and customizable UI elements.
 - [ ] **iOS Port:** Ensuring compatibility and optimizing for the iOS ecosystem.
 - [ ] **Global Localization:** Adding support for more languages (Spanish, Portuguese, Japanese, etc.).
-
-## Sprint 1: Bootstrapping & Basic Audio (Completed)
-- [x] Establish the build system and project template.
-- [x] Implement basic audio capture service.
-- [x] Implement a simple waveform visualization component.
-- [x] Verify performance on target Android devices.
