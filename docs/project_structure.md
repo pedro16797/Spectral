@@ -4,12 +4,12 @@ This document outlines the directory structure and the purpose of each component
 
 ## Directory Overview
 
-- **`src/`**: Contains the core application logic and source code.
+- **`lib/src/`**: Contains the core application logic and source code.
     - **`audio/`**: Components for audio capturing and processing.
     - **`rf/`**: Components for RF data acquisition and processing (Future).
     - **`core/`**: Shared signal processing logic (FFT, windowing, filters).
     - **`ui/`**: User interface components and visualization rendering logic.
-    - **`services/`**: Background services, data providers, and system integrations.
+    - **`services/`**: General background services and system integrations.
     - **`utils/`**: General helper functions and shared utilities.
 - **`docs/`**: Project documentation, including roadmaps, architecture guides, and sprint plans.
 - **`config/`**: Configuration files and default settings for the application.

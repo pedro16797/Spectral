@@ -2,14 +2,14 @@
 
 This document outlines the strategic plan for Spectral, from MVP to future iterations.
 
-## Phase 1: Project Setup & Foundation (Current)
+## Phase 1: Project Setup & Foundation
 - [x] Initialize project structure.
 - [x] Create core documentation (README, CONTRIBUTING, AGENTS).
 - [x] Define directory layout.
 - [x] Set up localization base.
-- [ ] Define initial tech stack and bootstrap mobile project (React Native / Flutter / Native).
+- [x] Define initial tech stack and bootstrap mobile project (Flutter).
 
-## Phase 2: MVP Features
+## Phase 2: MVP Features (Current)
 The goal of the MVP is to provide a functional and performant audio spectral visualizer.
 
 ### Core Visualizations
