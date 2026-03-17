@@ -108,6 +108,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   List<double> _currentFftData = [];
   final List<List<double>> _fftHistory = [];
   static const int _maxHistory = 40;
+  ToneInfo? _detectedTone;
   bool _isCapturing = false;
   bool _isDemoMode = false;
   Timer? _demoTimer;
@@ -148,6 +149,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           final fft = _fftService.processAudioData(data);
           final adjustedFft = fft.map((x) => x * _sensitivity).toList();
           _currentFftData = adjustedFft;
+          _detectedTone = _fftService.detectPrimaryTone(adjustedFft, 44100);
           if (adjustedFft.isNotEmpty) {
             _fftHistory.insert(0, adjustedFft);
             if (_fftHistory.length > _maxHistory) {
@@ -163,10 +165,18 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     _demoTimer?.cancel();
     _demoTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       final samples = Float64List(512);
-      final phase = DateTime.now().millisecondsSinceEpoch / 1000.0 * 2 * math.pi;
+      final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
+      // 440Hz Fundamental (A4)
+      const fundamental = 440.0;
+      final phase = now * 2 * math.pi * fundamental;
+
       for (var i = 0; i < 512; i++) {
-        samples[i] = (0.4 * math.sin(phase + (i / 512.0) * 12 * math.pi) +
-                     0.2 * math.sin(phase * 2.5 + (i / 512.0) * 45 * math.pi)) * _gain;
+        final t = i / 44100.0;
+        samples[i] = (
+          0.6 * math.sin(phase + t * 2 * math.pi * fundamental) + // Fundamental
+          0.3 * math.sin(2 * (phase + t * 2 * math.pi * fundamental)) + // 2nd Harmonic
+          0.1 * math.sin(3 * (phase + t * 2 * math.pi * fundamental))    // 3rd Harmonic
+        ) * _gain;
       }
       if (mounted) {
         setState(() {
@@ -179,6 +189,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           final fft = _fftService.processAudioData(samples);
           final adjustedFft = fft.map((x) => x * _sensitivity).toList();
           _currentFftData = adjustedFft;
+          _detectedTone = _fftService.detectPrimaryTone(adjustedFft, 44100);
           if (adjustedFft.isNotEmpty) {
             _fftHistory.insert(0, adjustedFft);
             if (_fftHistory.length > _maxHistory) {
@@ -470,13 +481,27 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   Widget _buildFrequencyFocusSlider() {
+    String focusLabel = "FOCUS";
+    if (_detectedTone != null) {
+      final t = _detectedTone!;
+      focusLabel = "${t.frequency.toStringAsFixed(1)}Hz • ${t.note}";
+      if (t.harmonics.isNotEmpty) {
+        focusLabel += " • H: ${t.harmonics.join(', ')}";
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Column(
         children: [
           Row(
             children: [
-              const Text("FOCUS", style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold)),
+              Text(
+                focusLabel,
+                style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               const Spacer(),
               Text("${(_freqRange.start / 1000).toStringAsFixed(1)} - ${(_freqRange.end / 1000).toStringAsFixed(1)}kHz",
                   style: const TextStyle(fontSize: 10, color: Colors.white38)),
