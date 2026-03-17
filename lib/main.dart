@@ -67,11 +67,43 @@ class SpectralHomePage extends StatefulWidget {
   State<SpectralHomePage> createState() => _SpectralHomePageState();
 }
 
+class DialArcPainter extends CustomPainter {
+  final double value;
+  final bool isLeft;
+  DialArcPainter({required this.value, required this.isLeft});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 10;
+    final sweep = (value / 5.0) * math.pi;
+    final startAngle = isLeft ? -math.pi / 2 : math.pi / 2;
+
+    final paint = Paint()
+      ..color = const Color(0xFF007AFF)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 6;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      isLeft ? sweep : -sweep,
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant DialArcPainter oldDelegate) => oldDelegate.value != value;
+}
+
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
   final AudioCaptureService _audioService = AudioCaptureService();
   final FftService _fftService = FftService();
   StreamSubscription<Float64List>? _audioSubscription;
   Float64List _currentAudioData = Float64List(0);
+  final List<Float64List> _audioHistory = [];
   List<double> _currentFftData = [];
   final List<List<double>> _fftHistory = [];
   static const int _maxHistory = 40;
@@ -82,6 +114,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   double _gain = 1.0;
   double _sensitivity = 1.0;
   RangeValues _freqRange = const RangeValues(0, 22050);
+
+  bool _isAdjustingGain = false;
+  bool _isAdjustingSens = false;
 
   late AnimationController _pulseController;
 
@@ -101,7 +136,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     _audioSubscription = _audioService.audioDataStream.listen((data) {
       if (mounted) {
         setState(() {
-          _currentAudioData = Float64List.fromList(data.map((x) => x * _gain).toList());
+          final processedAudio = Float64List.fromList(data.map((x) => x * _gain).toList());
+
+          if (_currentAudioData.isNotEmpty) {
+            _audioHistory.insert(0, _currentAudioData);
+            if (_audioHistory.length > 5) _audioHistory.removeLast();
+          }
+          _currentAudioData = processedAudio;
+
           final fft = _fftService.processAudioData(data);
           final adjustedFft = fft.map((x) => x * _sensitivity).toList();
           _currentFftData = adjustedFft;
@@ -127,7 +169,12 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       }
       if (mounted) {
         setState(() {
+          if (_currentAudioData.isNotEmpty) {
+            _audioHistory.insert(0, _currentAudioData);
+            if (_audioHistory.length > 5) _audioHistory.removeLast();
+          }
           _currentAudioData = samples;
+
           final fft = _fftService.processAudioData(samples);
           final adjustedFft = fft.map((x) => x * _sensitivity).toList();
           _currentFftData = adjustedFft;
@@ -155,6 +202,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         setState(() {
           _isCapturing = false;
           _currentAudioData = Float64List(0);
+          _audioHistory.clear();
           _currentFftData = [];
           _fftHistory.clear();
         });
@@ -204,6 +252,41 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             ),
           ),
 
+          // Waterfall Background
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.4,
+              child: CustomPaint(
+                painter: WaterfallPainter(
+                  fftHistory: List.from(_fftHistory),
+                  minFreq: _freqRange.start,
+                  maxFreq: _freqRange.end,
+                  sampleRate: 44100,
+                ),
+              ),
+            ),
+          ),
+
+          // Scanline Overlay
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
+                    stops: const [0, 0.5, 1],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Main Content Layout
           SafeArea(
             child: Padding(
@@ -222,6 +305,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                       child: CustomPaint(
                         painter: WaveformPainter(
                           audioData: _currentAudioData,
+                          history: List.from(_audioHistory),
                           color: Colors.white.withOpacity(0.8),
                         ),
                       ),
@@ -253,20 +337,6 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                   ),
                   const SizedBox(height: 16),
 
-                  // Waterfall Background-ish Card
-                  Expanded(
-                    flex: 2,
-                    child: _buildGlassCard(
-                      child: CustomPaint(
-                        painter: WaterfallPainter(
-                          fftHistory: List.from(_fftHistory),
-                          minFreq: _freqRange.start,
-                          maxFreq: _freqRange.end,
-                          sampleRate: 44100,
-                        ),
-                      ),
-                    ),
-                  ),
 
                   // Interaction Bar
                   const SizedBox(height: 24),
@@ -275,7 +345,69 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               ),
             ),
           ),
+
+          // Large Edge Dials
+          if (_isAdjustingGain) _buildLargeEdgeDial(isLeft: true, value: _gain, label: "GAIN"),
+          if (_isAdjustingSens) _buildLargeEdgeDial(isLeft: false, value: _sensitivity, label: "SENSITIVITY"),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLargeEdgeDial({required bool isLeft, required double value, required String label}) {
+    final size = MediaQuery.of(context).size;
+    final dialSize = size.height * 0.4;
+
+    return Positioned(
+      top: (size.height - dialSize) / 2,
+      left: isLeft ? -dialSize / 2 : null,
+      right: isLeft ? null : -dialSize / 2,
+      child: IgnorePointer(
+        child: Container(
+          width: dialSize,
+          height: dialSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.black.withOpacity(0.8),
+            border: Border.all(color: const Color(0xFF007AFF).withOpacity(0.3), width: 4),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF007AFF).withOpacity(0.2),
+                blurRadius: 30,
+                spreadRadius: 10,
+              )
+            ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Radial scale markers could go here
+              Positioned(
+                left: isLeft ? dialSize * 0.6 : null,
+                right: isLeft ? null : dialSize * 0.6,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      value.toStringAsFixed(2),
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w100, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+              // Spinning arc to show value
+              CustomPaint(
+                size: Size(dialSize, dialSize),
+                painter: DialArcPainter(value: value, isLeft: isLeft),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -364,7 +496,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildSliderControl("GAIN", _gain, (v) => setState(() => _gain = v)),
+        _buildDialTrigger("GAIN", _gain, (v) => setState(() => _gain = v), (active) => setState(() => _isAdjustingGain = active)),
         GestureDetector(
           onTap: _toggleCapture,
           child: AnimatedBuilder(
@@ -389,27 +521,41 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             },
           ),
         ),
-        _buildSliderControl("SENS", _sensitivity, (v) => setState(() => _sensitivity = v)),
+        _buildDialTrigger("SENS", _sensitivity, (v) => setState(() => _sensitivity = v), (active) => setState(() => _isAdjustingSens = active)),
       ],
     );
   }
 
-  Widget _buildSliderControl(String label, double value, ValueChanged<double> onChanged) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24)),
-        SizedBox(
-          width: 100,
-          child: Slider(
-            value: value,
-            min: 0.1,
-            max: 5.0,
-            activeColor: Colors.white70,
-            inactiveColor: Colors.white10,
-            onChanged: onChanged,
+  Widget _buildDialTrigger(String label, double value, ValueChanged<double> onChanged, ValueChanged<bool> onActive) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragStart: (_) => onActive(true),
+      onVerticalDragEnd: (_) => onActive(false),
+      onVerticalDragCancel: () => onActive(false),
+      onVerticalDragUpdate: (details) {
+        // Simple vertical drag for adjustment
+        double delta = -details.delta.dy * 0.01;
+        double newValue = (value + delta).clamp(0.1, 5.0);
+        onChanged(newValue);
+      },
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24)),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: Text(
+              value.toStringAsFixed(2),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

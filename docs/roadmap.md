@@ -33,6 +33,9 @@ The goal of the MVP is to provide a functional and performant audio spectral vis
 - [x] **Refined Interactions:** Standardized circular controls and minimalist interaction bars for GAIN and SENS.
 - [x] **Modernized Typography & Layout:** Shifted to a de-emphasized branding approach with clean, high-contrast layouts.
 - [x] **Optimized Visualizations:** Enhanced Waveform, FFT, and Waterfall painters with anti-aliasing, soft gradients, and sub-pixel clarity.
+- [x] **Waveform Ghosting:** Added temporal history to the waveform visualization, creating a fading "ghost" effect for past signals.
+- [x] **Slick HUD Refinement:** Transitioned to an integrated HUD layout with the Waterfall visualization moved to the background layer with scanline overlays.
+- [x] **Interactive Edge Dials:** Implemented large, semi-circular dials for Gain and Sensitivity that appear on the screen edges during interaction.
 
 ## Phase 4: Future Upgrades
 - [ ] **RF Support:** Integration with SDR (Software Defined Radio) for RF spectrum visualization.

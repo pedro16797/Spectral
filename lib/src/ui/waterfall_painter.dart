@@ -48,7 +48,7 @@ class WaterfallPainter extends CustomPainter {
         final ageFade = 1.0 - (i / historyCount);
 
         final paint = Paint()
-          ..color = _getLiquidColor(normalized).withOpacity(ageFade * 0.4)
+          ..color = _getLiquidColor(normalized).withOpacity(ageFade * 0.6)
           ..style = PaintingStyle.fill
           ..isAntiAlias = true;
 
