@@ -13,7 +13,8 @@ class FftBarChartPainter extends CustomPainter {
 
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
+      ..isAntiAlias = true
+      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 1);
 
     final width = size.width;
     final height = size.height;
@@ -50,7 +51,7 @@ class FftBarChartPainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: [
           color,
-          color.withOpacity(0.3),
+          color.withOpacity(0.1),
         ],
       ).createShader(rect);
 

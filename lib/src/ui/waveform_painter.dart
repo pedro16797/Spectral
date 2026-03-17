@@ -17,7 +17,8 @@ class WaveformPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..isAntiAlias = true;
+      ..isAntiAlias = true
+      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 2);
 
     final path = Path();
     final width = size.width;

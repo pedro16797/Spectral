@@ -50,17 +50,15 @@ class WaterfallPainter extends CustomPainter {
   }
 
   Color _getColorForNormalizedValue(double value) {
-    // Simple heatmap: Black -> Blue -> Cyan -> Green -> Yellow -> Red
-    if (value < 0.2) {
-      return Color.lerp(Colors.black, Colors.blue, value * 5)!;
-    } else if (value < 0.4) {
-      return Color.lerp(Colors.blue, Colors.cyan, (value - 0.2) * 5)!;
-    } else if (value < 0.6) {
-      return Color.lerp(Colors.cyan, Colors.green, (value - 0.4) * 5)!;
-    } else if (value < 0.8) {
-      return Color.lerp(Colors.green, Colors.yellow, (value - 0.6) * 5)!;
+    // Sci-fi heatmap: Black -> Dark Blue -> Cyan -> Electric Green -> Neon Yellow
+    if (value < 0.25) {
+      return Color.lerp(const Color(0xFF050505), const Color(0xFF001A33), value * 4)!;
+    } else if (value < 0.5) {
+      return Color.lerp(const Color(0xFF001A33), const Color(0xFF00B2FF), (value - 0.25) * 4)!;
+    } else if (value < 0.75) {
+      return Color.lerp(const Color(0xFF00B2FF), const Color(0xFF00FF9F), (value - 0.5) * 4)!;
     } else {
-      return Color.lerp(Colors.yellow, Colors.red, (value - 0.8) * 5)!;
+      return Color.lerp(const Color(0xFF00FF9F), const Color(0xFFE5FF00), (value - 0.75) * 4)!;
     }
   }
 

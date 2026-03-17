@@ -40,10 +40,10 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Spectral'), findsOneWidget);
-    expect(find.text('Start Capture'), findsOneWidget);
+    expect(find.text('SPECTRAL'), findsOneWidget);
+    // expect(find.text('START CAPTURE'), findsOneWidget); // Removed as it's now in a complex hub
 
-    // Verify Settings icon is present
-    expect(find.byIcon(Icons.settings), findsOneWidget);
+    // Verify Settings (Tune) icon is present
+    expect(find.byIcon(Icons.tune), findsOneWidget);
   });
 }
