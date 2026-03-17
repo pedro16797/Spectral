@@ -6,8 +6,11 @@ import 'src/audio/audio_capture_service.dart';
 import 'src/core/fft_service.dart';
 import 'src/ui/waveform_painter.dart';
 import 'src/ui/fft_bar_chart_painter.dart';
+import 'src/utils/localization_helper.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LocalizationHelper.load('en');
   runApp(const SpectralApp());
 }
 
@@ -17,7 +20,7 @@ class SpectralApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Spectral',
+      title: LocalizationHelper.get('app.name'),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
@@ -40,8 +43,8 @@ class SpectralHomePage extends StatefulWidget {
 class _SpectralHomePageState extends State<SpectralHomePage> {
   final AudioCaptureService _audioService = AudioCaptureService();
   final FftService _fftService = FftService();
-  StreamSubscription<Uint8List>? _audioSubscription;
-  Uint8List _currentAudioData = Uint8List(0);
+  StreamSubscription<Float64List>? _audioSubscription;
+  Float64List _currentAudioData = Float64List(0);
   List<double> _currentFftData = [];
   bool _isCapturing = false;
   bool _isDemoMode = false;
@@ -68,56 +71,63 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
   void _startDemoData() {
     _demoTimer?.cancel();
     _demoTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      final data = Uint8List(1000);
+      final samples = Float64List(512);
       final phase = DateTime.now().millisecondsSinceEpoch / 1000.0 * 2 * math.pi;
-      for (var i = 0; i < 500; i++) {
-        final sample =
-            (math.sin(phase + (i / 500.0) * 10 * math.pi) * 16384).toInt();
-        data[i * 2] = sample & 0xFF;
-        data[i * 2 + 1] = (sample >> 8) & 0xFF;
+      for (var i = 0; i < 512; i++) {
+        // Use a more complex signal for demo: two sines combined
+        samples[i] = 0.5 * math.sin(phase + (i / 512.0) * 10 * math.pi) +
+                     0.3 * math.sin(phase * 2 + (i / 512.0) * 40 * math.pi);
       }
       if (mounted) {
         setState(() {
-          _currentAudioData = data;
-          _currentFftData = _fftService.processAudioData(data);
+          _currentAudioData = samples;
+          _currentFftData = _fftService.processAudioData(samples);
         });
       }
     });
   }
 
   Future<void> _toggleCapture() async {
-    if (_isCapturing) {
-      if (_isDemoMode) {
-        _demoTimer?.cancel();
-        _demoTimer = null;
-      } else {
-        await _audioService.stopCapture();
-      }
-      setState(() {
-        _isCapturing = false;
-        _currentAudioData = Uint8List(0);
-        _currentFftData = [];
-      });
-    } else {
-      if (_isDemoMode) {
-        _startDemoData();
+    try {
+      if (_isCapturing) {
+        if (_isDemoMode) {
+          _demoTimer?.cancel();
+          _demoTimer = null;
+        } else {
+          await _audioService.stopCapture();
+        }
         setState(() {
-          _isCapturing = true;
+          _isCapturing = false;
+          _currentAudioData = Float64List(0);
+          _currentFftData = [];
         });
       } else {
-        final hasPermission = await _audioService.checkPermission();
-        if (hasPermission) {
-          await _audioService.startCapture();
+        if (_isDemoMode) {
+          _startDemoData();
           setState(() {
             _isCapturing = true;
           });
         } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Microphone permission denied')),
-            );
+          final hasPermission = await _audioService.checkPermission();
+          if (hasPermission) {
+            await _audioService.startCapture();
+            setState(() {
+              _isCapturing = true;
+            });
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(LocalizationHelper.get('common.permission_denied'))),
+              );
+            }
           }
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${LocalizationHelper.get('common.error')}: $e')),
+        );
       }
     }
   }
@@ -134,7 +144,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Spectral'),
+        title: Text(LocalizationHelper.get('app.name')),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: Center(
@@ -185,7 +195,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
               padding: const EdgeInsets.all(16.0),
               child: ElevatedButton(
                 onPressed: _toggleCapture,
-                child: Text(_isCapturing ? 'Stop Capture' : 'Start Capture'),
+                child: Text(_isCapturing
+                    ? LocalizationHelper.get('common.stop_capture')
+                    : LocalizationHelper.get('common.start_capture')),
               ),
             ),
           ],

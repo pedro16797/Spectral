@@ -1,12 +1,50 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spectral/main.dart';
+import 'package:spectral/src/utils/localization_helper.dart';
+import 'dart:convert';
+import 'package:flutter/services.dart';
+
+// A simple mock for rootBundle
+class MockAssetBundle extends CachingAssetBundle {
+  @override
+  Future<String> loadString(String key, {bool cache = true}) async {
+    if (key == 'resources/locales/en.json') {
+      return json.encode({
+        "app": {"name": "Spectral"},
+        "common": {
+          "start_capture": "Start Capture",
+          "stop_capture": "Stop Capture"
+        }
+      });
+    }
+    throw FlutterError('Asset not found');
+  }
+
+  @override
+  Future<ByteData> load(String key) async => throw UnimplementedError();
+}
 
 void main() {
   testWidgets('Spectral app loads and shows title', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const SpectralApp());
+    // Provide the mock asset bundle to the widget tree
+    await tester.pumpWidget(
+      DefaultAssetBundle(
+        bundle: MockAssetBundle(),
+        child: const SpectralApp(),
+      ),
+    );
 
-    // Verify that our app shows the title 'Spectral'.
+    // LocalizationHelper.load('en') is called in main(), but here we might need to trigger it manually
+    // or just rely on the fact that SpectralApp calls it.
+    // However, main() is async and calls await LocalizationHelper.load('en').
+    // In our test, SpectralApp is just a StatelessWidget.
+
+    // Let's manually initialize it for the test environment.
+    await LocalizationHelper.load('en');
+
+    await tester.pumpAndSettle();
+
     expect(find.text('Spectral'), findsOneWidget);
     expect(find.text('Start Capture'), findsOneWidget);
   });

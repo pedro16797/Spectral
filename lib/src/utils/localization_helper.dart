@@ -1,0 +1,29 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
+
+class LocalizationHelper {
+  static Map<String, dynamic> _localizedStrings = {};
+
+  static Future<void> load(String locale) async {
+    try {
+      final String jsonString = await rootBundle.loadString('resources/locales/$locale.json');
+      _localizedStrings = json.decode(jsonString);
+    } catch (e) {
+      // Fallback or log error
+      _localizedStrings = {};
+    }
+  }
+
+  static String get(String key) {
+    final keys = key.split('.');
+    dynamic current = _localizedStrings;
+    for (var k in keys) {
+      if (current is Map && current.containsKey(k)) {
+        current = current[k];
+      } else {
+        return key; // Return the key itself as a fallback
+      }
+    }
+    return current.toString();
+  }
+}

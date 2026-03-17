@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:typed_data';
 
 class WaveformPainter extends CustomPainter {
-  final Uint8List audioData;
+  final Float64List audioData;
   final Color color;
 
   WaveformPainter({required this.audioData, this.color = Colors.blue});
@@ -21,8 +21,7 @@ class WaveformPainter extends CustomPainter {
     final height = size.height;
     final centerY = height / 2;
 
-    // We assume 16-bit PCM (2 bytes per sample)
-    final sampleCount = audioData.length ~/ 2;
+    final sampleCount = audioData.length;
     if (sampleCount == 0) return;
 
     // To optimize performance, we can skip samples if there are too many to draw
@@ -31,14 +30,7 @@ class WaveformPainter extends CustomPainter {
     final step = width / (sampleCount / skip);
 
     for (var i = 0; i < sampleCount; i += skip) {
-      // Convert two bytes to a 16-bit signed integer (Little Endian)
-      final byteLow = audioData[i * 2];
-      final byteHigh = audioData[i * 2 + 1];
-      var sample = (byteHigh << 8) | byteLow;
-      if (sample > 32767) sample -= 65536;
-
-      // Normalize sample to [-1.0, 1.0]
-      final normalizedSample = sample / 32768.0;
+      final normalizedSample = audioData[i];
       final x = (i / skip) * step;
       final y = centerY + (normalizedSample * centerY);
 
