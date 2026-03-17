@@ -17,7 +17,9 @@
     "theme": "Theme",
     "language": "Language",
     "range": "Range",
-    "mode": "Mode"
+    "mode": "Mode",
+    "gain": "Gain",
+    "sensitivity": "Sensitivity"
   },
   "common": {
     "save": "Save",

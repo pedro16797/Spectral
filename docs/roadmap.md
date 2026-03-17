@@ -13,9 +13,9 @@ This document outlines the strategic plan for Spectral, from MVP to future itera
 The goal of the MVP is to provide a functional and performant audio spectral visualizer.
 
 ### Core Visualizations
-- **Real-time Waveform:** High-performance rendering of time-domain audio data.
-- **FFT Bar Chart:** Frequency-domain visualization with configurable bins.
-- **Waterfall Display:** Rolling spectrogram to visualize frequency over time.
+- [x] **Real-time Waveform:** High-performance rendering of time-domain audio data.
+- [x] **FFT Bar Chart:** Frequency-domain visualization with configurable bins.
+- [x] **Waterfall Display:** Rolling spectrogram to visualize frequency over time.
 
 ### Configuration & UI
 - **Theme Support:** Initial implementation of Light and Dark modes.

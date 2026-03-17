@@ -15,8 +15,21 @@ void main() async {
   runApp(const SpectralApp());
 }
 
-class SpectralApp extends StatelessWidget {
+class SpectralApp extends StatefulWidget {
   const SpectralApp({super.key});
+
+  @override
+  State<SpectralApp> createState() => _SpectralAppState();
+}
+
+class _SpectralAppState extends State<SpectralApp> {
+  ThemeMode _themeMode = ThemeMode.dark;
+
+  void _toggleTheme() {
+    setState(() {
+      _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,17 +38,32 @@ class SpectralApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
       ),
-      home: const SpectralHomePage(),
+      themeMode: _themeMode,
+      home: SpectralHomePage(onToggleTheme: _toggleTheme, themeMode: _themeMode),
     );
   }
 }
 
 class SpectralHomePage extends StatefulWidget {
-  const SpectralHomePage({super.key});
+  final VoidCallback onToggleTheme;
+  final ThemeMode themeMode;
+
+  const SpectralHomePage({
+    super.key,
+    required this.onToggleTheme,
+    required this.themeMode,
+  });
 
   @override
   State<SpectralHomePage> createState() => _SpectralHomePageState();
@@ -53,6 +81,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
   bool _isDemoMode = false;
   Timer? _demoTimer;
 
+  double _gain = 1.0;
+  double _sensitivity = 1.0;
+
   @override
   void initState() {
     super.initState();
@@ -64,11 +95,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
     _audioSubscription = _audioService.audioDataStream.listen((data) {
       if (mounted) {
         setState(() {
-          _currentAudioData = data;
+          // Apply gain to audio data
+          _currentAudioData = Float64List.fromList(data.map((x) => x * _gain).toList());
+
           final fft = _fftService.processAudioData(data);
-          _currentFftData = fft;
-          if (fft.isNotEmpty) {
-            _fftHistory.insert(0, fft);
+          // Apply sensitivity to FFT data
+          final adjustedFft = fft.map((x) => x * _sensitivity).toList();
+          _currentFftData = adjustedFft;
+          if (adjustedFft.isNotEmpty) {
+            _fftHistory.insert(0, adjustedFft);
             if (_fftHistory.length > _maxHistory) {
               _fftHistory.removeLast();
             }
@@ -85,16 +120,17 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
       final phase = DateTime.now().millisecondsSinceEpoch / 1000.0 * 2 * math.pi;
       for (var i = 0; i < 512; i++) {
         // Use a more complex signal for demo: two sines combined
-        samples[i] = 0.5 * math.sin(phase + (i / 512.0) * 10 * math.pi) +
-                     0.3 * math.sin(phase * 2 + (i / 512.0) * 40 * math.pi);
+        samples[i] = (0.5 * math.sin(phase + (i / 512.0) * 10 * math.pi) +
+                     0.3 * math.sin(phase * 2 + (i / 512.0) * 40 * math.pi)) * _gain;
       }
       if (mounted) {
         setState(() {
           _currentAudioData = samples;
           final fft = _fftService.processAudioData(samples);
-          _currentFftData = fft;
-          if (fft.isNotEmpty) {
-            _fftHistory.insert(0, fft);
+          final adjustedFft = fft.map((x) => x * _sensitivity).toList();
+          _currentFftData = adjustedFft;
+          if (adjustedFft.isNotEmpty) {
+            _fftHistory.insert(0, adjustedFft);
             if (_fftHistory.length > _maxHistory) {
               _fftHistory.removeLast();
             }
@@ -164,6 +200,69 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
       appBar: AppBar(
         title: Text(LocalizationHelper.get('app.name')),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            tooltip: LocalizationHelper.get('settings.title'),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(widget.themeMode == ThemeMode.dark
+                ? Icons.light_mode
+                : Icons.dark_mode),
+            onPressed: widget.onToggleTheme,
+            tooltip: LocalizationHelper.get('settings.theme'),
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              child: Text(
+                LocalizationHelper.get('settings.title'),
+                style: const TextStyle(color: Colors.white, fontSize: 24),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(LocalizationHelper.get('settings.gain')),
+                  Slider(
+                    value: _gain,
+                    min: 0.1,
+                    max: 5.0,
+                    onChanged: (value) {
+                      setState(() {
+                        _gain = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Text(LocalizationHelper.get('settings.sensitivity')),
+                  Slider(
+                    value: _sensitivity,
+                    min: 0.1,
+                    max: 5.0,
+                    onChanged: (value) {
+                      setState(() {
+                        _sensitivity = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       body: Center(
         child: Column(

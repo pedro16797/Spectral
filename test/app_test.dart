@@ -42,5 +42,8 @@ void main() {
 
     expect(find.text('Spectral'), findsOneWidget);
     expect(find.text('Start Capture'), findsOneWidget);
+
+    // Verify Settings icon is present
+    expect(find.byIcon(Icons.settings), findsOneWidget);
   });
 }
