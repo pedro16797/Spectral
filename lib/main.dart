@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'src/services/audio_capture_service.dart';
+import 'src/audio/audio_capture_service.dart';
+import 'src/core/fft_service.dart';
 import 'src/ui/waveform_painter.dart';
+import 'src/ui/fft_bar_chart_painter.dart';
 
 void main() {
   runApp(const SpectralApp());
@@ -37,8 +39,10 @@ class SpectralHomePage extends StatefulWidget {
 
 class _SpectralHomePageState extends State<SpectralHomePage> {
   final AudioCaptureService _audioService = AudioCaptureService();
+  final FftService _fftService = FftService();
   StreamSubscription<Uint8List>? _audioSubscription;
   Uint8List _currentAudioData = Uint8List(0);
+  List<double> _currentFftData = [];
   bool _isCapturing = false;
   bool _isDemoMode = false;
   Timer? _demoTimer;
@@ -55,6 +59,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
       if (mounted) {
         setState(() {
           _currentAudioData = data;
+          _currentFftData = _fftService.processAudioData(data);
         });
       }
     });
@@ -74,6 +79,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
       if (mounted) {
         setState(() {
           _currentAudioData = data;
+          _currentFftData = _fftService.processAudioData(data);
         });
       }
     });
@@ -90,6 +96,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
       setState(() {
         _isCapturing = false;
         _currentAudioData = Uint8List(0);
+        _currentFftData = [];
       });
     } else {
       if (_isDemoMode) {
@@ -136,18 +143,40 @@ class _SpectralHomePageState extends State<SpectralHomePage> {
           children: <Widget>[
             Expanded(
               child: Container(
-                margin: const EdgeInsets.all(16),
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey),
                   borderRadius: BorderRadius.circular(8),
+                  color: Colors.black12,
                 ),
                 child: ClipRect(
-                  child: CustomPaint(
-                    painter: WaveformPainter(
-                      audioData: _currentAudioData,
-                      color: Colors.greenAccent,
+                  child: SizedBox.expand(
+                    child: CustomPaint(
+                      painter: WaveformPainter(
+                        audioData: _currentAudioData,
+                        color: Colors.green,
+                      ),
                     ),
-                    child: Container(),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.black12,
+                ),
+                child: ClipRect(
+                  child: SizedBox.expand(
+                    child: CustomPaint(
+                      painter: FftBarChartPainter(
+                        fftData: _currentFftData,
+                        color: Colors.blue,
+                      ),
+                    ),
                   ),
                 ),
               ),
