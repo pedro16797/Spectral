@@ -1,42 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:typed_data';
+import 'package:spectral/src/utils/audio_utils.dart';
 
 void main() {
   group('Audio Data Normalization', () {
     test('converts 16-bit PCM to normalized double', () {
-      // 0 in 16-bit PCM
       final data = Uint8List.fromList([0, 0]);
-      final byteLow = data[0];
-      final byteHigh = data[1];
-      var sample = (byteHigh << 8) | byteLow;
-      if (sample > 32767) sample -= 65536;
-      final normalized = sample / 32768.0;
+      final samples = AudioUtils.convertPcmToDouble(data);
 
-      expect(normalized, 0.0);
+      expect(samples.length, 1);
+      expect(samples[0], 0.0);
     });
 
     test('converts max 16-bit PCM to 1.0 (approx)', () {
-      // 32767 in 16-bit PCM (Little Endian: FF 7F)
       final data = Uint8List.fromList([0xFF, 0x7F]);
-      final byteLow = data[0];
-      final byteHigh = data[1];
-      var sample = (byteHigh << 8) | byteLow;
-      if (sample > 32767) sample -= 65536;
-      final normalized = sample / 32768.0;
+      final samples = AudioUtils.convertPcmToDouble(data);
 
-      expect(normalized, closeTo(32767 / 32768.0, 0.0001));
+      expect(samples[0], closeTo(32767 / 32768.0, 0.0001));
     });
 
     test('converts min 16-bit PCM to -1.0', () {
-      // -32768 in 16-bit PCM (Little Endian: 00 80)
       final data = Uint8List.fromList([0x00, 0x80]);
-      final byteLow = data[0];
-      final byteHigh = data[1];
-      var sample = (byteHigh << 8) | byteLow;
-      if (sample > 32767) sample -= 65536;
-      final normalized = sample / 32768.0;
+      final samples = AudioUtils.convertPcmToDouble(data);
 
-      expect(normalized, -1.0);
+      expect(samples[0], -1.0);
     });
   });
 }

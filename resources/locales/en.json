@@ -24,6 +24,9 @@
     "cancel": "Cancel",
     "ok": "OK",
     "error": "Error",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "start_capture": "Start Capture",
+    "stop_capture": "Stop Capture",
+    "permission_denied": "Microphone permission denied"
   }
 }
