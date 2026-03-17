@@ -8,6 +8,7 @@ import 'src/core/fft_service.dart';
 import 'src/ui/waveform_painter.dart';
 import 'src/ui/fft_bar_chart_painter.dart';
 import 'src/ui/waterfall_painter.dart';
+import 'src/ui/radio_dial_focus_slider.dart';
 import 'src/utils/localization_helper.dart';
 
 void main() async {
@@ -471,42 +472,25 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   Widget _buildFrequencyFocusSlider() {
     return Padding(
       padding: const EdgeInsets.only(top: 10),
-      child: Row(
+      child: Column(
         children: [
-          const Text("FOCUS", style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 2,
-                rangeThumbShape: const RoundRangeSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-                activeTrackColor: const Color(0xFF007AFF),
-                inactiveTrackColor: Colors.white10,
-                thumbColor: Colors.white,
-              ),
-              child: RangeSlider(
-                values: _freqRange,
-                min: 0,
-                max: 22050,
-                onChanged: (values) {
-                  // Enforce minimum range of 500Hz to prevent broken visualizations
-                  if (values.end - values.start >= 500) {
-                    setState(() => _freqRange = values);
-                  } else {
-                    // Try to maintain the center if possible
-                    if (values.start != _freqRange.start) {
-                      setState(() => _freqRange = RangeValues(values.end - 500, values.end));
-                    } else {
-                      setState(() => _freqRange = RangeValues(values.start, values.start + 500));
-                    }
-                  }
-                },
-              ),
-            ),
+          Row(
+            children: [
+              const Text("FOCUS", style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Text("${(_freqRange.start / 1000).toStringAsFixed(1)} - ${(_freqRange.end / 1000).toStringAsFixed(1)}kHz",
+                  style: const TextStyle(fontSize: 10, color: Colors.white38)),
+            ],
           ),
-          const SizedBox(width: 12),
-          Text("${(_freqRange.end / 1000).toStringAsFixed(1)}kHz", style: const TextStyle(fontSize: 10, color: Colors.white38)),
+          const SizedBox(height: 8),
+          RadioDialFocusSlider(
+            values: _freqRange,
+            min: 0,
+            max: 22050,
+            onChanged: (values) {
+              setState(() => _freqRange = values);
+            },
+          ),
         ],
       ),
     );
