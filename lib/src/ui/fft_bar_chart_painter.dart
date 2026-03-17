@@ -14,20 +14,18 @@ class FftBarChartPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.fill
       ..isAntiAlias = true
-      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 1);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 0.5);
 
     final width = size.width;
     final height = size.height;
 
-    // Limit the number of bars to draw for performance
-    const maxBars = 64;
+    const maxBars = 80;
     final binCount = fftData.length;
     final skip = (binCount / maxBars).ceil();
     final actualBarCount = (binCount / skip).floor();
     final barWidth = width / actualBarCount;
 
     for (var i = 0; i < actualBarCount; i++) {
-      // Find the max magnitude in the bin range
       var maxMag = 0.0;
       for (var j = 0; j < skip; j++) {
         final index = i * skip + j;
@@ -36,30 +34,30 @@ class FftBarChartPainter extends CustomPainter {
         }
       }
 
-      // Normalize magnitude for display.
-      // FFT magnitudes can be large, so we use a log-like scaling or a fixed range.
-      // For MVP, we'll use a simple scaling and cap it.
-      final normalizedHeight = (math.log(maxMag + 1) / 5.0).clamp(0.0, 1.0);
+      final normalizedHeight = (math.log(maxMag + 1) / 4.5).clamp(0.0, 1.0);
       final barHeight = normalizedHeight * height;
 
       final x = i * barWidth;
       final y = height - barHeight;
 
-      final rect = Rect.fromLTWH(x, y, barWidth - 1, barHeight);
+      final rect = Rect.fromLTWH(x + 1, y, barWidth - 2, barHeight);
+
+      // Floating light effect: Higher bars are more opaque
       paint.shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          color,
-          color.withOpacity(0.1),
+          color.withOpacity(0.6 * normalizedHeight + 0.2),
+          color.withOpacity(0.05),
         ],
       ).createShader(rect);
 
+      // Draw as a rounded line/bar rather than a rigid box
       canvas.drawRRect(
         RRect.fromRectAndCorners(
           rect,
-          topLeft: const Radius.circular(4),
-          topRight: const Radius.circular(4),
+          topLeft: const Radius.circular(2),
+          topRight: const Radius.circular(2),
         ),
         paint,
       );

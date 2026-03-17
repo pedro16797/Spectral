@@ -38,12 +38,14 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    // pumpAndSettle times out due to infinite rotation animation.
+    // Use pump instead for non-animating verification.
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('SPECTRAL'), findsOneWidget);
-    // expect(find.text('START CAPTURE'), findsOneWidget); // Removed as it's now in a complex hub
 
-    // Verify Settings (Tune) icon is present
-    expect(find.byIcon(Icons.tune), findsOneWidget);
+    // Verify GAIN and SENS controls are present
+    expect(find.text('GAIN'), findsOneWidget);
+    expect(find.text('SENS'), findsOneWidget);
   });
 }
