@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spectral/main.dart';
+import 'package:spectral/src/core/settings_model.dart';
 import 'package:spectral/src/utils/localization_helper.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
@@ -34,7 +35,7 @@ void main() {
     await tester.pumpWidget(
       DefaultAssetBundle(
         bundle: MockAssetBundle(),
-        child: const SpectralApp(),
+        child: const SpectralApp(initialSettings: AppSettings()),
       ),
     );
 

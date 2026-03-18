@@ -37,4 +37,28 @@ class AppSettings {
       language: language ?? this.language,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'theme': theme.name,
+      'fftWindowSize': fftWindowSize,
+      'fftWindowType': fftWindowType.name,
+      'language': language,
+    };
+  }
+
+  factory AppSettings.fromMap(Map<String, dynamic> map) {
+    return AppSettings(
+      theme: AppTheme.values.firstWhere(
+        (e) => e.name == map['theme'],
+        orElse: () => AppTheme.liquidBlue,
+      ),
+      fftWindowSize: map['fftWindowSize'] ?? 1024,
+      fftWindowType: FftWindowType.values.firstWhere(
+        (e) => e.name == map['fftWindowType'],
+        orElse: () => FftWindowType.hanning,
+      ),
+      language: map['language'] ?? 'en',
+    );
+  }
 }

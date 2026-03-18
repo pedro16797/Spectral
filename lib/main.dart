@@ -13,27 +13,37 @@ import 'src/ui/waterfall_painter.dart';
 import 'src/ui/radio_dial_focus_slider.dart';
 import 'src/ui/settings_view.dart';
 import 'src/utils/localization_helper.dart';
+import 'src/services/settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await LocalizationHelper.load('en');
-  runApp(const SpectralApp());
+  final settings = await SettingsService.loadSettings();
+  await LocalizationHelper.load(settings.language);
+  runApp(SpectralApp(initialSettings: settings));
 }
 
 class SpectralApp extends StatefulWidget {
-  const SpectralApp({super.key});
+  final AppSettings initialSettings;
+  const SpectralApp({super.key, required this.initialSettings});
 
   @override
   State<SpectralApp> createState() => _SpectralAppState();
 }
 
 class _SpectralAppState extends State<SpectralApp> {
-  AppSettings _settings = const AppSettings();
+  late AppSettings _settings;
+
+  @override
+  void initState() {
+    super.initState();
+    _settings = widget.initialSettings;
+  }
 
   void _updateSettings(AppSettings newSettings) {
     setState(() {
       _settings = newSettings;
     });
+    SettingsService.saveSettings(newSettings);
   }
 
   Color _getAccentColor() {
