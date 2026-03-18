@@ -71,6 +71,9 @@ class FftService {
         case FftWindowType.blackman:
           _cachedWindow = Window.blackman(windowSize);
           break;
+        case FftWindowType.bartlett:
+          _cachedWindow = Window.bartlett(windowSize);
+          break;
       }
     }
 

@@ -68,6 +68,8 @@ class _SpectralAppState extends State<SpectralApp> {
         return Colors.white;
       case AppTheme.emerald:
         return const Color(0xFF00C853);
+      case AppTheme.rainbow:
+        return Colors.purpleAccent;
     }
   }
 
@@ -81,6 +83,8 @@ class _SpectralAppState extends State<SpectralApp> {
         return const Color(0xFF1A1A1A);
       case AppTheme.emerald:
         return const Color(0xFF001A00);
+      case AppTheme.rainbow:
+        return const Color(0xFF100010);
     }
   }
 
@@ -241,33 +245,53 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     _audioSubscription = _audioService.audioDataStream.listen((data) {
       if (mounted) {
         setState(() {
-          final processedAudio = Float64List.fromList(data.map((x) => x * _gain).toList());
-
-          if (_currentAudioData.isNotEmpty) {
-            _audioHistory.insert(0, _currentAudioData);
-            if (_audioHistory.length > 5) _audioHistory.removeLast();
-          }
-          _currentAudioData = processedAudio;
+          _updateAudioData(data);
 
           final fft = _fftService.processAudioData(
             data,
             windowSize: widget.settings.fftWindowSize,
             windowType: widget.settings.fftWindowType,
           );
-          if (fft.isEmpty) return;
-
-          final adjustedFft = fft.map((x) => x * _sensitivity).toList();
-          _currentFftData = adjustedFft;
-          _detectedTone = _fftService.detectPrimaryTone(adjustedFft, 44100);
-          if (adjustedFft.isNotEmpty) {
-            _fftHistory.insert(0, adjustedFft);
-            if (_fftHistory.length > _maxHistory) {
-              _fftHistory.removeLast();
-            }
-          }
+          _processFftFrame(fft);
         });
       }
     });
+  }
+
+  void _updateAudioData(Float64List rawData) {
+    final processedAudio = Float64List.fromList(rawData.map((x) => x * _gain).toList());
+    if (_currentAudioData.isNotEmpty) {
+      _audioHistory.insert(0, _currentAudioData);
+      if (_audioHistory.length > 5) _audioHistory.removeLast();
+    }
+    _currentAudioData = processedAudio;
+  }
+
+  void _processFftFrame(List<double> rawFft) {
+    if (rawFft.isEmpty) return;
+
+    final double sensitivity = _sensitivity;
+    final double smoothing = widget.settings.fftSmoothing;
+    final double alpha = 1.0 - smoothing;
+
+    List<double> adjustedFft;
+    if (smoothing > 0 && _currentFftData.length == rawFft.length) {
+      adjustedFft = List<double>.filled(rawFft.length, 0);
+      for (int i = 0; i < rawFft.length; i++) {
+        adjustedFft[i] = (rawFft[i] * sensitivity) * alpha + (_currentFftData[i] * (1.0 - alpha));
+      }
+    } else {
+      adjustedFft = rawFft.map((x) => x * sensitivity).toList();
+    }
+
+    _currentFftData = adjustedFft;
+    _detectedTone = _fftService.detectPrimaryTone(adjustedFft, 44100);
+    if (adjustedFft.isNotEmpty) {
+      _fftHistory.insert(0, adjustedFft);
+      if (_fftHistory.length > _maxHistory) {
+        _fftHistory.removeLast();
+      }
+    }
   }
 
   void _startDemoData() {
@@ -285,32 +309,18 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           0.6 * math.sin(phase + t * 2 * math.pi * fundamental) + // Fundamental
           0.3 * math.sin(2 * (phase + t * 2 * math.pi * fundamental)) + // 2nd Harmonic
           0.1 * math.sin(3 * (phase + t * 2 * math.pi * fundamental))    // 3rd Harmonic
-        ) * _gain;
+        );
       }
       if (mounted) {
         setState(() {
-          if (_currentAudioData.isNotEmpty) {
-            _audioHistory.insert(0, _currentAudioData);
-            if (_audioHistory.length > 5) _audioHistory.removeLast();
-          }
-          _currentAudioData = samples;
+          _updateAudioData(samples);
 
           final fft = _fftService.processAudioData(
             samples,
             windowSize: widget.settings.fftWindowSize,
             windowType: widget.settings.fftWindowType,
           );
-          if (fft.isEmpty) return;
-
-          final adjustedFft = fft.map((x) => x * _sensitivity).toList();
-          _currentFftData = adjustedFft;
-          _detectedTone = _fftService.detectPrimaryTone(adjustedFft, 44100);
-          if (adjustedFft.isNotEmpty) {
-            _fftHistory.insert(0, adjustedFft);
-            if (_fftHistory.length > _maxHistory) {
-              _fftHistory.removeLast();
-            }
-          }
+          _processFftFrame(fft);
         });
       }
     });
@@ -410,6 +420,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                   maxFreq: _freqRange.end,
                   sampleRate: 44100,
                   theme: widget.settings.theme,
+                  frequencySkew: widget.settings.frequencySkew,
                 ),
               ),
             ),
@@ -486,6 +497,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                               minFreq: _freqRange.start,
                                               maxFreq: _freqRange.end,
                                               sampleRate: 44100,
+                                              frequencySkew: widget.settings.frequencySkew,
                                             ),
                                           ),
                                         ),
@@ -524,6 +536,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                               minFreq: _freqRange.start,
                                               maxFreq: _freqRange.end,
                                               sampleRate: 44100,
+                                              frequencySkew: widget.settings.frequencySkew,
                                             ),
                                           ),
                                         ),
@@ -674,11 +687,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ),
           const SizedBox(width: 12),
         ],
-        _buildHeaderAction(icon: Icons.tune_rounded, onPressed: _showSettings),
+        Semantics(
+          label: "Settings",
+          button: true,
+          child: _buildHeaderAction(icon: Icons.tune_rounded, onPressed: _showSettings),
+        ),
         const SizedBox(width: 12),
-        _buildHeaderAction(
-          icon: _waterfallFocusMode ? Icons.layers : Icons.layers_outlined,
-          onPressed: () => setState(() => _waterfallFocusMode = !_waterfallFocusMode),
+        Semantics(
+          label: "Toggle Focus",
+          button: true,
+          child: _buildHeaderAction(
+            icon: _waterfallFocusMode ? Icons.layers : Icons.layers_outlined,
+            onPressed: () => setState(() => _waterfallFocusMode = !_waterfallFocusMode),
+          ),
         ),
       ],
     );

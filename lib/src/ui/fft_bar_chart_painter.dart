@@ -7,6 +7,7 @@ class FftBarChartPainter extends CustomPainter {
   final double minFreq;
   final double maxFreq;
   final int sampleRate;
+  final double frequencySkew;
 
   FftBarChartPainter({
     required this.fftData,
@@ -14,6 +15,7 @@ class FftBarChartPainter extends CustomPainter {
     this.minFreq = 0,
     this.maxFreq = 22050,
     this.sampleRate = 44100,
+    this.frequencySkew = 1.0,
   });
 
   @override
@@ -26,20 +28,15 @@ class FftBarChartPainter extends CustomPainter {
     // Determine indices in fftData based on frequency range
     // fftData represents frequencies from 0 to sampleRate/2
     final totalNyquist = sampleRate / 2;
-    final startIndex = ((minFreq / totalNyquist) * fftData.length).floor().clamp(0, fftData.length - 1);
-    final endIndex = ((maxFreq / totalNyquist) * fftData.length).ceil().clamp(startIndex + 1, fftData.length);
-
-    final visibleData = fftData.sublist(startIndex, endIndex);
-    if (visibleData.isEmpty) return;
+    final double startNormalized = (minFreq / totalNyquist);
+    final double endNormalized = (maxFreq / totalNyquist);
+    final double range = endNormalized - startNormalized;
 
     final paint = Paint()
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    const maxBars = 120;
-    final binCount = visibleData.length;
-    final skip = (binCount / maxBars).ceil();
-    final actualBarCount = (binCount / skip).floor().clamp(1, binCount);
+    const actualBarCount = 120;
 
     // Ensure the bars fill the available width
     final barWidth = width / actualBarCount;
@@ -50,13 +47,16 @@ class FftBarChartPainter extends CustomPainter {
     final double actualWidth = math.max(1.0, barWidth - spacing);
 
     for (var i = 0; i < actualBarCount; i++) {
-      var maxMag = 0.0;
-      for (var j = 0; j < skip; j++) {
-        final index = i * skip + j;
-        if (index < binCount) {
-          maxMag = math.max(maxMag, visibleData[index]);
-        }
+      // Apply skew to the frequency axis
+      double t = i / actualBarCount;
+      if (frequencySkew != 1.0) {
+        t = math.pow(t, frequencySkew).toDouble();
       }
+
+      final double freqNorm = startNormalized + t * range;
+      final int dataIndex = (freqNorm * fftData.length).floor().clamp(0, fftData.length - 1);
+
+      final maxMag = fftData[dataIndex];
 
       final normalizedHeight = (math.log(maxMag + 1) / 4.5).clamp(0.0, 1.0);
       final barHeight = normalizedHeight * (height - 20); // Leave room for labels
@@ -101,9 +101,21 @@ class FftBarChartPainter extends CustomPainter {
     double lastLabelEndX = -20.0;
     String lastLabelText = "";
 
+    final totalNyquist = sampleRate / 2;
+    final double startNormalized = (minFreq / totalNyquist);
+    final double endNormalized = (maxFreq / totalNyquist);
+    final double range = endNormalized - startNormalized;
+
     for (var i = 0; i < labelCount; i++) {
       final ratio = i / (labelCount - 1);
-      final freq = minFreq + (maxFreq - minFreq) * ratio;
+
+      // Apply inverse skew to find the frequency at this screen position ratio
+      double t = ratio;
+      if (frequencySkew != 1.0) {
+        t = math.pow(t, frequencySkew).toDouble();
+      }
+
+      final freq = minFreq + (maxFreq - minFreq) * t;
       final x = ratio * size.width;
 
       String label;

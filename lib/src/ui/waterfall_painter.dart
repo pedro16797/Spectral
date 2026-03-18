@@ -8,6 +8,7 @@ class WaterfallPainter extends CustomPainter {
   final double maxFreq;
   final int sampleRate;
   final AppTheme theme;
+  final double frequencySkew;
 
   WaterfallPainter({
     required this.fftHistory,
@@ -15,6 +16,7 @@ class WaterfallPainter extends CustomPainter {
     this.maxFreq = 22050,
     this.sampleRate = 44100,
     this.theme = AppTheme.liquidBlue,
+    this.frequencySkew = 1.0,
   });
 
   @override
@@ -32,22 +34,24 @@ class WaterfallPainter extends CustomPainter {
       final fftData = fftHistory[i];
       if (fftData.isEmpty) continue;
 
-      // Filter based on frequency range
-      final startIndex = ((minFreq / totalNyquist) * fftData.length).floor().clamp(0, fftData.length - 1);
-      final endIndex = ((maxFreq / totalNyquist) * fftData.length).ceil().clamp(startIndex + 1, fftData.length);
+      final double startNormalized = (minFreq / totalNyquist);
+      final double endNormalized = (maxFreq / totalNyquist);
+      final double range = endNormalized - startNormalized;
 
-      final visibleData = fftData.sublist(startIndex, endIndex);
-      if (visibleData.isEmpty) continue;
-
-      final rawBinCount = visibleData.length;
-      const int maxBins = 160;
-      final binCount = math.min(rawBinCount, maxBins);
-      final skip = (rawBinCount / binCount).floor().clamp(1, rawBinCount);
+      const int binCount = 160;
       final barWidth = width / binCount;
 
       for (var j = 0; j < binCount; j++) {
-        final dataIndex = (j * skip).clamp(0, rawBinCount - 1);
-        final magnitude = visibleData[dataIndex];
+        // Apply skew to the frequency axis
+        double t = j / binCount;
+        if (frequencySkew != 1.0) {
+          t = math.pow(t, frequencySkew).toDouble();
+        }
+
+        final double freqNorm = startNormalized + t * range;
+        final int dataIndex = (freqNorm * fftData.length).floor().clamp(0, fftData.length - 1);
+
+        final magnitude = fftData[dataIndex];
         // Use consistent scale with FftBarChartPainter
         final normalized = (math.log(magnitude + 1) / 4.0).clamp(0.0, 1.1);
 
@@ -81,6 +85,8 @@ class WaterfallPainter extends CustomPainter {
         return _getMonochromeColor(value);
       case AppTheme.emerald:
         return _getEmeraldColor(value);
+      case AppTheme.rainbow:
+        return _getRainbowColor(value);
     }
   }
 
@@ -117,6 +123,25 @@ class WaterfallPainter extends CustomPainter {
       return Color.lerp(const Color(0xFF00C853), const Color(0xFF69F0AE), (value - 0.3) / 0.4)!;
     } else {
       return Color.lerp(const Color(0xFF69F0AE), Colors.white, (value - 0.7) / 0.3)!;
+    }
+  }
+
+  Color _getRainbowColor(double value) {
+    // Black -> Purple -> Blue -> Cyan -> Green -> Yellow -> Red -> White
+    if (value < 0.1) {
+      return Color.lerp(Colors.black, Colors.purple, value / 0.1)!;
+    } else if (value < 0.25) {
+      return Color.lerp(Colors.purple, Colors.blue, (value - 0.1) / 0.15)!;
+    } else if (value < 0.4) {
+      return Color.lerp(Colors.blue, Colors.cyan, (value - 0.25) / 0.15)!;
+    } else if (value < 0.55) {
+      return Color.lerp(Colors.cyan, Colors.green, (value - 0.4) / 0.15)!;
+    } else if (value < 0.7) {
+      return Color.lerp(Colors.green, Colors.yellow, (value - 0.55) / 0.15)!;
+    } else if (value < 0.85) {
+      return Color.lerp(Colors.yellow, Colors.red, (value - 0.7) / 0.15)!;
+    } else {
+      return Color.lerp(Colors.red, Colors.white, (value - 0.85) / 0.15)!;
     }
   }
 
