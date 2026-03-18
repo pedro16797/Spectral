@@ -57,17 +57,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(leftDialFinder, findsOneWidget);
 
-    // Initial value is 1.00. 2 triggers + 1 large dial = 3 widgets.
+    // Initial value is 1.00
     expect(find.text('1.00'), findsNWidgets(3));
 
-    // Drag from x=100
-    final dragGesture = await tester.startGesture(const Offset(100, 800));
+    // Drag from x=5
+    final dragGesture = await tester.startGesture(const Offset(5, 800));
     await dragGesture.moveBy(const Offset(0, -100));
     await tester.pump();
     await dragGesture.up();
     await tester.pumpAndSettle();
 
-    // Value should have increased to 2.00. 1 Gain trigger + 1 Gain dial = 2 widgets.
+    // Check if value updated.
     expect(find.text('2.00'), findsNWidgets(2));
   });
 }

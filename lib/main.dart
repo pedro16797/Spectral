@@ -138,7 +138,7 @@ class DialArcPainter extends CustomPainter {
 
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
   static const double _kLargeDialSizeScale = 0.8;
-  static const double _kLargeDialOffsetScale = 0.85;
+  static const double _kLargeDialOffsetScale = 0.88;
 
   final AudioCaptureService _audioService = AudioCaptureService();
   final FftService _fftService = FftService();
@@ -456,8 +456,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             children: [
               Align(
                 alignment: isLeft
-                    ? const Alignment(0.85, 0.0)
-                    : const Alignment(-0.85, 0.0),
+                    ? const Alignment(0.88, 0.0)
+                    : const Alignment(-0.91, 0.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
