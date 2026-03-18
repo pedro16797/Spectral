@@ -48,8 +48,24 @@ class _SpectralAppState extends State<SpectralApp> {
     }
   }
 
+  Color _getBackgroundColor() {
+    switch (_settings.theme) {
+      case AppTheme.liquidBlue:
+        return const Color(0xFF001A33);
+      case AppTheme.inferno:
+        return const Color(0xFF330D00);
+      case AppTheme.monochrome:
+        return const Color(0xFF1A1A1A);
+      case AppTheme.emerald:
+        return const Color(0xFF001A00);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final accentColor = _getAccentColor();
+    final backgroundColor = _getBackgroundColor();
+
     return MaterialApp(
       title: LocalizationHelper.get('app.name'),
       debugShowCheckedModeBanner: false,
@@ -58,7 +74,7 @@ class _SpectralAppState extends State<SpectralApp> {
         scaffoldBackgroundColor: const Color(0xFF000000),
         colorScheme: ColorScheme.dark(
           primary: Colors.white,
-          secondary: _getAccentColor(),
+          secondary: accentColor,
           surface: const Color(0xFF1C1C1E),
         ),
         useMaterial3: true,
@@ -66,6 +82,7 @@ class _SpectralAppState extends State<SpectralApp> {
       home: SpectralHomePage(
         settings: _settings,
         onSettingsChanged: _updateSettings,
+        backgroundColor: backgroundColor,
       ),
     );
   }
@@ -74,11 +91,13 @@ class _SpectralAppState extends State<SpectralApp> {
 class SpectralHomePage extends StatefulWidget {
   final AppSettings settings;
   final ValueChanged<AppSettings> onSettingsChanged;
+  final Color backgroundColor;
 
   const SpectralHomePage({
     super.key,
     required this.settings,
     required this.onSettingsChanged,
+    required this.backgroundColor,
   });
 
   @override
@@ -299,11 +318,11 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           // Background Liquid Gradient
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: Alignment(-0.8, -0.6),
+                  center: const Alignment(-0.8, -0.6),
                   radius: 1.5,
-                  colors: [Color(0xFF001A33), Colors.black],
+                  colors: [widget.backgroundColor, Colors.black],
                 ),
               ),
             ),
@@ -550,6 +569,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   Widget _buildFrequencyFocusSlider() {
+    final accentColor = Theme.of(context).colorScheme.secondary;
     final List<Widget> labelWidgets = [];
     if (_detectedTone == null) {
       labelWidgets.add(const Text(
@@ -626,6 +646,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           onChanged: (values) {
             setState(() => _freqRange = values);
           },
+          accentColor: accentColor,
         ),
       ],
     );

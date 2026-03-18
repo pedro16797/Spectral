@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/settings_model.dart';
 import '../utils/localization_helper.dart';
 
-class SettingsView extends StatelessWidget {
+class SettingsView extends StatefulWidget {
   final AppSettings settings;
   final ValueChanged<AppSettings> onSettingsChanged;
 
@@ -12,6 +12,26 @@ class SettingsView extends StatelessWidget {
     required this.settings,
     required this.onSettingsChanged,
   });
+
+  @override
+  State<SettingsView> createState() => _SettingsViewState();
+}
+
+class _SettingsViewState extends State<SettingsView> {
+  late AppSettings _currentSettings;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSettings = widget.settings;
+  }
+
+  void _updateSettings(AppSettings newSettings) {
+    setState(() {
+      _currentSettings = newSettings;
+    });
+    widget.onSettingsChanged(newSettings);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,20 +88,20 @@ class SettingsView extends StatelessWidget {
                         const SizedBox(height: 16),
                         _buildDropdown<int>(
                           label: LocalizationHelper.get('settings.fft_window_size'),
-                          value: settings.fftWindowSize,
+                          value: _currentSettings.fftWindowSize,
                           items: [512, 1024, 2048, 4096],
                           onChanged: (val) {
-                            if (val != null) onSettingsChanged(settings.copyWith(fftWindowSize: val));
+                            if (val != null) _updateSettings(_currentSettings.copyWith(fftWindowSize: val));
                           },
                         ),
                         const SizedBox(height: 16),
                         _buildDropdown<FftWindowType>(
                           label: LocalizationHelper.get('settings.fft_window_type'),
-                          value: settings.fftWindowType,
+                          value: _currentSettings.fftWindowType,
                           items: FftWindowType.values,
                           itemLabel: (type) => LocalizationHelper.get('settings.window_types.${type.name}'),
                           onChanged: (val) {
-                            if (val != null) onSettingsChanged(settings.copyWith(fftWindowType: val));
+                            if (val != null) _updateSettings(_currentSettings.copyWith(fftWindowType: val));
                           },
                         ),
 
@@ -90,11 +110,11 @@ class SettingsView extends StatelessWidget {
                         const SizedBox(height: 12),
                         _buildDropdown<String>(
                           label: LocalizationHelper.get('settings.language'),
-                          value: settings.language,
+                          value: _currentSettings.language,
                           items: ['en'],
                           itemLabel: (lang) => lang == 'en' ? 'English' : lang,
                           onChanged: (val) {
-                             if (val != null) onSettingsChanged(settings.copyWith(language: val));
+                             if (val != null) _updateSettings(_currentSettings.copyWith(language: val));
                           },
                         ),
                         const SizedBox(height: 40),
@@ -150,9 +170,9 @@ class SettingsView extends StatelessWidget {
       spacing: 12,
       runSpacing: 12,
       children: AppTheme.values.map((t) {
-        final isSelected = settings.theme == t;
+        final isSelected = _currentSettings.theme == t;
         return GestureDetector(
-          onTap: () => onSettingsChanged(settings.copyWith(theme: t)),
+          onTap: () => _updateSettings(_currentSettings.copyWith(theme: t)),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
