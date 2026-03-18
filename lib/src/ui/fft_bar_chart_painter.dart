@@ -139,6 +139,7 @@ class FftBarChartPainter extends CustomPainter {
   bool shouldRepaint(covariant FftBarChartPainter oldDelegate) {
     return oldDelegate.fftData != fftData ||
            oldDelegate.minFreq != minFreq ||
-           oldDelegate.maxFreq != maxFreq;
+           oldDelegate.maxFreq != maxFreq ||
+           oldDelegate.color != color;
   }
 }

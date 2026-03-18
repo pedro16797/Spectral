@@ -19,7 +19,21 @@
     "range": "Range",
     "mode": "Mode",
     "gain": "Gain",
-    "sensitivity": "Sensitivity"
+    "sensitivity": "Sensitivity",
+    "technical": "Technical Parameters",
+    "fft_window_size": "FFT Window Size",
+    "fft_window_type": "FFT Window Type",
+    "themes": {
+      "liquidBlue": "Liquid Blue",
+      "inferno": "Inferno",
+      "monochrome": "Monochrome",
+      "emerald": "Emerald"
+    },
+    "window_types": {
+      "hanning": "Hanning",
+      "hamming": "Hamming",
+      "blackman": "Blackman"
+    }
   },
   "common": {
     "save": "Save",

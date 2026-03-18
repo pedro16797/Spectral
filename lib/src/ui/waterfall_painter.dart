@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../core/settings_model.dart';
 
 class WaterfallPainter extends CustomPainter {
   final List<List<double>> fftHistory;
   final double minFreq;
   final double maxFreq;
   final int sampleRate;
+  final AppTheme theme;
 
   WaterfallPainter({
     required this.fftHistory,
     this.minFreq = 0,
     this.maxFreq = 22050,
     this.sampleRate = 44100,
+    this.theme = AppTheme.liquidBlue,
   });
 
   @override
@@ -53,9 +56,9 @@ class WaterfallPainter extends CustomPainter {
         final ageFade = 1.0 - (i / historyCount);
 
         final paint = Paint()
-          ..color = _getLiquidColor(normalized).withOpacity(ageFade * 0.4)
+          ..color = _getThemeColor(normalized, theme).withOpacity(ageFade * 0.4)
           ..style = PaintingStyle.fill
-          ..isAntiAlias = false; // Disable AA for performance on many rects
+          ..isAntiAlias = false;
 
         final x = j * barWidth;
         final y = i * rowHeight;
@@ -68,14 +71,52 @@ class WaterfallPainter extends CustomPainter {
     }
   }
 
-  Color _getLiquidColor(double value) {
-    // Liquid minimalism palette: Deep blue -> Bright Azure -> Soft White
+  Color _getThemeColor(double value, AppTheme theme) {
+    switch (theme) {
+      case AppTheme.liquidBlue:
+        return _getLiquidBlueColor(value);
+      case AppTheme.inferno:
+        return _getInfernoColor(value);
+      case AppTheme.monochrome:
+        return _getMonochromeColor(value);
+      case AppTheme.emerald:
+        return _getEmeraldColor(value);
+    }
+  }
+
+  Color _getLiquidBlueColor(double value) {
     if (value < 0.3) {
       return Color.lerp(const Color(0xFF001A33), const Color(0xFF007AFF), value / 0.3)!;
     } else if (value < 0.7) {
       return Color.lerp(const Color(0xFF007AFF), const Color(0xFF5AC8FA), (value - 0.3) / 0.4)!;
     } else {
       return Color.lerp(const Color(0xFF5AC8FA), Colors.white, (value - 0.7) / 0.3)!;
+    }
+  }
+
+  Color _getInfernoColor(double value) {
+    if (value < 0.2) {
+      return Color.lerp(const Color(0xFF000000), const Color(0xFF7D0000), value / 0.2)!;
+    } else if (value < 0.5) {
+      return Color.lerp(const Color(0xFF7D0000), const Color(0xFFFF4500), (value - 0.2) / 0.3)!;
+    } else if (value < 0.8) {
+      return Color.lerp(const Color(0xFFFF4500), const Color(0xFFFFD700), (value - 0.5) / 0.3)!;
+    } else {
+      return Color.lerp(const Color(0xFFFFD700), Colors.white, (value - 0.8) / 0.2)!;
+    }
+  }
+
+  Color _getMonochromeColor(double value) {
+    return Color.lerp(Colors.black, Colors.white, value)!;
+  }
+
+  Color _getEmeraldColor(double value) {
+    if (value < 0.3) {
+      return Color.lerp(const Color(0xFF001A00), const Color(0xFF00C853), value / 0.3)!;
+    } else if (value < 0.7) {
+      return Color.lerp(const Color(0xFF00C853), const Color(0xFF69F0AE), (value - 0.3) / 0.4)!;
+    } else {
+      return Color.lerp(const Color(0xFF69F0AE), Colors.white, (value - 0.7) / 0.3)!;
     }
   }
 

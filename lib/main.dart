@@ -5,10 +5,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'src/audio/audio_capture_service.dart';
 import 'src/core/fft_service.dart';
+import 'src/core/settings_model.dart';
 import 'src/ui/waveform_painter.dart';
 import 'src/ui/fft_bar_chart_painter.dart';
 import 'src/ui/waterfall_painter.dart';
 import 'src/ui/radio_dial_focus_slider.dart';
+import 'src/ui/settings_view.dart';
 import 'src/utils/localization_helper.dart';
 
 void main() async {
@@ -25,43 +27,77 @@ class SpectralApp extends StatefulWidget {
 }
 
 class _SpectralAppState extends State<SpectralApp> {
-  ThemeMode _themeMode = ThemeMode.dark;
+  AppSettings _settings = const AppSettings();
 
-  void _toggleTheme() {
+  void _updateSettings(AppSettings newSettings) {
     setState(() {
-      _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+      _settings = newSettings;
     });
+  }
+
+  Color _getAccentColor() {
+    switch (_settings.theme) {
+      case AppTheme.liquidBlue:
+        return const Color(0xFF007AFF);
+      case AppTheme.inferno:
+        return Colors.orangeAccent;
+      case AppTheme.monochrome:
+        return Colors.white;
+      case AppTheme.emerald:
+        return const Color(0xFF00C853);
+    }
+  }
+
+  Color _getBackgroundColor() {
+    switch (_settings.theme) {
+      case AppTheme.liquidBlue:
+        return const Color(0xFF001A33);
+      case AppTheme.inferno:
+        return const Color(0xFF330D00);
+      case AppTheme.monochrome:
+        return const Color(0xFF1A1A1A);
+      case AppTheme.emerald:
+        return const Color(0xFF001A00);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = _getAccentColor();
+    final backgroundColor = _getBackgroundColor();
+
     return MaterialApp(
       title: LocalizationHelper.get('app.name'),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF000000),
-        colorScheme: const ColorScheme.dark(
+        colorScheme: ColorScheme.dark(
           primary: Colors.white,
-          secondary: Color(0xFF007AFF),
-          surface: Color(0xFF1C1C1E),
+          secondary: accentColor,
+          surface: const Color(0xFF1C1C1E),
         ),
         useMaterial3: true,
       ),
-      themeMode: _themeMode,
-      home: SpectralHomePage(onToggleTheme: _toggleTheme, themeMode: _themeMode),
+      home: SpectralHomePage(
+        settings: _settings,
+        onSettingsChanged: _updateSettings,
+        backgroundColor: backgroundColor,
+      ),
     );
   }
 }
 
 class SpectralHomePage extends StatefulWidget {
-  final VoidCallback onToggleTheme;
-  final ThemeMode themeMode;
+  final AppSettings settings;
+  final ValueChanged<AppSettings> onSettingsChanged;
+  final Color backgroundColor;
 
   const SpectralHomePage({
     super.key,
-    required this.onToggleTheme,
-    required this.themeMode,
+    required this.settings,
+    required this.onSettingsChanged,
+    required this.backgroundColor,
   });
 
   @override
@@ -71,7 +107,8 @@ class SpectralHomePage extends StatefulWidget {
 class DialArcPainter extends CustomPainter {
   final double value;
   final bool isLeft;
-  DialArcPainter({required this.value, required this.isLeft});
+  final Color color;
+  DialArcPainter({required this.value, required this.isLeft, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -81,7 +118,7 @@ class DialArcPainter extends CustomPainter {
     final startAngle = isLeft ? -math.pi / 2 : math.pi / 2;
 
     final paint = Paint()
-      ..color = const Color(0xFF007AFF)
+      ..color = color
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = 6;
@@ -96,7 +133,7 @@ class DialArcPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant DialArcPainter oldDelegate) => oldDelegate.value != value;
+  bool shouldRepaint(covariant DialArcPainter oldDelegate) => oldDelegate.value != value || oldDelegate.color != color;
 }
 
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
@@ -147,7 +184,13 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           }
           _currentAudioData = processedAudio;
 
-          final fft = _fftService.processAudioData(data);
+          final fft = _fftService.processAudioData(
+            data,
+            windowSize: widget.settings.fftWindowSize,
+            windowType: widget.settings.fftWindowType,
+          );
+          if (fft.isEmpty) return;
+
           final adjustedFft = fft.map((x) => x * _sensitivity).toList();
           _currentFftData = adjustedFft;
           _detectedTone = _fftService.detectPrimaryTone(adjustedFft, 44100);
@@ -187,7 +230,13 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           }
           _currentAudioData = samples;
 
-          final fft = _fftService.processAudioData(samples);
+          final fft = _fftService.processAudioData(
+            samples,
+            windowSize: widget.settings.fftWindowSize,
+            windowType: widget.settings.fftWindowType,
+          );
+          if (fft.isEmpty) return;
+
           final adjustedFft = fft.map((x) => x * _sensitivity).toList();
           _currentFftData = adjustedFft;
           _detectedTone = _fftService.detectPrimaryTone(adjustedFft, 44100);
@@ -238,6 +287,18 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     }
   }
 
+  void _showSettings() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Settings",
+      pageBuilder: (context, _, __) => SettingsView(
+        settings: widget.settings,
+        onSettingsChanged: widget.onSettingsChanged,
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _audioSubscription?.cancel();
@@ -249,17 +310,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = Theme.of(context).colorScheme.secondary;
+
     return Scaffold(
       body: Stack(
         children: [
           // Background Liquid Gradient
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: Alignment(-0.8, -0.6),
+                  center: const Alignment(-0.8, -0.6),
                   radius: 1.5,
-                  colors: [Color(0xFF001A33), Colors.black],
+                  colors: [widget.backgroundColor, Colors.black],
                 ),
               ),
             ),
@@ -276,6 +339,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                   minFreq: _freqRange.start,
                   maxFreq: _freqRange.end,
                   sampleRate: 44100,
+                  theme: widget.settings.theme,
                 ),
               ),
             ),
@@ -347,7 +411,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                   size: Size.infinite,
                                   painter: FftBarChartPainter(
                                     fftData: _currentFftData,
-                                    color: const Color(0xFF007AFF),
+                                    color: accentColor,
                                     minFreq: _freqRange.start,
                                     maxFreq: _freqRange.end,
                                     sampleRate: 44100,
@@ -375,14 +439,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ),
 
           // Large Edge Dials
-          if (_isAdjustingGain) _buildLargeEdgeDial(isLeft: true, value: _gain, label: "GAIN"),
-          if (_isAdjustingSens) _buildLargeEdgeDial(isLeft: false, value: _sensitivity, label: "SENSITIVITY"),
+          if (_isAdjustingGain) _buildLargeEdgeDial(isLeft: true, value: _gain, label: "GAIN", color: accentColor),
+          if (_isAdjustingSens) _buildLargeEdgeDial(isLeft: false, value: _sensitivity, label: "SENSITIVITY", color: accentColor),
         ],
       ),
     );
   }
 
-  Widget _buildLargeEdgeDial({required bool isLeft, required double value, required String label}) {
+  Widget _buildLargeEdgeDial({required bool isLeft, required double value, required String label, required Color color}) {
     final size = MediaQuery.of(context).size;
     final dialSize = size.height * 0.4;
 
@@ -397,10 +461,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.black.withOpacity(0.8),
-            border: Border.all(color: const Color(0xFF007AFF).withOpacity(0.3), width: 4),
+            border: Border.all(color: color.withOpacity(0.3), width: 4),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF007AFF).withOpacity(0.2),
+                color: color.withOpacity(0.2),
                 blurRadius: 30,
                 spreadRadius: 10,
               )
@@ -431,7 +495,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               // Spinning arc to show value
               CustomPaint(
                 size: Size(dialSize, dialSize),
-                painter: DialArcPainter(value: value, isLeft: isLeft),
+                painter: DialArcPainter(value: value, isLeft: isLeft, color: color),
               ),
             ],
           ),
@@ -457,7 +521,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ],
         ),
         const Spacer(),
-        _buildHeaderAction(icon: Icons.tune_rounded, onPressed: () {}),
+        _buildHeaderAction(icon: Icons.tune_rounded, onPressed: _showSettings),
         const SizedBox(width: 12),
         _buildHeaderAction(
           icon: _waterfallFocusMode ? Icons.layers : Icons.layers_outlined,
@@ -505,6 +569,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   Widget _buildFrequencyFocusSlider() {
+    final accentColor = Theme.of(context).colorScheme.secondary;
     final List<Widget> labelWidgets = [];
     if (_detectedTone == null) {
       labelWidgets.add(const Text(
@@ -581,6 +646,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           onChanged: (values) {
             setState(() => _freqRange = values);
           },
+          accentColor: accentColor,
         ),
       ],
     );
