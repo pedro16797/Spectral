@@ -6,6 +6,7 @@ class RadioDialFocusSlider extends StatefulWidget {
   final double min;
   final double max;
   final ValueChanged<RangeValues> onChanged;
+  final Color accentColor;
 
   const RadioDialFocusSlider({
     super.key,
@@ -13,6 +14,7 @@ class RadioDialFocusSlider extends StatefulWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.accentColor = const Color(0xFF007AFF),
   });
 
   @override
@@ -128,6 +130,7 @@ class _RadioDialFocusSliderState extends State<RadioDialFocusSlider>
                     min: widget.min,
                     max: widget.max,
                     activeFactor: _activeController.value,
+                    accentColor: widget.accentColor,
                   ),
                 ),
               );
@@ -144,12 +147,14 @@ class RadioDialPainter extends CustomPainter {
   final double min;
   final double max;
   final double activeFactor;
+  final Color accentColor;
 
   RadioDialPainter({
     required this.values,
     required this.min,
     required this.max,
     required this.activeFactor,
+    required this.accentColor,
   });
 
   @override
@@ -214,8 +219,8 @@ class RadioDialPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF007AFF).withOpacity(0.05 + 0.1 * activeFactor),
-          const Color(0xFF007AFF).withOpacity(0.2 + 0.2 * activeFactor),
+          accentColor.withOpacity(0.05 + 0.1 * activeFactor),
+          accentColor.withOpacity(0.2 + 0.2 * activeFactor),
         ],
       ).createShader(windowRect);
 
@@ -225,7 +230,7 @@ class RadioDialPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4.0 * activeFactor)
-      ..color = const Color(0xFF007AFF).withOpacity(0.5 + 0.5 * activeFactor);
+      ..color = accentColor.withOpacity(0.5 + 0.5 * activeFactor);
 
     canvas.drawLine(Offset(startX, height * 0.1), Offset(startX, baseline), glowPaint);
     canvas.drawLine(Offset(endX, height * 0.1), Offset(endX, baseline), glowPaint);
@@ -253,7 +258,7 @@ class RadioDialPainter extends CustomPainter {
     if (activeFactor > 0.2) {
       final double centerX = (startX + endX) / 2;
       final Paint needlePaint = Paint()
-        ..color = const Color(0xFF007AFF).withOpacity(activeFactor)
+        ..color = accentColor.withOpacity(activeFactor)
         ..strokeWidth = 2.0;
 
       canvas.drawLine(
@@ -269,6 +274,7 @@ class RadioDialPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant RadioDialPainter oldDelegate) {
     return oldDelegate.values != values ||
-           oldDelegate.activeFactor != activeFactor;
+           oldDelegate.activeFactor != activeFactor ||
+           oldDelegate.accentColor != accentColor;
   }
 }

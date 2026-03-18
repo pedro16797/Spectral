@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:fftea/fftea.dart';
+import 'settings_model.dart';
 
 class ToneInfo {
   final double frequency;
@@ -17,30 +18,68 @@ class ToneInfo {
 class FftService {
   FFT? _cachedFft;
   int? _cachedSize;
+  Float64List? _cachedWindow;
+  FftWindowType? _cachedWindowType;
+
+  // Internal buffer for accumulating samples to match window size
+  final List<double> _buffer = [];
 
   /// Processes normalized audio samples and returns the FFT magnitudes.
-  List<double> processAudioData(Float64List samples) {
+  /// It maintains an internal buffer to ensure it processes chunks of [windowSize].
+  List<double> processAudioData(Float64List samples, {int windowSize = 1024, FftWindowType windowType = FftWindowType.hanning}) {
     if (samples.isEmpty) return [];
 
-    final sampleCount = samples.length;
-    if (sampleCount < 2) return [];
+    // Add new samples to buffer
+    _buffer.addAll(samples);
+
+    // If we have more than windowSize, we keep only the latest windowSize samples
+    // for a simple real-time display. For a true STFT we might want overlap,
+    // but here we'll just take the most recent chunk if it's large enough.
+    if (_buffer.length < windowSize) {
+      return [];
+    }
+
+    // Extract the latest windowSize samples
+    final processingSamples = Float64List.fromList(
+      _buffer.sublist(_buffer.length - windowSize)
+    );
+
+    // Clear buffer to avoid indefinite growth, keeping some for overlap if needed in future
+    // For now, let's just keep the last windowSize to allow smooth transitions if windowSize changes
+    if (_buffer.length > windowSize * 2) {
+      _buffer.removeRange(0, _buffer.length - windowSize);
+    }
 
     // Cache FFT instance if the size hasn't changed.
-    if (_cachedFft == null || _cachedSize != sampleCount) {
-      _cachedFft = FFT(sampleCount);
-      _cachedSize = sampleCount;
+    if (_cachedFft == null || _cachedSize != windowSize) {
+      _cachedFft = FFT(windowSize);
+      _cachedSize = windowSize;
+      _cachedWindow = null; // Reset window if size changed
+    }
+
+    // Cache window if type or size changed
+    if (_cachedWindow == null || _cachedWindowType != windowType) {
+      _cachedWindowType = windowType;
+      switch (windowType) {
+        case FftWindowType.hanning:
+          _cachedWindow = Window.hanning(windowSize);
+          break;
+        case FftWindowType.hamming:
+          _cachedWindow = Window.hamming(windowSize);
+          break;
+        case FftWindowType.blackman:
+          _cachedWindow = Window.blackman(windowSize);
+          break;
+      }
     }
 
     try {
-      // Apply Hanning window to reduce spectral leakage
-      final window = Window.hanning(sampleCount);
-      final windowedSamples = Float64List(sampleCount);
-      for (int i = 0; i < sampleCount; i++) {
-        windowedSamples[i] = samples[i] * window[i];
+      final windowedSamples = Float64List(windowSize);
+      for (int i = 0; i < windowSize; i++) {
+        windowedSamples[i] = processingSamples[i] * _cachedWindow![i];
       }
 
       final freq = _cachedFft!.realFft(windowedSamples);
-      // discardConjugates() fixes the mirroring issue by keeping 0 to Nyquist
       return freq.discardConjugates().magnitudes();
     } catch (e) {
       return [];
