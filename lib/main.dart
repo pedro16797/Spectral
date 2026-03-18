@@ -78,7 +78,7 @@ class DialArcPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 10;
     final sweep = (value / 5.0) * math.pi;
-    final startAngle = isLeft ? -math.pi / 2 : math.pi / 2;
+    const startAngle = -math.pi / 2; // Always start from the top center
 
     final paint = Paint()
       ..color = const Color(0xFF007AFF)
@@ -89,7 +89,7 @@ class DialArcPainter extends CustomPainter {
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       startAngle,
-      isLeft ? sweep : -sweep,
+      isLeft ? sweep : -sweep, // Sweep clockwise for left dial, counter-clockwise for right
       false,
       paint,
     );
@@ -382,7 +382,16 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       top: (size.height - dialSize) / 2,
       left: isLeft ? -dialSize / 2 : null,
       right: isLeft ? null : -dialSize / 2,
-      child: IgnorePointer(
+      child: GestureDetector(
+        onVerticalDragUpdate: (details) {
+          double delta = -details.delta.dy * 0.01;
+          double newValue = (value + delta).clamp(0.1, 5.0);
+          if (isLeft) {
+            setState(() => _gain = newValue);
+          } else {
+            setState(() => _sensitivity = newValue);
+          }
+        },
         child: Container(
           width: dialSize,
           height: dialSize,

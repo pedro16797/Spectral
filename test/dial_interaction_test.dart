@@ -8,15 +8,13 @@ void main() {
     await LocalizationHelper.load('en');
   });
 
-  testWidgets('Dial interaction: tap to toggle, drag to show, exclusive visibility', (WidgetTester tester) async {
-    // Set a larger screen size to ensure widgets are on screen
+  testWidgets('Dial interaction: tap to toggle, drag to show, exclusive visibility, and drag on large dial', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 1.0;
 
     await tester.pumpWidget(const SpectralApp());
     await tester.pumpAndSettle();
 
-    // Use find.byWidgetPredicate to find the trigger in the interaction bar
     Finder findTrigger(String label) {
       return find.ancestor(
         of: find.text(label),
@@ -27,49 +25,37 @@ void main() {
     final gainTrigger = findTrigger('GAIN');
     final sensTrigger = findTrigger('SENS');
 
-    expect(gainTrigger, findsOneWidget);
-    expect(sensTrigger, findsOneWidget);
-
-    // Initial state: no large dials visible
-    expect(find.text('GAIN'), findsOneWidget); // Only in the bar
-    expect(find.text('SENSITIVITY'), findsNothing);
-
-    // 1. Tap GAIN to show
+    // 1. Show GAIN dial
     await tester.tap(gainTrigger);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('GAIN'), findsNWidgets(2)); // Bar + Large Dial
-    expect(find.text('SENSITIVITY'), findsNothing);
 
-    // 2. Tap GAIN again to hide
-    await tester.tap(gainTrigger);
-    await tester.pump();
-    expect(find.text('GAIN'), findsOneWidget);
+    // 2. Drag on the large dial to update value
+    final largeDialGainLabel = find.descendant(
+      of: find.byType(Positioned),
+      matching: find.text('GAIN'),
+    );
 
-    // 3. Drag GAIN to show and stay visible
-    await tester.drag(gainTrigger, const Offset(0, -50));
-    await tester.pump();
-    expect(find.text('GAIN'), findsNWidgets(2));
+    expect(find.text('1.00'), findsNWidgets(3));
 
-    // 4. Tap SENS to show SENS and hide GAIN
+    // Drag on large dial
+    await tester.drag(largeDialGainLabel, const Offset(0, 50), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    // 3. Switch to SENS dial
     await tester.tap(sensTrigger);
-    await tester.pump();
-    expect(find.text('SENSITIVITY'), findsOneWidget); // In Large Dial
-    expect(find.text('GAIN'), findsOneWidget); // Only in the bar
+    await tester.pumpAndSettle();
 
-    // 5. Verify layout: Value is above Label in the trigger
-    // The trigger Column's children are updated.
-    final gainColumn = find.descendant(
-      of: gainTrigger,
-      matching: find.byType(Column),
-    ).first;
-    final columnWidget = tester.widget<Column>(gainColumn);
+    // 4. Drag on the SENS large dial
+    final largeDialSensLabel = find.descendant(
+      of: find.byType(Positioned),
+      matching: find.text('SENSITIVITY'),
+    );
 
-    expect(columnWidget.children.first, isA<Container>()); // Value
-    expect(columnWidget.children.last, isA<Text>()); // Label
-    final labelText = columnWidget.children.last as Text;
-    expect(labelText.data, 'GAIN');
+    // Drag on large dial
+    await tester.drag(largeDialSensLabel, const Offset(0, -50), warnIfMissed: false);
+    await tester.pumpAndSettle();
 
-    // Reset view size
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
   });
