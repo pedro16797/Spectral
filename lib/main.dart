@@ -505,12 +505,48 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   Widget _buildFrequencyFocusSlider() {
-    String focusLabel = "FOCUS";
-    if (_detectedTone != null) {
+    final List<Widget> labelWidgets = [];
+    if (_detectedTone == null) {
+      labelWidgets.add(const Text(
+        "FOCUS",
+        style: TextStyle(
+            fontSize: 10,
+            letterSpacing: 2,
+            color: Colors.white24,
+            fontWeight: FontWeight.bold),
+      ));
+    } else {
       final t = _detectedTone!;
-      focusLabel = "${t.frequency.toStringAsFixed(1)}Hz • ${t.note}";
+      labelWidgets.add(Text(
+        "${t.frequency.toStringAsFixed(1)}Hz",
+        style: const TextStyle(
+            fontSize: 10,
+            letterSpacing: 2,
+            color: Colors.white24,
+            fontWeight: FontWeight.bold,
+            fontFeatures: [FontFeature.tabularFigures()]),
+      ));
+      labelWidgets.add(const Text(" • ",
+          style: TextStyle(fontSize: 10, color: Colors.white10)));
+      labelWidgets.add(Text(
+        t.note,
+        style: const TextStyle(
+            fontSize: 10,
+            letterSpacing: 2,
+            color: Colors.white24,
+            fontWeight: FontWeight.bold),
+      ));
       if (t.harmonics.isNotEmpty) {
-        focusLabel += " • H: ${t.harmonics.join(', ')}";
+        labelWidgets.add(const Text(" • ",
+            style: TextStyle(fontSize: 10, color: Colors.white10)));
+        labelWidgets.add(Text(
+          "H: ${t.harmonics.join(', ')}",
+          style: const TextStyle(
+              fontSize: 10,
+              letterSpacing: 2,
+              color: Colors.white24,
+              fontWeight: FontWeight.bold),
+        ));
       }
     }
 
@@ -519,16 +555,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       children: [
         Row(
           children: [
-            Text(
-              focusLabel,
-              style: const TextStyle(
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  color: Colors.white24,
-                  fontWeight: FontWeight.bold),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            ...labelWidgets,
             const Spacer(),
             Text(
                 "${(_freqRange.start / 1000).toStringAsFixed(1)} - ${(_freqRange.end / 1000).toStringAsFixed(1)}kHz",
