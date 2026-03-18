@@ -36,16 +36,18 @@ class FftBarChartPainter extends CustomPainter {
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    const maxBars = 80;
+    const maxBars = 120;
     final binCount = visibleData.length;
     final skip = (binCount / maxBars).ceil();
     final actualBarCount = (binCount / skip).floor().clamp(1, binCount);
 
-    // Limit bar width for better aesthetics when few bars are present
-    final rawBarWidth = width / actualBarCount;
-    final barWidth = actualBarCount < 10 ? math.min(rawBarWidth, 40.0) : rawBarWidth;
-    final totalBarsWidth = barWidth * actualBarCount;
-    final offset = (width - totalBarsWidth) / 2;
+    // Ensure the bars fill the available width
+    final barWidth = width / actualBarCount;
+    const offset = 0.0;
+
+    // Dynamic spacing based on bar width
+    final double spacing = barWidth > 15 ? 4.0 : (barWidth > 8 ? 2.0 : (barWidth > 4 ? 1.0 : 0.0));
+    final double actualWidth = math.max(1.0, barWidth - spacing);
 
     for (var i = 0; i < actualBarCount; i++) {
       var maxMag = 0.0;
@@ -59,10 +61,10 @@ class FftBarChartPainter extends CustomPainter {
       final normalizedHeight = (math.log(maxMag + 1) / 4.5).clamp(0.0, 1.0);
       final barHeight = normalizedHeight * (height - 20); // Leave room for labels
 
-      final x = offset + i * barWidth;
+      final x = offset + i * barWidth + (spacing / 2);
       final y = (height - 20) - barHeight;
 
-      final rect = Rect.fromLTWH(x + 2, y, barWidth - 4, barHeight);
+      final rect = Rect.fromLTWH(x, y, actualWidth, barHeight);
 
       paint.shader = LinearGradient(
         begin: Alignment.topCenter,

@@ -269,6 +269,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             child: Opacity(
               opacity: 0.4,
               child: CustomPaint(
+                size: Size.infinite,
                 painter: WaterfallPainter(
                   fftHistory: List.from(_fftHistory),
                   minFreq: _freqRange.start,
@@ -314,11 +315,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                   Expanded(
                     flex: 2,
                     child: _buildGlassCard(
-                      child: CustomPaint(
-                        painter: WaveformPainter(
-                          audioData: _currentAudioData,
-                          history: List.from(_audioHistory),
-                          color: Colors.white.withOpacity(0.8),
+                      child: SizedBox.expand(
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: WaveformPainter(
+                            audioData: _currentAudioData,
+                            history: List.from(_audioHistory),
+                            color: Colors.white.withOpacity(0.8),
+                          ),
                         ),
                       ),
                     ),
@@ -330,15 +334,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                     flex: 3,
                     child: _buildGlassCard(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
-                            child: CustomPaint(
-                              painter: FftBarChartPainter(
-                                fftData: _currentFftData,
-                                color: const Color(0xFF007AFF),
-                                minFreq: _freqRange.start,
-                                maxFreq: _freqRange.end,
-                                sampleRate: 44100,
+                            child: SizedBox.expand(
+                              child: CustomPaint(
+                                size: Size.infinite,
+                                painter: FftBarChartPainter(
+                                  fftData: _currentFftData,
+                                  color: const Color(0xFF007AFF),
+                                  minFreq: _freqRange.start,
+                                  maxFreq: _freqRange.end,
+                                  sampleRate: 44100,
+                                ),
                               ),
                             ),
                           ),
