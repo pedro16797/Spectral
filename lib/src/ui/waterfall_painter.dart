@@ -36,27 +36,32 @@ class WaterfallPainter extends CustomPainter {
       final visibleData = fftData.sublist(startIndex, endIndex);
       if (visibleData.isEmpty) continue;
 
-      final binCount = visibleData.length;
+      final rawBinCount = visibleData.length;
+      const int maxBins = 160;
+      final binCount = math.min(rawBinCount, maxBins);
+      final skip = (rawBinCount / binCount).floor().clamp(1, rawBinCount);
       final barWidth = width / binCount;
 
       for (var j = 0; j < binCount; j++) {
-        final magnitude = visibleData[j];
-        final normalized = (math.log(magnitude + 1) / 5.0).clamp(0.0, 1.0);
+        final dataIndex = (j * skip).clamp(0, rawBinCount - 1);
+        final magnitude = visibleData[dataIndex];
+        // Use consistent scale with FftBarChartPainter
+        final normalized = (math.log(magnitude + 1) / 4.0).clamp(0.0, 1.1);
 
         if (normalized < 0.05) continue;
 
         final ageFade = 1.0 - (i / historyCount);
 
         final paint = Paint()
-          ..color = _getLiquidColor(normalized).withOpacity(ageFade * 0.6)
+          ..color = _getLiquidColor(normalized).withOpacity(ageFade * 0.4)
           ..style = PaintingStyle.fill
-          ..isAntiAlias = true;
+          ..isAntiAlias = false; // Disable AA for performance on many rects
 
         final x = j * barWidth;
         final y = i * rowHeight;
 
         canvas.drawRect(
-          Rect.fromLTWH(x, y, barWidth + 0.5, rowHeight + 0.5),
+          Rect.fromLTWH(x, y, barWidth + 0.6, rowHeight + 0.6),
           paint,
         );
       }
@@ -65,12 +70,12 @@ class WaterfallPainter extends CustomPainter {
 
   Color _getLiquidColor(double value) {
     // Liquid minimalism palette: Deep blue -> Bright Azure -> Soft White
-    if (value < 0.33) {
-      return Color.lerp(const Color(0xFF001A33), const Color(0xFF007AFF), value * 3)!;
-    } else if (value < 0.66) {
-      return Color.lerp(const Color(0xFF007AFF), const Color(0xFF5AC8FA), (value - 0.33) * 3)!;
+    if (value < 0.3) {
+      return Color.lerp(const Color(0xFF001A33), const Color(0xFF007AFF), value / 0.3)!;
+    } else if (value < 0.7) {
+      return Color.lerp(const Color(0xFF007AFF), const Color(0xFF5AC8FA), (value - 0.3) / 0.4)!;
     } else {
-      return Color.lerp(const Color(0xFF5AC8FA), Colors.white, (value - 0.66) * 3)!;
+      return Color.lerp(const Color(0xFF5AC8FA), Colors.white, (value - 0.7) / 0.3)!;
     }
   }
 
