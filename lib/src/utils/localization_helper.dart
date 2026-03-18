@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class LocalizationHelper {
@@ -9,7 +10,7 @@ class LocalizationHelper {
       final String jsonString = await (bundle ?? rootBundle).loadString('resources/locales/$locale.json');
       _localizedStrings = json.decode(jsonString);
     } catch (e) {
-      // Fallback or log error
+      debugPrint("Error loading localization: $e");
       _localizedStrings = {};
     }
   }

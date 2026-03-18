@@ -8,12 +8,19 @@ Spectral aims to provide users with a powerful yet user-friendly tool to observe
 
 ## ✨ Features
 
-- **Real-time Waveform Visualization:** Smooth and high-fidelity wave rendering.
-- **FFT Bar Chart:** High-performance frequency analysis.
-- **Waterfall Display:** Time-frequency visualization for detecting patterns over time.
-- **Highly Configurable:** Customizable themes, ranges, and modes.
-- **Modern UI:** Elegant and intuitive interface designed for mobile.
+![Spectral Interface](resources/screenshots/home_screen.png)
+
+- **Real-time Waveform Visualization:** Smooth and high-fidelity wave rendering with ghosting effects.
+- **FFT Bar Chart:** High-performance frequency analysis with dynamic scaling.
+- **Waterfall Display:** Time-frequency visualization for detecting patterns over time, integrated as a background layer.
+- **Slick HUD Architecture:** Immersive "Waterfall Focus Mode" for a data-centric experience.
+- **Frequency Focus (Zoom):** Advanced Radio Dial Slider for panning and zooming into specific frequency bands.
+- **Edge Dial Interaction:** Space-saving, tactile dials for Gain and Sensitivity adjustments.
+- **Highly Configurable:** Customizable themes (Liquid Blue, Inferno, Monochrome, Emerald) and technical parameters (FFT Window Size/Type).
+- **Modern UI:** Elegant, glassmorphic interface designed for mobile.
 - **Localization:** Built with internationalization in mind from day one.
+
+For a deep dive into these features, see [docs/features.md](docs/features.md).
 
 ## 🛠 Project Status
 

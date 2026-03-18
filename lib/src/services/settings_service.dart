@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/settings_model.dart';
 
@@ -14,7 +15,7 @@ class SettingsService {
         return AppSettings.fromMap(settingsMap);
       }
     } catch (e) {
-      // Log or handle error, return default settings
+      debugPrint("Error loading settings: $e");
     }
     return const AppSettings();
   }
@@ -25,7 +26,7 @@ class SettingsService {
       final settingsJson = json.encode(settings.toMap());
       await prefs.setString(_kSettingsKey, settingsJson);
     } catch (e) {
-      // Log or handle error
+      debugPrint("Error saving settings: $e");
     }
   }
 }
