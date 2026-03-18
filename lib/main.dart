@@ -533,14 +533,27 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildDialTrigger("GAIN", _gain, (v) => setState(() => _gain = v), (active) => setState(() => _isAdjustingGain = active)),
+        _buildDialTrigger(
+          "GAIN",
+          _gain,
+          (v) => setState(() => _gain = v),
+          (active) => setState(() {
+            _isAdjustingGain = true;
+            _isAdjustingSens = false;
+          }),
+          () => setState(() {
+            _isAdjustingGain = !_isAdjustingGain;
+            if (_isAdjustingGain) _isAdjustingSens = false;
+          }),
+        ),
         GestureDetector(
           onTap: _toggleCapture,
           child: AnimatedBuilder(
             animation: _pulseController,
             builder: (context, child) {
               return Container(
-                width: 64, height: 64,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
@@ -558,17 +571,34 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             },
           ),
         ),
-        _buildDialTrigger("SENS", _sensitivity, (v) => setState(() => _sensitivity = v), (active) => setState(() => _isAdjustingSens = active)),
+        _buildDialTrigger(
+          "SENS",
+          _sensitivity,
+          (v) => setState(() => _sensitivity = v),
+          (active) => setState(() {
+            _isAdjustingSens = true;
+            _isAdjustingGain = false;
+          }),
+          () => setState(() {
+            _isAdjustingSens = !_isAdjustingSens;
+            if (_isAdjustingSens) _isAdjustingGain = false;
+          }),
+        ),
       ],
     );
   }
 
-  Widget _buildDialTrigger(String label, double value, ValueChanged<double> onChanged, ValueChanged<bool> onActive) {
+  Widget _buildDialTrigger(
+    String label,
+    double value,
+    ValueChanged<double> onChanged,
+    ValueChanged<bool> onActive,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onTap: onTap,
       onVerticalDragStart: (_) => onActive(true),
-      onVerticalDragEnd: (_) => onActive(false),
-      onVerticalDragCancel: () => onActive(false),
       onVerticalDragUpdate: (details) {
         // Simple vertical drag for adjustment
         double delta = -details.delta.dy * 0.01;
@@ -577,8 +607,6 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       },
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24)),
-          const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -591,6 +619,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24)),
         ],
       ),
     );
