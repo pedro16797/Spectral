@@ -367,8 +367,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
 
                   // Interaction Bar
-                  const SizedBox(height: 24),
-                  _buildInteractionBar(),
+                  if (!_waterfallFocusMode) const SizedBox(height: 24),
+                  if (!_waterfallFocusMode) _buildInteractionBar(),
                 ],
               ),
             ),
@@ -518,26 +518,28 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     } else {
       final t = _detectedTone!;
       labelWidgets.add(SizedBox(
-        width: 70,
+        width: 65,
         child: Text(
-          "${t.frequency.toStringAsFixed(1)}Hz",
+          "${t.frequency.toStringAsFixed(0)}Hz",
+          textAlign: TextAlign.right,
           style: const TextStyle(
               fontSize: 10,
-              letterSpacing: 2,
+              letterSpacing: 1,
               color: Colors.white24,
               fontWeight: FontWeight.bold,
               fontFeatures: [FontFeature.tabularFigures()]),
         ),
       ));
-      labelWidgets.add(const Text(" • ",
+      labelWidgets.add(const Text("  •  ",
           style: TextStyle(fontSize: 10, color: Colors.white10)));
       labelWidgets.add(SizedBox(
-        width: 40,
+        width: 35,
         child: Text(
           t.note,
+          textAlign: TextAlign.center,
           style: const TextStyle(
               fontSize: 10,
-              letterSpacing: 2,
+              letterSpacing: 1,
               color: Colors.white24,
               fontWeight: FontWeight.bold),
         ),
