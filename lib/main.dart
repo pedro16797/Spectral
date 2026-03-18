@@ -185,8 +185,8 @@ class DialArcPainter extends CustomPainter {
 }
 
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
-  static const double _kLargeDialSizeScale = 0.8;
-  static const double _kLargeDialOffsetScale = 0.85;
+  static const double _kLargeDialSizeScale = 0.7;
+  static const double _kLargeDialOffsetScale = 0.8;
 
   final AudioCaptureService _audioService = AudioCaptureService();
   final FftService _fftService = FftService();
@@ -423,71 +423,122 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Top Minimalist Header
-                  _buildMinimalHeader(),
-                  const SizedBox(height: 20),
+              child: Builder(
+                builder: (context) {
+                  final orientation = MediaQuery.of(context).orientation;
+                  final isLandscape = orientation == Orientation.landscape;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Top Minimalist Header
+                      _buildMinimalHeader(isLandscape),
+                      SizedBox(height: isLandscape ? 12 : 20),
 
-                  if (_waterfallFocusMode) const Spacer(),
+                      if (_waterfallFocusMode) const Spacer(),
 
-                  // Waveform Glass Card
-                  if (!_waterfallFocusMode)
-                    Expanded(
-                      flex: 2,
-                      child: _buildGlassCard(
-                        child: SizedBox.expand(
-                          child: CustomPaint(
-                            size: Size.infinite,
-                            painter: WaveformPainter(
-                              audioData: _currentAudioData,
-                              history: List.from(_audioHistory),
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (!_waterfallFocusMode) const SizedBox(height: 16),
-
-                  // FFT Focus Card
-                  if (!_waterfallFocusMode)
-                    Expanded(
-                      flex: 3,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: SizedBox.expand(
-                                child: CustomPaint(
-                                  size: Size.infinite,
-                                  painter: FftBarChartPainter(
-                                    fftData: _currentFftData,
-                                    color: accentColor,
-                                    minFreq: _freqRange.start,
-                                    maxFreq: _freqRange.end,
-                                    sampleRate: 44100,
-                                  ),
+                      // Visualizations
+                      if (!_waterfallFocusMode)
+                        Expanded(
+                          flex: 5,
+                          child: isLandscape
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: _buildGlassCard(
+                                        child: SizedBox.expand(
+                                          child: CustomPaint(
+                                            size: Size.infinite,
+                                            painter: WaveformPainter(
+                                              audioData: _currentAudioData,
+                                              history: List.from(_audioHistory),
+                                              color: Colors.white.withOpacity(0.8),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: _buildGlassCard(
+                                        child: SizedBox.expand(
+                                          child: CustomPaint(
+                                            size: Size.infinite,
+                                            painter: FftBarChartPainter(
+                                              fftData: _currentFftData,
+                                              color: accentColor,
+                                              minFreq: _freqRange.start,
+                                              maxFreq: _freqRange.end,
+                                              sampleRate: 44100,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: _buildGlassCard(
+                                        child: SizedBox.expand(
+                                          child: CustomPaint(
+                                            size: Size.infinite,
+                                            painter: WaveformPainter(
+                                              audioData: _currentAudioData,
+                                              history: List.from(_audioHistory),
+                                              color: Colors.white.withOpacity(0.8),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Expanded(
+                                      flex: 3,
+                                      child: _buildGlassCard(
+                                        child: SizedBox.expand(
+                                          child: CustomPaint(
+                                            size: Size.infinite,
+                                            painter: FftBarChartPainter(
+                                              fftData: _currentFftData,
+                                              color: accentColor,
+                                              minFreq: _freqRange.start,
+                                              maxFreq: _freqRange.end,
+                                              sampleRate: 44100,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ],
                         ),
-                      ),
-                    ),
-                  if (!_waterfallFocusMode) const SizedBox(height: 16),
+                      if (!_waterfallFocusMode) SizedBox(height: isLandscape ? 12 : 16),
 
-                  // Frequency Focus Card (Always visible)
-                  _buildGlassCard(child: _buildFrequencyFocusSlider()),
-                  const SizedBox(height: 16),
-
-
-                  // Interaction Bar
-                  if (!_waterfallFocusMode) const SizedBox(height: 24),
-                  if (!_waterfallFocusMode) _buildInteractionBar(),
-                ],
+                      // Frequency Focus Card & Interaction Bar
+                      if (isLandscape && !_waterfallFocusMode)
+                        Row(
+                          children: [
+                            _buildGainTrigger(),
+                            const SizedBox(width: 16),
+                            Expanded(child: _buildGlassCard(child: _buildFrequencyFocusSlider())),
+                            const SizedBox(width: 16),
+                            _buildSensTrigger(),
+                          ],
+                        )
+                      else ...[
+                        _buildGlassCard(child: _buildFrequencyFocusSlider()),
+                        if (!_waterfallFocusMode) ...[
+                          const SizedBox(height: 16),
+                          _buildInteractionBar(),
+                        ],
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -503,12 +554,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   Widget _buildLargeEdgeDial(
       {required bool isLeft, required double value, required String label, required Color color}) {
     final size = MediaQuery.of(context).size;
+    final padding = MediaQuery.of(context).padding;
     final dialSize = size.height * _kLargeDialSizeScale;
 
+    final availableHeight = size.height - padding.top - padding.bottom;
     return Positioned(
-      top: (size.height - dialSize) / 2,
-      left: isLeft ? -dialSize * _kLargeDialOffsetScale : null,
-      right: isLeft ? null : -dialSize * _kLargeDialOffsetScale,
+      top: padding.top + (availableHeight - dialSize) / 2,
+      left: isLeft ? -dialSize * _kLargeDialOffsetScale + padding.left : null,
+      right: isLeft ? null : -dialSize * _kLargeDialOffsetScale + padding.right,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onVerticalDragUpdate: (details) {
@@ -579,7 +632,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  Widget _buildMinimalHeader() {
+  Widget _buildMinimalHeader(bool isLandscape) {
     return Row(
       children: [
         Column(
@@ -596,6 +649,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ],
         ),
         const Spacer(),
+        if (isLandscape) ...[
+          _buildHeaderAction(
+            icon: _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+            onPressed: _toggleCapture,
+            iconColor: _isCapturing ? Colors.redAccent : Colors.white70,
+            iconSize: 24,
+          ),
+          const SizedBox(width: 12),
+        ],
         _buildHeaderAction(icon: Icons.tune_rounded, onPressed: _showSettings),
         const SizedBox(width: 12),
         _buildHeaderAction(
@@ -606,7 +668,12 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  Widget _buildHeaderAction({required IconData icon, required VoidCallback onPressed}) {
+  Widget _buildHeaderAction({
+    required IconData icon,
+    required VoidCallback onPressed,
+    Color? iconColor,
+    double? iconSize,
+  }) {
     return ClipOval(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -617,7 +684,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: IconButton(
-            icon: Icon(icon, size: 20, color: Colors.white70),
+            icon: Icon(icon, size: iconSize ?? 20, color: iconColor ?? Colors.white70),
             onPressed: () {
               HapticFeedback.lightImpact();
               onPressed();
@@ -734,66 +801,79 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Semantics(
-          label: "GAIN",
-          button: true,
-          child: _buildDialTrigger(
-            "GAIN",
-            _gain,
-            (v) => setState(() => _gain = v),
-            (active) => setState(() {
-              _isDraggingGain = active;
-              if (active) _sensPersistent = false;
-            }),
-            () => setState(() {
-              _gainPersistent = !_gainPersistent;
-              if (_gainPersistent) _sensPersistent = false;
-            }),
-          ),
-        ),
-        GestureDetector(
-          onTap: _toggleCapture,
-          child: AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              return Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
-                  border: Border.all(color: _isCapturing ? Colors.red.withOpacity(0.5) : Colors.white24, width: 2),
-                  boxShadow: [
-                    if (_isCapturing) BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10 + 10 * _pulseController.value)
-                  ],
-                ),
-                child: Icon(
-                  _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                  color: _isCapturing ? Colors.redAccent : Colors.white,
-                  size: 32,
-                ),
-              );
-            },
-          ),
-        ),
-        Semantics(
-          label: "SENS",
-          button: true,
-          child: _buildDialTrigger(
-            "SENS",
-            _sensitivity,
-            (v) => setState(() => _sensitivity = v),
-            (active) => setState(() {
-              _isDraggingSens = active;
-              if (active) _gainPersistent = false;
-            }),
-            () => setState(() {
-              _sensPersistent = !_sensPersistent;
-              if (_sensPersistent) _gainPersistent = false;
-            }),
-          ),
-        ),
+        _buildGainTrigger(),
+        _buildCaptureButton(),
+        _buildSensTrigger(),
       ],
+    );
+  }
+
+  Widget _buildGainTrigger() {
+    return Semantics(
+      label: "GAIN",
+      button: true,
+      child: _buildDialTrigger(
+        "GAIN",
+        _gain,
+        (v) => setState(() => _gain = v),
+        (active) => setState(() {
+          _isDraggingGain = active;
+          if (active) _sensPersistent = false;
+        }),
+        () => setState(() {
+          _gainPersistent = !_gainPersistent;
+          if (_gainPersistent) _sensPersistent = false;
+        }),
+      ),
+    );
+  }
+
+  Widget _buildSensTrigger() {
+    return Semantics(
+      label: "SENS",
+      button: true,
+      child: _buildDialTrigger(
+        "SENS",
+        _sensitivity,
+        (v) => setState(() => _sensitivity = v),
+        (active) => setState(() {
+          _isDraggingSens = active;
+          if (active) _gainPersistent = false;
+        }),
+        () => setState(() {
+          _sensPersistent = !_sensPersistent;
+          if (_sensPersistent) _gainPersistent = false;
+        }),
+      ),
+    );
+  }
+
+  Widget _buildCaptureButton() {
+    return GestureDetector(
+      onTap: _toggleCapture,
+      child: AnimatedBuilder(
+        animation: _pulseController,
+        builder: (context, child) {
+          return Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
+              border: Border.all(color: _isCapturing ? Colors.red.withOpacity(0.5) : Colors.white24, width: 2),
+              boxShadow: [
+                if (_isCapturing)
+                  BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10 + 10 * _pulseController.value)
+              ],
+            ),
+            child: Icon(
+              _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+              color: _isCapturing ? Colors.redAccent : Colors.white,
+              size: 32,
+            ),
+          );
+        },
+      ),
     );
   }
 
