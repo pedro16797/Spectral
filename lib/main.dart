@@ -75,31 +75,71 @@ class DialArcPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 10;
-    final sweep = (value / 5.0) * math.pi;
-    const startAngle = -math.pi / 2; // Always start from the top center
+    final center = Offset(isLeft ? 0 : size.width, size.height / 2);
+    final radius = size.width / 2;
 
-    final paint = Paint()
-      ..color = const Color(0xFF007AFF)
+    const totalVisibleSweep = 1.2;
+    final progressSweep = (value / 5.0) * totalVisibleSweep;
+
+    final basePaint = Paint()
+      ..color = Colors.white.withOpacity(0.05)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+
+    final progressPaint = Paint()
+      ..color = const Color(0xFF007AFF).withOpacity(0.8)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 6;
+      ..strokeWidth = 10;
 
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      isLeft ? sweep : -sweep, // Sweep clockwise for left dial, counter-clockwise for right
-      false,
-      paint,
-    );
+    if (isLeft) {
+      // Left dial: Visible is the right side of the circle.
+      // Fill bottom to top (counter-clockwise)
+      const startAngle = totalVisibleSweep / 2;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        -totalVisibleSweep,
+        false,
+        basePaint,
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        -progressSweep,
+        false,
+        progressPaint,
+      );
+    } else {
+      // Right dial: Visible is the left side of the circle.
+      // Fill bottom to top (counter-clockwise)
+      const startAngle = math.pi + (totalVisibleSweep / 2);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        -totalVisibleSweep,
+        false,
+        basePaint,
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        -progressSweep,
+        false,
+        progressPaint,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant DialArcPainter oldDelegate) => oldDelegate.value != value;
+  bool shouldRepaint(covariant DialArcPainter oldDelegate) =>
+      oldDelegate.value != value || oldDelegate.isLeft != isLeft;
 }
 
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
+  static const double _kLargeDialSizeScale = 0.8;
+  static const double _kLargeDialOffsetScale = 0.3;
+
   final AudioCaptureService _audioService = AudioCaptureService();
   final FftService _fftService = FftService();
   StreamSubscription<Float64List>? _audioSubscription;
@@ -374,14 +414,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  Widget _buildLargeEdgeDial({required bool isLeft, required double value, required String label}) {
+  Widget _buildLargeEdgeDial(
+      {required bool isLeft, required double value, required String label}) {
     final size = MediaQuery.of(context).size;
-    final dialSize = size.height * 0.4;
+    final dialSize = size.height * _kLargeDialSizeScale;
 
     return Positioned(
       top: (size.height - dialSize) / 2,
-      left: isLeft ? -dialSize / 2 : null,
-      right: isLeft ? null : -dialSize / 2,
+      left: isLeft ? -dialSize * _kLargeDialOffsetScale : null,
+      right: isLeft ? null : -dialSize * _kLargeDialOffsetScale,
       child: GestureDetector(
         onVerticalDragUpdate: (details) {
           double delta = -details.delta.dy * 0.01;
@@ -397,39 +438,44 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           height: dialSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.black.withOpacity(0.8),
-            border: Border.all(color: const Color(0xFF007AFF).withOpacity(0.3), width: 4),
+            color: Colors.black.withOpacity(0.6),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF007AFF).withOpacity(0.2),
-                blurRadius: 30,
-                spreadRadius: 10,
+                color: const Color(0xFF007AFF).withOpacity(0.1),
+                blurRadius: 100,
+                spreadRadius: 20,
               )
             ],
           ),
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Radial scale markers could go here
-              Positioned(
-                left: isLeft ? dialSize * 0.6 : null,
-                right: isLeft ? null : dialSize * 0.6,
+              Align(
+                alignment: isLeft
+                    ? const Alignment(_kLargeDialOffsetScale, 0.0)
+                    : const Alignment(-_kLargeDialOffsetScale, 0.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      label,
-                      style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
                       value.toStringAsFixed(2),
-                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w100, color: Colors.white),
+                      style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w100,
+                          color: Colors.white),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 2,
+                          color: Colors.white24,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
-              // Spinning arc to show value
               CustomPaint(
                 size: Size(dialSize, dialSize),
                 painter: DialArcPainter(value: value, isLeft: isLeft),
@@ -542,18 +588,22 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildDialTrigger(
-          "GAIN",
-          _gain,
-          (v) => setState(() => _gain = v),
-          (active) => setState(() {
-            _isAdjustingGain = true;
-            _isAdjustingSens = false;
-          }),
-          () => setState(() {
-            _isAdjustingGain = !_isAdjustingGain;
-            if (_isAdjustingGain) _isAdjustingSens = false;
-          }),
+        Semantics(
+          label: "GAIN",
+          button: true,
+          child: _buildDialTrigger(
+            "GAIN",
+            _gain,
+            (v) => setState(() => _gain = v),
+            (active) => setState(() {
+              _isAdjustingGain = true;
+              _isAdjustingSens = false;
+            }),
+            () => setState(() {
+              _isAdjustingGain = !_isAdjustingGain;
+              if (_isAdjustingGain) _isAdjustingSens = false;
+            }),
+          ),
         ),
         GestureDetector(
           onTap: _toggleCapture,
@@ -580,18 +630,22 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             },
           ),
         ),
-        _buildDialTrigger(
-          "SENS",
-          _sensitivity,
-          (v) => setState(() => _sensitivity = v),
-          (active) => setState(() {
-            _isAdjustingSens = true;
-            _isAdjustingGain = false;
-          }),
-          () => setState(() {
-            _isAdjustingSens = !_isAdjustingSens;
-            if (_isAdjustingSens) _isAdjustingGain = false;
-          }),
+        Semantics(
+          label: "SENS",
+          button: true,
+          child: _buildDialTrigger(
+            "SENS",
+            _sensitivity,
+            (v) => setState(() => _sensitivity = v),
+            (active) => setState(() {
+              _isAdjustingSens = true;
+              _isAdjustingGain = false;
+            }),
+            () => setState(() {
+              _isAdjustingSens = !_isAdjustingSens;
+              if (_isAdjustingSens) _isAdjustingGain = false;
+            }),
+          ),
         ),
       ],
     );
@@ -605,6 +659,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     VoidCallback onTap,
   ) {
     return GestureDetector(
+      key: Key('trigger_$label'),
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       onVerticalDragStart: (_) => onActive(true),
