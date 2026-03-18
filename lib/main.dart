@@ -16,10 +16,22 @@ import 'src/utils/localization_helper.dart';
 import 'src/services/settings_service.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final settings = await SettingsService.loadSettings();
-  await LocalizationHelper.load(settings.language);
-  runApp(SpectralApp(initialSettings: settings));
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    final settings = await SettingsService.loadSettings();
+    await LocalizationHelper.load(settings.language);
+    runApp(SpectralApp(initialSettings: settings));
+  } catch (e) {
+    debugPrint("Startup error: $e");
+    // Minimal fallback app if initialization fails
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text("Failed to start Spectral: $e"),
+        ),
+      ),
+    ));
+  }
 }
 
 class SpectralApp extends StatefulWidget {
@@ -342,15 +354,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   void _showSettings() {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: "Settings",
-      pageBuilder: (context, _, __) => SettingsView(
-        settings: widget.settings,
-        onSettingsChanged: widget.onSettingsChanged,
-      ),
-    );
+    try {
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: "Settings",
+        pageBuilder: (context, _, __) => SettingsView(
+          settings: widget.settings,
+          onSettingsChanged: widget.onSettingsChanged,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error showing settings: $e");
+    }
   }
 
   @override

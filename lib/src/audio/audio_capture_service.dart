@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
 import '../utils/audio_utils.dart';
 
@@ -38,11 +39,11 @@ class AudioCaptureService {
             _audioDataController.add(normalizedData);
           }
         }, onError: (error) {
-          // Handle stream errors
+          debugPrint("Audio stream error: $error");
         });
       }
     } catch (e) {
-      // Handle potential hardware access errors
+      debugPrint("Audio capture error: $e");
     }
   }
 
@@ -54,7 +55,7 @@ class AudioCaptureService {
         await _audioRecorder.stop();
       }
     } catch (e) {
-      // Handle errors during stop
+      debugPrint("Error stopping audio capture: $e");
     }
   }
 

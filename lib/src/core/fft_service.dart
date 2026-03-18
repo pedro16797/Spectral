@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:fftea/fftea.dart';
 import 'settings_model.dart';
 
@@ -82,6 +83,7 @@ class FftService {
       final freq = _cachedFft!.realFft(windowedSamples);
       return freq.discardConjugates().magnitudes();
     } catch (e) {
+      debugPrint("FFT processing error: $e");
       return [];
     }
   }
