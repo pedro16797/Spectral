@@ -112,6 +112,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   bool _isCapturing = false;
   bool _isDemoMode = false;
   Timer? _demoTimer;
+  bool _waterfallFocusMode = false;
 
   double _gain = 1.0;
   double _sensitivity = 1.0;
@@ -267,7 +268,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           // Waterfall Background
           Positioned.fill(
             child: Opacity(
-              opacity: 0.4,
+              opacity: _waterfallFocusMode ? 1.0 : 0.4,
               child: CustomPaint(
                 size: Size.infinite,
                 painter: WaterfallPainter(
@@ -311,56 +312,63 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                   _buildMinimalHeader(),
                   const SizedBox(height: 20),
 
+                  if (_waterfallFocusMode) const Spacer(),
+
                   // Waveform Glass Card
-                  Expanded(
-                    flex: 2,
-                    child: _buildGlassCard(
-                      child: SizedBox.expand(
-                        child: CustomPaint(
-                          size: Size.infinite,
-                          painter: WaveformPainter(
-                            audioData: _currentAudioData,
-                            history: List.from(_audioHistory),
-                            color: Colors.white.withOpacity(0.8),
+                  if (!_waterfallFocusMode)
+                    Expanded(
+                      flex: 2,
+                      child: _buildGlassCard(
+                        child: SizedBox.expand(
+                          child: CustomPaint(
+                            size: Size.infinite,
+                            painter: WaveformPainter(
+                              audioData: _currentAudioData,
+                              history: List.from(_audioHistory),
+                              color: Colors.white.withOpacity(0.8),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                  if (!_waterfallFocusMode) const SizedBox(height: 16),
 
                   // FFT Focus Card
-                  Expanded(
-                    flex: 3,
-                    child: _buildGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: SizedBox.expand(
-                              child: CustomPaint(
-                                size: Size.infinite,
-                                painter: FftBarChartPainter(
-                                  fftData: _currentFftData,
-                                  color: const Color(0xFF007AFF),
-                                  minFreq: _freqRange.start,
-                                  maxFreq: _freqRange.end,
-                                  sampleRate: 44100,
+                  if (!_waterfallFocusMode)
+                    Expanded(
+                      flex: 3,
+                      child: _buildGlassCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: SizedBox.expand(
+                                child: CustomPaint(
+                                  size: Size.infinite,
+                                  painter: FftBarChartPainter(
+                                    fftData: _currentFftData,
+                                    color: const Color(0xFF007AFF),
+                                    minFreq: _freqRange.start,
+                                    maxFreq: _freqRange.end,
+                                    sampleRate: 44100,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          _buildFrequencyFocusSlider(),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  if (!_waterfallFocusMode) const SizedBox(height: 16),
+
+                  // Frequency Focus Card (Always visible)
+                  _buildGlassCard(child: _buildFrequencyFocusSlider()),
                   const SizedBox(height: 16),
 
 
                   // Interaction Bar
-                  const SizedBox(height: 24),
-                  _buildInteractionBar(),
+                  if (!_waterfallFocusMode) const SizedBox(height: 24),
+                  if (!_waterfallFocusMode) _buildInteractionBar(),
                 ],
               ),
             ),
@@ -451,21 +459,29 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         const Spacer(),
         _buildHeaderAction(icon: Icons.tune_rounded, onPressed: () {}),
         const SizedBox(width: 12),
-        _buildHeaderAction(icon: widget.themeMode == ThemeMode.dark ? Icons.wb_sunny_outlined : Icons.nightlight_outlined, onPressed: widget.onToggleTheme),
+        _buildHeaderAction(
+          icon: _waterfallFocusMode ? Icons.layers : Icons.layers_outlined,
+          onPressed: () => setState(() => _waterfallFocusMode = !_waterfallFocusMode),
+        ),
       ],
     );
   }
 
   Widget _buildHeaderAction({required IconData icon, required VoidCallback onPressed}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: IconButton(
-        icon: Icon(icon, size: 20, color: Colors.white70),
-        onPressed: onPressed,
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: IconButton(
+            icon: Icon(icon, size: 20, color: Colors.white70),
+            onPressed: onPressed,
+          ),
+        ),
       ),
     );
   }
@@ -489,43 +505,84 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   Widget _buildFrequencyFocusSlider() {
-    String focusLabel = "FOCUS";
-    if (_detectedTone != null) {
+    final List<Widget> labelWidgets = [];
+    if (_detectedTone == null) {
+      labelWidgets.add(const Text(
+        "FOCUS",
+        style: TextStyle(
+            fontSize: 10,
+            letterSpacing: 2,
+            color: Colors.white24,
+            fontWeight: FontWeight.bold),
+      ));
+    } else {
       final t = _detectedTone!;
-      focusLabel = "${t.frequency.toStringAsFixed(1)}Hz • ${t.note}";
+      final freqStr = t.frequency >= 9999.5
+          ? "${(t.frequency / 1000).toStringAsFixed(1)}kHz"
+          : "${t.frequency.toStringAsFixed(0)}Hz";
+      labelWidgets.add(SizedBox(
+        width: 52,
+        child: Text(
+          freqStr,
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+              fontSize: 10,
+              letterSpacing: 1,
+              color: Colors.white24,
+              fontWeight: FontWeight.bold,
+              fontFeatures: [FontFeature.tabularFigures()]),
+        ),
+      ));
+      labelWidgets.add(const Text(" • ",
+          style: TextStyle(fontSize: 10, color: Colors.white10)));
+      labelWidgets.add(SizedBox(
+        width: 28,
+        child: Text(
+          t.note,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontSize: 10,
+              letterSpacing: 1,
+              color: Colors.white24,
+              fontWeight: FontWeight.bold),
+        ),
+      ));
       if (t.harmonics.isNotEmpty) {
-        focusLabel += " • H: ${t.harmonics.join(', ')}";
+        labelWidgets.add(const Text(" • ",
+            style: TextStyle(fontSize: 10, color: Colors.white10)));
+        labelWidgets.add(Text(
+          "H: ${t.harmonics.join(', ')}",
+          style: const TextStyle(
+              fontSize: 10,
+              letterSpacing: 2,
+              color: Colors.white24,
+              fontWeight: FontWeight.bold),
+        ));
       }
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(
-                focusLabel,
-                style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24, fontWeight: FontWeight.bold),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const Spacer(),
-              Text("${(_freqRange.start / 1000).toStringAsFixed(1)} - ${(_freqRange.end / 1000).toStringAsFixed(1)}kHz",
-                  style: const TextStyle(fontSize: 10, color: Colors.white38)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          RadioDialFocusSlider(
-            values: _freqRange,
-            min: 0,
-            max: 22050,
-            onChanged: (values) {
-              setState(() => _freqRange = values);
-            },
-          ),
-        ],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            ...labelWidgets,
+            const Spacer(),
+            Text(
+                "${(_freqRange.start / 1000).toStringAsFixed(1)} - ${(_freqRange.end / 1000).toStringAsFixed(1)}kHz",
+                style: const TextStyle(fontSize: 10, color: Colors.white38)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        RadioDialFocusSlider(
+          values: _freqRange,
+          min: 0,
+          max: 22050,
+          onChanged: (values) {
+            setState(() => _freqRange = values);
+          },
+        ),
+      ],
     );
   }
 
