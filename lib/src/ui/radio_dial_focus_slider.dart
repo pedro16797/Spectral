@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class RadioDialFocusSlider extends StatefulWidget {
   final RangeValues values;
@@ -52,20 +53,31 @@ class _RadioDialFocusSliderState extends State<RadioDialFocusSlider>
     double start = widget.values.start;
     double end = widget.values.end;
     const double minSpan = 500.0;
+    const int tickCount = 80;
+    final double tickThreshold = (widget.max - widget.min) / tickCount;
 
     switch (_interactionType) {
       case _InteractionType.move:
         double span = end - start;
         double newStart = (start + delta).clamp(widget.min, widget.max - span);
         double newEnd = newStart + span;
+        if ((start / tickThreshold).floor() != (newStart / tickThreshold).floor()) {
+          HapticFeedback.selectionClick();
+        }
         widget.onChanged(RangeValues(newStart, newEnd));
         break;
       case _InteractionType.resizeStart:
         double newStart = (start + delta).clamp(widget.min, end - minSpan);
+        if ((start / tickThreshold).floor() != (newStart / tickThreshold).floor()) {
+          HapticFeedback.selectionClick();
+        }
         widget.onChanged(RangeValues(newStart, end));
         break;
       case _InteractionType.resizeEnd:
         double newEnd = (end + delta).clamp(start + minSpan, widget.max);
+        if ((end / tickThreshold).floor() != (newEnd / tickThreshold).floor()) {
+          HapticFeedback.selectionClick();
+        }
         widget.onChanged(RangeValues(start, newEnd));
         break;
       case _InteractionType.none:
@@ -96,6 +108,7 @@ class _RadioDialFocusSliderState extends State<RadioDialFocusSlider>
       _interactionType = _InteractionType.none;
       return;
     }
+    HapticFeedback.selectionClick();
     _activeController.forward();
   }
 

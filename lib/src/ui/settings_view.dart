@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/settings_model.dart';
 import '../utils/localization_helper.dart';
 
@@ -27,6 +28,7 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   void _updateSettings(AppSettings newSettings) {
+    HapticFeedback.lightImpact();
     setState(() {
       _currentSettings = newSettings;
     });
@@ -41,7 +43,10 @@ class _SettingsViewState extends State<SettingsView> {
         children: [
           // Background Blur
           GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).pop();
+            },
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(color: Colors.black.withOpacity(0.4)),
@@ -147,7 +152,10 @@ class _SettingsViewState extends State<SettingsView> {
         const Spacer(),
         IconButton(
           icon: const Icon(Icons.close_rounded, color: Colors.white54),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).pop();
+          },
         ),
       ],
     );

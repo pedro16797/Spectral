@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'src/audio/audio_capture_service.dart';
 import 'src/core/fft_service.dart';
 import 'src/core/settings_model.dart';
@@ -295,6 +296,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   Future<void> _toggleCapture() async {
     try {
+      HapticFeedback.mediumImpact();
       if (_isCapturing) {
         if (_isDemoMode) {
           _demoTimer?.cancel();
@@ -502,6 +504,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         onVerticalDragUpdate: (details) {
           double delta = -details.delta.dy * 0.01;
           double newValue = (value + delta).clamp(0.1, 5.0);
+          if ((value * 10).floor() != (newValue * 10).floor()) {
+            HapticFeedback.selectionClick();
+          }
           if (isLeft) {
             setState(() => _gain = newValue);
           } else {
@@ -603,7 +608,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ),
           child: IconButton(
             icon: Icon(icon, size: 20, color: Colors.white70),
-            onPressed: onPressed,
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              onPressed();
+            },
           ),
         ),
       ),
@@ -789,7 +797,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return GestureDetector(
       key: Key('trigger_$label'),
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       onVerticalDragStart: (_) => onActive(true),
       onVerticalDragEnd: (_) => onActive(false),
       onVerticalDragCancel: () => onActive(false),
@@ -797,6 +808,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         // Simple vertical drag for adjustment
         double delta = -details.delta.dy * 0.01;
         double newValue = (value + delta).clamp(0.1, 5.0);
+        if ((value * 10).floor() != (newValue * 10).floor()) {
+          HapticFeedback.selectionClick();
+        }
         onChanged(newValue);
       },
       child: Column(
