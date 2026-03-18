@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spectral/main.dart';
+import 'package:spectral/src/core/settings_model.dart';
 import 'package:spectral/src/utils/localization_helper.dart';
 
 void main() {
@@ -13,7 +14,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
-    await tester.pumpWidget(const SpectralApp());
+    await tester.pumpWidget(const SpectralApp(initialSettings: AppSettings()));
     await tester.pumpAndSettle();
 
     final gainTriggerFinder = find.byKey(const Key('trigger_GAIN'));
