@@ -517,24 +517,30 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       ));
     } else {
       final t = _detectedTone!;
-      labelWidgets.add(Text(
-        "${t.frequency.toStringAsFixed(1)}Hz",
-        style: const TextStyle(
-            fontSize: 10,
-            letterSpacing: 2,
-            color: Colors.white24,
-            fontWeight: FontWeight.bold,
-            fontFeatures: [FontFeature.tabularFigures()]),
+      labelWidgets.add(SizedBox(
+        width: 70,
+        child: Text(
+          "${t.frequency.toStringAsFixed(1)}Hz",
+          style: const TextStyle(
+              fontSize: 10,
+              letterSpacing: 2,
+              color: Colors.white24,
+              fontWeight: FontWeight.bold,
+              fontFeatures: [FontFeature.tabularFigures()]),
+        ),
       ));
       labelWidgets.add(const Text(" • ",
           style: TextStyle(fontSize: 10, color: Colors.white10)));
-      labelWidgets.add(Text(
-        t.note,
-        style: const TextStyle(
-            fontSize: 10,
-            letterSpacing: 2,
-            color: Colors.white24,
-            fontWeight: FontWeight.bold),
+      labelWidgets.add(SizedBox(
+        width: 40,
+        child: Text(
+          t.note,
+          style: const TextStyle(
+              fontSize: 10,
+              letterSpacing: 2,
+              color: Colors.white24,
+              fontWeight: FontWeight.bold),
+        ),
       ));
       if (t.harmonics.isNotEmpty) {
         labelWidgets.add(const Text(" • ",
