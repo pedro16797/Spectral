@@ -517,10 +517,13 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       ));
     } else {
       final t = _detectedTone!;
+      final freqStr = t.frequency >= 9999.5
+          ? "${(t.frequency / 1000).toStringAsFixed(1)}kHz"
+          : "${t.frequency.toStringAsFixed(0)}Hz";
       labelWidgets.add(SizedBox(
-        width: 65,
+        width: 52,
         child: Text(
-          "${t.frequency.toStringAsFixed(0)}Hz",
+          freqStr,
           textAlign: TextAlign.right,
           style: const TextStyle(
               fontSize: 10,
@@ -530,10 +533,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               fontFeatures: [FontFeature.tabularFigures()]),
         ),
       ));
-      labelWidgets.add(const Text("  •  ",
+      labelWidgets.add(const Text(" • ",
           style: TextStyle(fontSize: 10, color: Colors.white10)));
       labelWidgets.add(SizedBox(
-        width: 35,
+        width: 28,
         child: Text(
           t.note,
           textAlign: TextAlign.center,
