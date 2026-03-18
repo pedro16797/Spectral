@@ -37,6 +37,9 @@ class _SettingsViewState extends State<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
+    final orientation = MediaQuery.of(context).orientation;
+    final isLandscape = orientation == Orientation.landscape;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
@@ -56,9 +59,13 @@ class _SettingsViewState extends State<SettingsView> {
           // Settings Card
           Center(
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.85,
+              width: isLandscape
+                  ? MediaQuery.of(context).size.width * 0.6
+                  : MediaQuery.of(context).size.width * 0.85,
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.75,
+                maxHeight: isLandscape
+                    ? MediaQuery.of(context).size.height * 0.9
+                    : MediaQuery.of(context).size.height * 0.75,
               ),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),

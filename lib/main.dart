@@ -423,71 +423,119 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Top Minimalist Header
-                  _buildMinimalHeader(),
-                  const SizedBox(height: 20),
+              child: OrientationBuilder(
+                builder: (context, orientation) {
+                  final isLandscape = orientation == Orientation.landscape;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Top Minimalist Header
+                      _buildMinimalHeader(),
+                      SizedBox(height: isLandscape ? 12 : 20),
 
-                  if (_waterfallFocusMode) const Spacer(),
+                      if (_waterfallFocusMode) const Spacer(),
 
-                  // Waveform Glass Card
-                  if (!_waterfallFocusMode)
-                    Expanded(
-                      flex: 2,
-                      child: _buildGlassCard(
-                        child: SizedBox.expand(
-                          child: CustomPaint(
-                            size: Size.infinite,
-                            painter: WaveformPainter(
-                              audioData: _currentAudioData,
-                              history: List.from(_audioHistory),
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (!_waterfallFocusMode) const SizedBox(height: 16),
-
-                  // FFT Focus Card
-                  if (!_waterfallFocusMode)
-                    Expanded(
-                      flex: 3,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: SizedBox.expand(
-                                child: CustomPaint(
-                                  size: Size.infinite,
-                                  painter: FftBarChartPainter(
-                                    fftData: _currentFftData,
-                                    color: accentColor,
-                                    minFreq: _freqRange.start,
-                                    maxFreq: _freqRange.end,
-                                    sampleRate: 44100,
-                                  ),
+                      // Visualizations
+                      if (!_waterfallFocusMode)
+                        Expanded(
+                          flex: 5,
+                          child: isLandscape
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: _buildGlassCard(
+                                        child: SizedBox.expand(
+                                          child: CustomPaint(
+                                            size: Size.infinite,
+                                            painter: WaveformPainter(
+                                              audioData: _currentAudioData,
+                                              history: List.from(_audioHistory),
+                                              color: Colors.white.withOpacity(0.8),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: _buildGlassCard(
+                                        child: SizedBox.expand(
+                                          child: CustomPaint(
+                                            size: Size.infinite,
+                                            painter: FftBarChartPainter(
+                                              fftData: _currentFftData,
+                                              color: accentColor,
+                                              minFreq: _freqRange.start,
+                                              maxFreq: _freqRange.end,
+                                              sampleRate: 44100,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: _buildGlassCard(
+                                        child: SizedBox.expand(
+                                          child: CustomPaint(
+                                            size: Size.infinite,
+                                            painter: WaveformPainter(
+                                              audioData: _currentAudioData,
+                                              history: List.from(_audioHistory),
+                                              color: Colors.white.withOpacity(0.8),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Expanded(
+                                      flex: 3,
+                                      child: _buildGlassCard(
+                                        child: SizedBox.expand(
+                                          child: CustomPaint(
+                                            size: Size.infinite,
+                                            painter: FftBarChartPainter(
+                                              fftData: _currentFftData,
+                                              color: accentColor,
+                                              minFreq: _freqRange.start,
+                                              maxFreq: _freqRange.end,
+                                              sampleRate: 44100,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ],
                         ),
-                      ),
-                    ),
-                  if (!_waterfallFocusMode) const SizedBox(height: 16),
+                      if (!_waterfallFocusMode) SizedBox(height: isLandscape ? 12 : 16),
 
-                  // Frequency Focus Card (Always visible)
-                  _buildGlassCard(child: _buildFrequencyFocusSlider()),
-                  const SizedBox(height: 16),
-
-
-                  // Interaction Bar
-                  if (!_waterfallFocusMode) const SizedBox(height: 24),
-                  if (!_waterfallFocusMode) _buildInteractionBar(),
-                ],
+                      // Frequency Focus Card & Interaction Bar
+                      if (isLandscape && !_waterfallFocusMode)
+                        Row(
+                          children: [
+                            Expanded(child: _buildGlassCard(child: _buildFrequencyFocusSlider())),
+                            const SizedBox(width: 16),
+                            _buildInteractionBar(),
+                          ],
+                        )
+                      else ...[
+                        _buildGlassCard(child: _buildFrequencyFocusSlider()),
+                        if (!_waterfallFocusMode) ...[
+                          const SizedBox(height: 16),
+                          _buildInteractionBar(),
+                        ],
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ),
