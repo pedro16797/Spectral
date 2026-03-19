@@ -20,11 +20,22 @@ class SettingsView extends StatefulWidget {
 
 class _SettingsViewState extends State<SettingsView> {
   late AppSettings _currentSettings;
+  late final TextEditingController _freqController;
+  late final TextEditingController _bwController;
 
   @override
   void initState() {
     super.initState();
     _currentSettings = widget.settings;
+    _freqController = TextEditingController(text: _currentSettings.centerFrequency.toString());
+    _bwController = TextEditingController(text: _currentSettings.rfBandwidth.toString());
+  }
+
+  @override
+  void dispose() {
+    _freqController.dispose();
+    _bwController.dispose();
+    super.dispose();
   }
 
   void _updateSettings(AppSettings newSettings) {
@@ -106,7 +117,7 @@ class _SettingsViewState extends State<SettingsView> {
                           const SizedBox(height: 16),
                           _buildTextField(
                             label: LocalizationHelper.get('settings.center_frequency'),
-                            value: _currentSettings.centerFrequency.toString(),
+                            controller: _freqController,
                             onChanged: (val) {
                               final double? freq = double.tryParse(val);
                               if (freq != null) _updateSettings(_currentSettings.copyWith(centerFrequency: freq));
@@ -115,7 +126,7 @@ class _SettingsViewState extends State<SettingsView> {
                           const SizedBox(height: 16),
                           _buildTextField(
                             label: LocalizationHelper.get('settings.rf_bandwidth'),
-                            value: _currentSettings.rfBandwidth.toString(),
+                            controller: _bwController,
                             onChanged: (val) {
                               final double? bw = double.tryParse(val);
                               if (bw != null) _updateSettings(_currentSettings.copyWith(rfBandwidth: bw));
@@ -315,7 +326,7 @@ class _SettingsViewState extends State<SettingsView> {
 
   Widget _buildTextField({
     required String label,
-    required String value,
+    required TextEditingController controller,
     required ValueChanged<String> onChanged,
   }) {
     return Column(
@@ -331,7 +342,7 @@ class _SettingsViewState extends State<SettingsView> {
             border: Border.all(color: Colors.white.withOpacity(0.05)),
           ),
           child: TextField(
-            controller: TextEditingController(text: value)..selection = TextSelection.fromPosition(TextPosition(offset: value.length)),
+            controller: controller,
             style: const TextStyle(color: Colors.white, fontSize: 14),
             decoration: const InputDecoration(border: InputBorder.none),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),

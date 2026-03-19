@@ -235,6 +235,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   void initState() {
     super.initState();
     _isDemoMode = Uri.base.queryParameters['demo'] == 'true';
+
+    // Initial dummy source to avoid late initialization error
+    _signalSource = AudioCaptureService();
     _initializeSignalSource();
 
     _pulseController = AnimationController(
@@ -243,13 +246,22 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  void _initializeSignalSource() {
+  Future<void> _initializeSignalSource({AppSettings? newSettings}) async {
+    final currentSettings = newSettings ?? widget.settings;
+    final bool wasCapturing = _isCapturing;
+
+    // Gracefully stop and dispose of the current source
+    if (wasCapturing) {
+      await _signalSource.stopCapture();
+    }
     _signalSubscription?.cancel();
-    if (widget.settings.signalSource == SignalSourceType.rf) {
+    _signalSource.dispose();
+
+    if (currentSettings.signalSource == SignalSourceType.rf) {
       _signalSource = RfCaptureService();
       _freqRange = RangeValues(
-        (widget.settings.centerFrequency - widget.settings.rfBandwidth / 2) * 1e6,
-        (widget.settings.centerFrequency + widget.settings.rfBandwidth / 2) * 1e6,
+        (currentSettings.centerFrequency - currentSettings.rfBandwidth / 2) * 1e6,
+        (currentSettings.centerFrequency + currentSettings.rfBandwidth / 2) * 1e6,
       );
     } else {
       _signalSource = AudioCaptureService();
@@ -271,6 +283,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         });
       }
     });
+
+    if (wasCapturing) {
+      // Re-start capture if it was active
+      final hasPermission = await _signalSource.checkPermission();
+      if (hasPermission) {
+        await _signalSource.startCapture();
+      } else {
+        setState(() {
+          _isCapturing = false;
+          _pulseController.stop();
+        });
+      }
+    }
   }
 
   void _updateAudioData(Float64List rawData) {
@@ -397,7 +422,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             if (oldSource != newSettings.signalSource ||
                 oldFreq != newSettings.centerFrequency ||
                 oldBw != newSettings.rfBandwidth) {
-              _initializeSignalSource();
+              _initializeSignalSource(newSettings: newSettings);
             }
           },
         ),
