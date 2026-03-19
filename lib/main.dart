@@ -5,6 +5,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'src/audio/audio_capture_service.dart';
+import 'src/rf/rf_capture_service.dart';
+import 'src/core/signal_source.dart';
 import 'src/core/fft_service.dart';
 import 'src/core/settings_model.dart';
 import 'src/ui/waveform_painter.dart';
@@ -204,9 +206,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   static const double _kLargeDialSizeScale = 0.7;
   static const double _kLargeDialOffsetScale = 0.8;
 
-  final AudioCaptureService _audioService = AudioCaptureService();
+  late SignalSource _signalSource;
   final FftService _fftService = FftService();
-  StreamSubscription<Float64List>? _audioSubscription;
+  StreamSubscription<Float64List>? _signalSubscription;
   Float64List _currentAudioData = Float64List(0);
   final List<Float64List> _audioHistory = [];
   List<double> _currentFftData = [];
@@ -233,7 +235,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   void initState() {
     super.initState();
     _isDemoMode = Uri.base.queryParameters['demo'] == 'true';
-    _setupAudio();
+
+    // Initial dummy source to avoid late initialization error
+    _signalSource = AudioCaptureService();
+    _initializeSignalSource();
 
     _pulseController = AnimationController(
       vsync: this,
@@ -241,21 +246,56 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  void _setupAudio() {
-    _audioSubscription = _audioService.audioDataStream.listen((data) {
+  Future<void> _initializeSignalSource({AppSettings? newSettings}) async {
+    final currentSettings = newSettings ?? widget.settings;
+    final bool wasCapturing = _isCapturing;
+
+    // Gracefully stop and dispose of the current source
+    if (wasCapturing) {
+      await _signalSource.stopCapture();
+    }
+    _signalSubscription?.cancel();
+    _signalSource.dispose();
+
+    if (currentSettings.signalSource == SignalSourceType.rf) {
+      _signalSource = RfCaptureService();
+      _freqRange = RangeValues(
+        (currentSettings.centerFrequency - currentSettings.rfBandwidth / 2) * 1e6,
+        (currentSettings.centerFrequency + currentSettings.rfBandwidth / 2) * 1e6,
+      );
+    } else {
+      _signalSource = AudioCaptureService();
+      _freqRange = const RangeValues(0, 22050);
+    }
+
+    _signalSubscription = _signalSource.dataStream.listen((data) {
       if (mounted) {
         setState(() {
           _updateAudioData(data);
 
-          final fft = _fftService.processAudioData(
+          final fft = _fftService.processSignalData(
             data,
             windowSize: widget.settings.fftWindowSize,
             windowType: widget.settings.fftWindowType,
+            isComplex: _signalSource.isComplex,
           );
           _processFftFrame(fft);
         });
       }
     });
+
+    if (wasCapturing) {
+      // Re-start capture if it was active
+      final hasPermission = await _signalSource.checkPermission();
+      if (hasPermission) {
+        await _signalSource.startCapture();
+      } else {
+        setState(() {
+          _isCapturing = false;
+          _pulseController.stop();
+        });
+      }
+    }
   }
 
   void _updateAudioData(Float64List rawData) {
@@ -285,7 +325,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     }
 
     _currentFftData = adjustedFft;
-    _detectedTone = _fftService.detectPrimaryTone(adjustedFft, 44100);
+    _detectedTone = _signalSource.isComplex ? null : _fftService.detectPrimaryTone(adjustedFft, _signalSource.sampleRate);
     if (adjustedFft.isNotEmpty) {
       _fftHistory.insert(0, adjustedFft);
       if (_fftHistory.length > _maxHistory) {
@@ -315,10 +355,11 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         setState(() {
           _updateAudioData(samples);
 
-          final fft = _fftService.processAudioData(
+          final fft = _fftService.processSignalData(
             samples,
             windowSize: widget.settings.fftWindowSize,
             windowType: widget.settings.fftWindowType,
+            isComplex: false,
           );
           _processFftFrame(fft);
         });
@@ -334,7 +375,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           _demoTimer?.cancel();
           _demoTimer = null;
         } else {
-          await _audioService.stopCapture();
+          await _signalSource.stopCapture();
         }
         _pulseController.stop();
         setState(() {
@@ -350,9 +391,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           _pulseController.repeat(reverse: true);
           setState(() => _isCapturing = true);
         } else {
-          final hasPermission = await _audioService.checkPermission();
+          final hasPermission = await _signalSource.checkPermission();
           if (hasPermission) {
-            await _audioService.startCapture();
+            await _signalSource.startCapture();
             _pulseController.repeat(reverse: true);
             setState(() => _isCapturing = true);
           }
@@ -371,7 +412,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         barrierLabel: "Settings",
         pageBuilder: (context, _, __) => SettingsView(
           settings: widget.settings,
-          onSettingsChanged: widget.onSettingsChanged,
+          onSettingsChanged: (newSettings) {
+            final oldSource = widget.settings.signalSource;
+            final oldFreq = widget.settings.centerFrequency;
+            final oldBw = widget.settings.rfBandwidth;
+
+            widget.onSettingsChanged(newSettings);
+
+            if (oldSource != newSettings.signalSource ||
+                oldFreq != newSettings.centerFrequency ||
+                oldBw != newSettings.rfBandwidth) {
+              _initializeSignalSource(newSettings: newSettings);
+            }
+          },
         ),
       );
     } catch (e) {
@@ -381,10 +434,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   @override
   void dispose() {
-    _audioSubscription?.cancel();
+    _signalSubscription?.cancel();
     _demoTimer?.cancel();
     _pulseController.dispose();
-    _audioService.dispose();
+    _signalSource.dispose();
     super.dispose();
   }
 
@@ -418,7 +471,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                   fftHistory: List.from(_fftHistory),
                   minFreq: _freqRange.start,
                   maxFreq: _freqRange.end,
-                  sampleRate: 44100,
+                  sampleRate: _signalSource.sampleRate,
                   theme: widget.settings.theme,
                   frequencySkew: widget.settings.frequencySkew,
                 ),
@@ -496,7 +549,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                               color: accentColor,
                                               minFreq: _freqRange.start,
                                               maxFreq: _freqRange.end,
-                                              sampleRate: 44100,
+                                              sampleRate: _signalSource.sampleRate,
                                               frequencySkew: widget.settings.frequencySkew,
                                             ),
                                           ),
@@ -535,7 +588,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                               color: accentColor,
                                               minFreq: _freqRange.start,
                                               maxFreq: _freqRange.end,
-                                              sampleRate: 44100,
+                                              sampleRate: _signalSource.sampleRate,
                                               frequencySkew: widget.settings.frequencySkew,
                                             ),
                                           ),
@@ -808,6 +861,13 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       }
     }
 
+    String rangeText;
+    if (widget.settings.signalSource == SignalSourceType.rf) {
+      rangeText = "${(widget.settings.centerFrequency - widget.settings.rfBandwidth / 2).toStringAsFixed(3)} - ${(widget.settings.centerFrequency + widget.settings.rfBandwidth / 2).toStringAsFixed(3)} MHz";
+    } else {
+      rangeText = "${(_freqRange.start / 1000).toStringAsFixed(1)} - ${(_freqRange.end / 1000).toStringAsFixed(1)}kHz";
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -816,15 +876,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             ...labelWidgets,
             const Spacer(),
             Text(
-                "${(_freqRange.start / 1000).toStringAsFixed(1)} - ${(_freqRange.end / 1000).toStringAsFixed(1)}kHz",
+                rangeText,
                 style: const TextStyle(fontSize: 10, color: Colors.white38)),
           ],
         ),
         const SizedBox(height: 8),
         RadioDialFocusSlider(
           values: _freqRange,
-          min: 0,
-          max: 22050,
+          min: widget.settings.signalSource == SignalSourceType.rf
+              ? (widget.settings.centerFrequency - widget.settings.rfBandwidth / 2) * 1e6
+              : 0,
+          max: widget.settings.signalSource == SignalSourceType.rf
+              ? (widget.settings.centerFrequency + widget.settings.rfBandwidth / 2) * 1e6
+              : 22050,
           onChanged: (values) {
             setState(() => _freqRange = values);
           },

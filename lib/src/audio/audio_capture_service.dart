@@ -3,14 +3,26 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
 import '../utils/audio_utils.dart';
+import '../core/signal_source.dart';
 
-class AudioCaptureService {
+class AudioCaptureService implements SignalSource {
   final AudioRecorder _audioRecorder = AudioRecorder();
   StreamSubscription<Uint8List>? _audioStreamSubscription;
   final _audioDataController = StreamController<Float64List>.broadcast();
 
-  Stream<Float64List> get audioDataStream => _audioDataController.stream;
+  @override
+  Stream<Float64List> get dataStream => _audioDataController.stream;
 
+  // Added for backward compatibility (optional, but good practice if other files use it)
+  Stream<Float64List> get audioDataStream => dataStream;
+
+  @override
+  int get sampleRate => 44100;
+
+  @override
+  bool get isComplex => false;
+
+  @override
   Future<bool> checkPermission() async {
     try {
       return await _audioRecorder.hasPermission();
@@ -19,14 +31,15 @@ class AudioCaptureService {
     }
   }
 
+  @override
   Future<void> startCapture() async {
     try {
       if (await _audioRecorder.isRecording()) return;
 
       if (await _audioRecorder.hasPermission()) {
-        const config = RecordConfig(
+        final config = RecordConfig(
           encoder: AudioEncoder.pcm16bits,
-          sampleRate: 44100,
+          sampleRate: sampleRate,
           numChannels: 1,
         );
 
@@ -47,6 +60,7 @@ class AudioCaptureService {
     }
   }
 
+  @override
   Future<void> stopCapture() async {
     try {
       await _audioStreamSubscription?.cancel();
@@ -59,6 +73,7 @@ class AudioCaptureService {
     }
   }
 
+  @override
   void dispose() {
     _audioDataController.close();
     _audioRecorder.dispose();

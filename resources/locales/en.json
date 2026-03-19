@@ -20,6 +20,9 @@
     "mode": "Mode",
     "gain": "Gain",
     "sensitivity": "Sensitivity",
+    "signal_source": "Signal Source",
+    "center_frequency": "Center Frequency (MHz)",
+    "rf_bandwidth": "RF Bandwidth (MHz)",
     "technical": "Technical Parameters",
     "fft_window_size": "FFT Window Size",
     "fft_window_type": "FFT Window Type",
@@ -37,6 +40,10 @@
       "hamming": "Hamming",
       "blackman": "Blackman",
       "bartlett": "Bartlett"
+    },
+    "signal_sources": {
+      "audio": "Internal Microphone",
+      "rf": "SDR (RF Support)"
     }
   },
   "common": {

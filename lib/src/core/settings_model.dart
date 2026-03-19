@@ -6,6 +6,11 @@ enum AppTheme {
   rainbow,
 }
 
+enum SignalSourceType {
+  audio,
+  rf,
+}
+
 enum FftWindowType {
   hanning,
   hamming,
@@ -15,6 +20,9 @@ enum FftWindowType {
 
 class AppSettings {
   final AppTheme theme;
+  final SignalSourceType signalSource;
+  final double centerFrequency; // MHz
+  final double rfBandwidth; // MHz
   final int fftWindowSize;
   final FftWindowType fftWindowType;
   final String language;
@@ -23,6 +31,9 @@ class AppSettings {
 
   const AppSettings({
     this.theme = AppTheme.frost,
+    this.signalSource = SignalSourceType.audio,
+    this.centerFrequency = 100.0, // Default to 100 MHz (FM band center-ish)
+    this.rfBandwidth = 2.0, // Default to 2 MHz
     this.fftWindowSize = 1024,
     this.fftWindowType = FftWindowType.hanning,
     this.language = 'en',
@@ -32,6 +43,9 @@ class AppSettings {
 
   AppSettings copyWith({
     AppTheme? theme,
+    SignalSourceType? signalSource,
+    double? centerFrequency,
+    double? rfBandwidth,
     int? fftWindowSize,
     FftWindowType? fftWindowType,
     String? language,
@@ -40,6 +54,9 @@ class AppSettings {
   }) {
     return AppSettings(
       theme: theme ?? this.theme,
+      signalSource: signalSource ?? this.signalSource,
+      centerFrequency: centerFrequency ?? this.centerFrequency,
+      rfBandwidth: rfBandwidth ?? this.rfBandwidth,
       fftWindowSize: fftWindowSize ?? this.fftWindowSize,
       fftWindowType: fftWindowType ?? this.fftWindowType,
       language: language ?? this.language,
@@ -51,6 +68,9 @@ class AppSettings {
   Map<String, dynamic> toMap() {
     return {
       'theme': theme.name,
+      'signalSource': signalSource.name,
+      'centerFrequency': centerFrequency,
+      'rfBandwidth': rfBandwidth,
       'fftWindowSize': fftWindowSize,
       'fftWindowType': fftWindowType.name,
       'language': language,
@@ -65,6 +85,12 @@ class AppSettings {
         (e) => e.name == map['theme'],
         orElse: () => AppTheme.frost,
       ),
+      signalSource: SignalSourceType.values.firstWhere(
+        (e) => e.name == (map['signalSource'] ?? 'audio'),
+        orElse: () => SignalSourceType.audio,
+      ),
+      centerFrequency: (map['centerFrequency'] ?? 100.0).toDouble(),
+      rfBandwidth: (map['rfBandwidth'] ?? 2.0).toDouble(),
       fftWindowSize: map['fftWindowSize'] ?? 1024,
       fftWindowType: FftWindowType.values.firstWhere(
         (e) => e.name == map['fftWindowType'],
