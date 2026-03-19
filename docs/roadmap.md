@@ -37,8 +37,11 @@ The goal of the MVP is to provide a functional and performant audio spectral vis
 - [x] **Slick HUD Refinement:** Transitioned to an integrated HUD layout with the Waterfall visualization moved to the background layer with scanline overlays.
 - [x] **Interactive Edge Dials:** Implemented large, semi-circular dials for Gain and Sensitivity that appear on the screen edges during interaction.
 
-## Phase 4: Future Upgrades
-- [ ] **RF Support:** Integration with SDR (Software Defined Radio) for RF spectrum visualization.
+## Phase 4: RF Support & Advanced Analysis
+- [x] **Signal Source Abstraction:** Refactored core architecture to support interchangeable providers (Audio, RF).
+- [x] **Complex FFT Engine:** Enhanced DSP pipeline to handle I/Q data with spectral shifting.
+- [x] **RF Infrastructure:** Added RF-specific parameters (Center Frequency, Bandwidth) and mock simulation.
+- [ ] **SDR Hardware Integration:** USB OTG support for RTL-SDR and other hardware.
 - [ ] **Advanced Tools:** Markers, peak detection, harmonic analysis.
 - [ ] **Expanded Themes:** More color palettes and customizable UI elements.
 - [ ] **iOS Port:** Ensuring compatibility and optimizing for the iOS ecosystem.

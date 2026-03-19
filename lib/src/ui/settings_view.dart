@@ -91,6 +91,39 @@ class _SettingsViewState extends State<SettingsView> {
                         _buildHeader(context),
                         const SizedBox(height: 32),
 
+                        _buildSectionTitle(LocalizationHelper.get('settings.mode')),
+                        const SizedBox(height: 12),
+                        _buildDropdown<SignalSourceType>(
+                          label: LocalizationHelper.get('settings.signal_source'),
+                          value: _currentSettings.signalSource,
+                          items: SignalSourceType.values,
+                          itemLabel: (type) => LocalizationHelper.get('settings.signal_sources.${type.name}'),
+                          onChanged: (val) {
+                            if (val != null) _updateSettings(_currentSettings.copyWith(signalSource: val));
+                          },
+                        ),
+                        if (_currentSettings.signalSource == SignalSourceType.rf) ...[
+                          const SizedBox(height: 16),
+                          _buildTextField(
+                            label: LocalizationHelper.get('settings.center_frequency'),
+                            value: _currentSettings.centerFrequency.toString(),
+                            onChanged: (val) {
+                              final double? freq = double.tryParse(val);
+                              if (freq != null) _updateSettings(_currentSettings.copyWith(centerFrequency: freq));
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _buildTextField(
+                            label: LocalizationHelper.get('settings.rf_bandwidth'),
+                            value: _currentSettings.rfBandwidth.toString(),
+                            onChanged: (val) {
+                              final double? bw = double.tryParse(val);
+                              if (bw != null) _updateSettings(_currentSettings.copyWith(rfBandwidth: bw));
+                            },
+                          ),
+                        ],
+
+                        const SizedBox(height: 32),
                         _buildSectionTitle(LocalizationHelper.get('settings.theme')),
                         const SizedBox(height: 12),
                         _buildThemeSelector(),
@@ -274,6 +307,35 @@ class _SettingsViewState extends State<SettingsView> {
               icon: const Icon(Icons.expand_more_rounded, color: Colors.white54),
               isExpanded: true,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField({
+    required String label,
+    required String value,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: TextField(
+            controller: TextEditingController(text: value)..selection = TextSelection.fromPosition(TextPosition(offset: value.length)),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: const InputDecoration(border: InputBorder.none),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onSubmitted: onChanged,
           ),
         ),
       ],

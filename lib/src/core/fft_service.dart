@@ -25,30 +25,29 @@ class FftService {
   // Internal buffer for accumulating samples to match window size
   final List<double> _buffer = [];
 
-  /// Processes normalized audio samples and returns the FFT magnitudes.
-  /// It maintains an internal buffer to ensure it processes chunks of [windowSize].
-  List<double> processAudioData(Float64List samples, {int windowSize = 1024, FftWindowType windowType = FftWindowType.hanning}) {
+  /// Processes signal samples and returns the FFT magnitudes.
+  /// [samples] can be real or interleaved complex [I, Q, I, Q, ...].
+  /// If [isComplex] is true, [windowSize] refers to the number of I/Q pairs.
+  List<double> processSignalData(Float64List samples, {int windowSize = 1024, FftWindowType windowType = FftWindowType.hanning, bool isComplex = false}) {
     if (samples.isEmpty) return [];
 
     // Add new samples to buffer
     _buffer.addAll(samples);
 
-    // If we have more than windowSize, we keep only the latest windowSize samples
-    // for a simple real-time display. For a true STFT we might want overlap,
-    // but here we'll just take the most recent chunk if it's large enough.
-    if (_buffer.length < windowSize) {
+    final requiredSamples = isComplex ? windowSize * 2 : windowSize;
+
+    if (_buffer.length < requiredSamples) {
       return [];
     }
 
-    // Extract the latest windowSize samples
+    // Extract the latest chunk
     final processingSamples = Float64List.fromList(
-      _buffer.sublist(_buffer.length - windowSize)
+      _buffer.sublist(_buffer.length - requiredSamples)
     );
 
-    // Clear buffer to avoid indefinite growth, keeping some for overlap if needed in future
-    // For now, let's just keep the last windowSize to allow smooth transitions if windowSize changes
-    if (_buffer.length > windowSize * 2) {
-      _buffer.removeRange(0, _buffer.length - windowSize);
+    // Clear buffer to avoid indefinite growth
+    if (_buffer.length > requiredSamples * 2) {
+      _buffer.removeRange(0, _buffer.length - requiredSamples);
     }
 
     // Cache FFT instance if the size hasn't changed.
@@ -78,17 +77,46 @@ class FftService {
     }
 
     try {
-      final windowedSamples = Float64List(windowSize);
-      for (int i = 0; i < windowSize; i++) {
-        windowedSamples[i] = processingSamples[i] * _cachedWindow![i];
-      }
+      if (isComplex) {
+        // Complex FFT (I/Q data)
+        final windowedComplexSamples = Float64x2List(windowSize);
+        for (int i = 0; i < windowSize; i++) {
+          final iVal = processingSamples[i * 2] * _cachedWindow![i];
+          final qVal = processingSamples[i * 2 + 1] * _cachedWindow![i];
+          windowedComplexSamples[i] = Float64x2(iVal, qVal);
+        }
 
-      final freq = _cachedFft!.realFft(windowedSamples);
-      return freq.discardConjugates().magnitudes();
+        _cachedFft!.inPlaceFft(windowedComplexSamples);
+        final freq = windowedComplexSamples;
+
+        // For complex FFT, we don't discard conjugates as the spectrum is asymmetrical.
+        // We shift it so that DC is in the center.
+        final magnitudes = freq.magnitudes();
+        final shifted = List<double>.filled(windowSize, 0);
+        final half = windowSize ~/ 2;
+        for (int i = 0; i < windowSize; i++) {
+          shifted[(i + half) % windowSize] = magnitudes[i];
+        }
+        return shifted;
+      } else {
+        // Real FFT
+        final windowedSamples = Float64List(windowSize);
+        for (int i = 0; i < windowSize; i++) {
+          windowedSamples[i] = processingSamples[i] * _cachedWindow![i];
+        }
+
+        final freq = _cachedFft!.realFft(windowedSamples);
+        return freq.discardConjugates().magnitudes();
+      }
     } catch (e) {
       debugPrint("FFT processing error: $e");
       return [];
     }
+  }
+
+  /// Backward compatibility for existing audio processing.
+  List<double> processAudioData(Float64List samples, {int windowSize = 1024, FftWindowType windowType = FftWindowType.hanning}) {
+    return processSignalData(samples, windowSize: windowSize, windowType: windowType, isComplex: false);
   }
 
   /// Detects the primary tone and its harmonics.
