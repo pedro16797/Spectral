@@ -202,8 +202,8 @@ class _SettingsViewState extends State<SettingsView> {
 
   Widget _buildThemeSelector() {
     return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+      spacing: 8,
+      runSpacing: 8,
       children: AppTheme.values.map((t) {
         final isSelected = _currentSettings.theme == t;
         final themeLabel = LocalizationHelper.get('settings.themes.${t.name}');
@@ -215,7 +215,7 @@ class _SettingsViewState extends State<SettingsView> {
             onTap: () => _updateSettings(_currentSettings.copyWith(theme: t)),
             child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
