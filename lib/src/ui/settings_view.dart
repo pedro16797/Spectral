@@ -116,6 +116,22 @@ class _SettingsViewState extends State<SettingsView> {
                             if (val != null) _updateSettings(_currentSettings.copyWith(fftWindowType: val));
                           },
                         ),
+                        const SizedBox(height: 16),
+                        _buildSlider(
+                          label: LocalizationHelper.get('settings.frequency_skew'),
+                          value: _currentSettings.frequencySkew,
+                          min: 0.2,
+                          max: 3.0,
+                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(frequencySkew: val)),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSlider(
+                          label: LocalizationHelper.get('settings.fft_smoothing'),
+                          value: _currentSettings.fftSmoothing,
+                          min: 0.0,
+                          max: 0.95,
+                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(fftSmoothing: val)),
+                        ),
 
                         const SizedBox(height: 32),
                         _buildSectionTitle(LocalizationHelper.get('settings.language')),
@@ -157,12 +173,16 @@ class _SettingsViewState extends State<SettingsView> {
           ),
         ),
         const Spacer(),
-        IconButton(
-          icon: const Icon(Icons.close_rounded, color: Colors.white54),
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            Navigator.of(context).pop();
-          },
+        Semantics(
+          label: "Close Settings",
+          button: true,
+          child: IconButton(
+            icon: const Icon(Icons.close_rounded, color: Colors.white54),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).pop();
+            },
+          ),
         ),
       ],
     );
@@ -182,15 +202,20 @@ class _SettingsViewState extends State<SettingsView> {
 
   Widget _buildThemeSelector() {
     return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+      spacing: 8,
+      runSpacing: 8,
       children: AppTheme.values.map((t) {
         final isSelected = _currentSettings.theme == t;
-        return GestureDetector(
-          onTap: () => _updateSettings(_currentSettings.copyWith(theme: t)),
-          child: AnimatedContainer(
+        final themeLabel = LocalizationHelper.get('settings.themes.${t.name}');
+        return Semantics(
+          label: themeLabel,
+          button: true,
+          selected: isSelected,
+          child: GestureDetector(
+            onTap: () => _updateSettings(_currentSettings.copyWith(theme: t)),
+            child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
@@ -198,12 +223,13 @@ class _SettingsViewState extends State<SettingsView> {
                 color: isSelected ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.05),
               ),
             ),
-            child: Text(
-              LocalizationHelper.get('settings.themes.${t.name}'),
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white54,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              child: Text(
+                themeLabel,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white54,
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
           ),
@@ -249,6 +275,40 @@ class _SettingsViewState extends State<SettingsView> {
               isExpanded: true,
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            Text(value.toStringAsFixed(2), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        Slider(
+          value: value,
+          min: min,
+          max: max,
+          onChanged: (val) {
+            if ((val * 10).floor() != (value * 10).floor()) {
+              HapticFeedback.selectionClick();
+            }
+            onChanged(val);
+          },
+          activeColor: Theme.of(context).colorScheme.secondary,
+          inactiveColor: Colors.white.withOpacity(0.05),
         ),
       ],
     );

@@ -23,16 +23,20 @@
     "technical": "Technical Parameters",
     "fft_window_size": "FFT Window Size",
     "fft_window_type": "FFT Window Type",
+    "frequency_skew": "Frequency Skew",
+    "fft_smoothing": "FFT Smoothing",
     "themes": {
-      "liquidBlue": "Liquid Blue",
-      "inferno": "Inferno",
-      "monochrome": "Monochrome",
-      "emerald": "Emerald"
+      "frost": "Frost",
+      "magma": "Magma",
+      "gray": "Gray",
+      "emerald": "Emerald",
+      "rainbow": "Rainbow"
     },
     "window_types": {
       "hanning": "Hanning",
       "hamming": "Hamming",
-      "blackman": "Blackman"
+      "blackman": "Blackman",
+      "bartlett": "Bartlett"
     }
   },
   "common": {

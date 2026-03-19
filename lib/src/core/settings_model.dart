@@ -1,14 +1,16 @@
 enum AppTheme {
-  liquidBlue,
-  inferno,
-  monochrome,
+  frost,
+  magma,
+  gray,
   emerald,
+  rainbow,
 }
 
 enum FftWindowType {
   hanning,
   hamming,
   blackman,
+  bartlett,
 }
 
 class AppSettings {
@@ -16,12 +18,16 @@ class AppSettings {
   final int fftWindowSize;
   final FftWindowType fftWindowType;
   final String language;
+  final double frequencySkew;
+  final double fftSmoothing;
 
   const AppSettings({
-    this.theme = AppTheme.liquidBlue,
+    this.theme = AppTheme.frost,
     this.fftWindowSize = 1024,
     this.fftWindowType = FftWindowType.hanning,
     this.language = 'en',
+    this.frequencySkew = 1.0,
+    this.fftSmoothing = 0.0,
   });
 
   AppSettings copyWith({
@@ -29,12 +35,16 @@ class AppSettings {
     int? fftWindowSize,
     FftWindowType? fftWindowType,
     String? language,
+    double? frequencySkew,
+    double? fftSmoothing,
   }) {
     return AppSettings(
       theme: theme ?? this.theme,
       fftWindowSize: fftWindowSize ?? this.fftWindowSize,
       fftWindowType: fftWindowType ?? this.fftWindowType,
       language: language ?? this.language,
+      frequencySkew: frequencySkew ?? this.frequencySkew,
+      fftSmoothing: fftSmoothing ?? this.fftSmoothing,
     );
   }
 
@@ -44,6 +54,8 @@ class AppSettings {
       'fftWindowSize': fftWindowSize,
       'fftWindowType': fftWindowType.name,
       'language': language,
+      'frequencySkew': frequencySkew,
+      'fftSmoothing': fftSmoothing,
     };
   }
 
@@ -51,7 +63,7 @@ class AppSettings {
     return AppSettings(
       theme: AppTheme.values.firstWhere(
         (e) => e.name == map['theme'],
-        orElse: () => AppTheme.liquidBlue,
+        orElse: () => AppTheme.frost,
       ),
       fftWindowSize: map['fftWindowSize'] ?? 1024,
       fftWindowType: FftWindowType.values.firstWhere(
@@ -59,6 +71,8 @@ class AppSettings {
         orElse: () => FftWindowType.hanning,
       ),
       language: map['language'] ?? 'en',
+      frequencySkew: (map['frequencySkew'] ?? 1.0).toDouble(),
+      fftSmoothing: (map['fftSmoothing'] ?? 0.0).toDouble(),
     );
   }
 }
