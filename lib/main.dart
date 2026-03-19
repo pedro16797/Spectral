@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'src/audio/audio_capture_service.dart';
 import 'src/rf/rf_capture_service.dart';
+import 'src/rf/rtl_tcp_capture_service.dart';
 import 'src/core/signal_source.dart';
 import 'src/core/fft_service.dart';
 import 'src/core/settings_model.dart';
@@ -258,7 +259,18 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     _signalSource.dispose();
 
     if (currentSettings.signalSource == SignalSourceType.rf) {
-      _signalSource = RfCaptureService();
+      if (currentSettings.rfSource == RfSourceType.rtlTcp) {
+        _signalSource = RtlTcpCaptureService(
+          host: currentSettings.rtlTcpHost,
+          port: currentSettings.rtlTcpPort,
+          frequency: (currentSettings.centerFrequency * 1e6).toInt(),
+        );
+      } else {
+        _signalSource = RfCaptureService(
+          centerFrequency: currentSettings.centerFrequency * 1e6,
+          bandwidth: currentSettings.rfBandwidth * 1e6,
+        );
+      }
       _freqRange = RangeValues(
         (currentSettings.centerFrequency - currentSettings.rfBandwidth / 2) * 1e6,
         (currentSettings.centerFrequency + currentSettings.rfBandwidth / 2) * 1e6,
@@ -421,7 +433,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
             if (oldSource != newSettings.signalSource ||
                 oldFreq != newSettings.centerFrequency ||
-                oldBw != newSettings.rfBandwidth) {
+                oldBw != newSettings.rfBandwidth ||
+                widget.settings.rfSource != newSettings.rfSource ||
+                widget.settings.rtlTcpHost != newSettings.rtlTcpHost ||
+                widget.settings.rtlTcpPort != newSettings.rtlTcpPort) {
               _initializeSignalSource(newSettings: newSettings);
             }
           },

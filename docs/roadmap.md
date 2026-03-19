@@ -15,9 +15,9 @@ The focus of this sprint is to transition Spectral from a pure audio visualizer 
 - [x] **Subtask 2.2: Extended Settings:** Add Center Frequency and Bandwidth controls.
 
 ### Task 3: Device & Hardware Investigation
-- [ ] **Subtask 3.1: Internal Antenna Access:** Investigate Android/iOS APIs for raw RF access (likely restricted).
+- [x] **Subtask 3.1: Internal Antenna Access:** Investigate Android/iOS APIs for raw RF access (likely restricted). [See Findings](rf_hardware_investigation.md)
 - [ ] **Subtask 3.2: External SDR Bindings:** Prototype USB OTG communication for RTL-SDR hardware.
-- [ ] **Subtask 3.3: Headphone Antenna Support:** Explore FM chip integration via system APIs for headphone-wire antennas.
+- [x] **Subtask 3.3: Headphone Antenna Support:** Explore FM chip integration via system APIs for headphone-wire antennas. [See Findings](rf_hardware_investigation.md)
 
 ## Phase 1: Project Setup & Foundation
 - [x] Initialize project structure.
