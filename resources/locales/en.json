@@ -26,9 +26,9 @@
     "frequency_skew": "Frequency Skew",
     "fft_smoothing": "FFT Smoothing",
     "themes": {
-      "liquidBlue": "Liquid Blue",
-      "inferno": "Inferno",
-      "monochrome": "Monochrome",
+      "frost": "Frost",
+      "magma": "Magma",
+      "gray": "Gray",
       "emerald": "Emerald",
       "rainbow": "Rainbow"
     },

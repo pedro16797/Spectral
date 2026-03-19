@@ -1,7 +1,7 @@
 enum AppTheme {
-  liquidBlue,
-  inferno,
-  monochrome,
+  frost,
+  magma,
+  gray,
   emerald,
   rainbow,
 }
@@ -22,7 +22,7 @@ class AppSettings {
   final double fftSmoothing;
 
   const AppSettings({
-    this.theme = AppTheme.liquidBlue,
+    this.theme = AppTheme.frost,
     this.fftWindowSize = 1024,
     this.fftWindowType = FftWindowType.hanning,
     this.language = 'en',
@@ -63,7 +63,7 @@ class AppSettings {
     return AppSettings(
       theme: AppTheme.values.firstWhere(
         (e) => e.name == map['theme'],
-        orElse: () => AppTheme.liquidBlue,
+        orElse: () => AppTheme.frost,
       ),
       fftWindowSize: map['fftWindowSize'] ?? 1024,
       fftWindowType: FftWindowType.values.firstWhere(

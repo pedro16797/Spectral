@@ -60,11 +60,11 @@ class _SpectralAppState extends State<SpectralApp> {
 
   Color _getAccentColor() {
     switch (_settings.theme) {
-      case AppTheme.liquidBlue:
+      case AppTheme.frost:
         return const Color(0xFF007AFF);
-      case AppTheme.inferno:
+      case AppTheme.magma:
         return Colors.orangeAccent;
-      case AppTheme.monochrome:
+      case AppTheme.gray:
         return Colors.white;
       case AppTheme.emerald:
         return const Color(0xFF00C853);
@@ -75,11 +75,11 @@ class _SpectralAppState extends State<SpectralApp> {
 
   Color _getBackgroundColor() {
     switch (_settings.theme) {
-      case AppTheme.liquidBlue:
+      case AppTheme.frost:
         return const Color(0xFF001A33);
-      case AppTheme.inferno:
+      case AppTheme.magma:
         return const Color(0xFF330D00);
-      case AppTheme.monochrome:
+      case AppTheme.gray:
         return const Color(0xFF1A1A1A);
       case AppTheme.emerald:
         return const Color(0xFF001A00);

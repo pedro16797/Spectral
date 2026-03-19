@@ -13,7 +13,7 @@ void main() {
 
     test('loadSettings returns default settings when nothing is saved', () async {
       final settings = await SettingsService.loadSettings();
-      expect(settings.theme, AppTheme.liquidBlue);
+      expect(settings.theme, AppTheme.frost);
       expect(settings.fftWindowSize, 1024);
       expect(settings.fftWindowType, FftWindowType.hanning);
       expect(settings.language, 'en');
@@ -21,7 +21,7 @@ void main() {
 
     test('saveSettings and loadSettings persists data', () async {
       const customSettings = AppSettings(
-        theme: AppTheme.inferno,
+        theme: AppTheme.magma,
         fftWindowSize: 2048,
         fftWindowType: FftWindowType.blackman,
         language: 'en',

@@ -15,7 +15,7 @@ class WaterfallPainter extends CustomPainter {
     this.minFreq = 0,
     this.maxFreq = 22050,
     this.sampleRate = 44100,
-    this.theme = AppTheme.liquidBlue,
+    this.theme = AppTheme.frost,
     this.frequencySkew = 1.0,
   });
 
@@ -77,12 +77,12 @@ class WaterfallPainter extends CustomPainter {
 
   Color _getThemeColor(double value, AppTheme theme) {
     switch (theme) {
-      case AppTheme.liquidBlue:
-        return _getLiquidBlueColor(value);
-      case AppTheme.inferno:
-        return _getInfernoColor(value);
-      case AppTheme.monochrome:
-        return _getMonochromeColor(value);
+      case AppTheme.frost:
+        return _getFrostColor(value);
+      case AppTheme.magma:
+        return _getMagmaColor(value);
+      case AppTheme.gray:
+        return _getGrayColor(value);
       case AppTheme.emerald:
         return _getEmeraldColor(value);
       case AppTheme.rainbow:
@@ -90,7 +90,7 @@ class WaterfallPainter extends CustomPainter {
     }
   }
 
-  Color _getLiquidBlueColor(double value) {
+  Color _getFrostColor(double value) {
     if (value < 0.3) {
       return Color.lerp(const Color(0xFF001A33), const Color(0xFF007AFF), value / 0.3)!;
     } else if (value < 0.7) {
@@ -100,7 +100,7 @@ class WaterfallPainter extends CustomPainter {
     }
   }
 
-  Color _getInfernoColor(double value) {
+  Color _getMagmaColor(double value) {
     if (value < 0.2) {
       return Color.lerp(const Color(0xFF000000), const Color(0xFF7D0000), value / 0.2)!;
     } else if (value < 0.5) {
@@ -112,7 +112,7 @@ class WaterfallPainter extends CustomPainter {
     }
   }
 
-  Color _getMonochromeColor(double value) {
+  Color _getGrayColor(double value) {
     return Color.lerp(Colors.black, Colors.white, value)!;
   }
 
