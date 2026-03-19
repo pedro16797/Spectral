@@ -263,6 +263,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         _signalSource = RtlTcpCaptureService(
           host: currentSettings.rtlTcpHost,
           port: currentSettings.rtlTcpPort,
+          sampleRate: (currentSettings.rfBandwidth * 1e6).toInt(),
           frequency: (currentSettings.centerFrequency * 1e6).toInt(),
         );
       } else {

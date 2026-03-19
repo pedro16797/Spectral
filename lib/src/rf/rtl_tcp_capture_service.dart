@@ -67,13 +67,19 @@ class RtlTcpCaptureService implements SignalSource {
     }
   }
 
+  final List<int> _headerBuffer = [];
+
   void _processRawData(Uint8List data) {
     int offset = 0;
     if (!_headerSkipped) {
       // rtl_tcp sends a 12-byte header: 'RTL0' + info
-      if (data.length >= 12) {
-        offset = 12;
+      int toCopy = math.min(12 - _headerBuffer.length, data.length);
+      _headerBuffer.addAll(data.sublist(0, toCopy));
+      offset = toCopy;
+
+      if (_headerBuffer.length == 12) {
         _headerSkipped = true;
+        _headerBuffer.clear();
       } else {
         // Wait for more data
         return;

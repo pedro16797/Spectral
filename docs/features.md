@@ -51,3 +51,14 @@ Fine-tune the spectral engine to match your hardware and signal type.
   - **Inferno:** High-energy heat map.
   - **Monochrome:** Classic high-contrast black and white.
   - **Emerald:** A clean, organic green look.
+
+## 📡 SDR (RF Support)
+
+Spectral now supports real-world RF spectral analysis using external SDR (Software Defined Radio) hardware.
+
+- **External Hardware:** Connect standard RTL-SDR dongles via USB OTG.
+- **rtl_tcp Protocol:** Streams raw I/Q data over local or network sockets.
+- **Complex FFT Engine:** Specifically designed for RF I/Q signals with centered DC components.
+- **Dynamic Configuration:** Adjust center frequency and bandwidth directly from Spectral's settings.
+
+For setup and hardware requirements, see the [SDR Usage Guide](sdr_usage_guide.md).
