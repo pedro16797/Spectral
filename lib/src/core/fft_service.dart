@@ -25,6 +25,15 @@ class FftService {
   // Internal buffer for accumulating samples to match window size
   final List<double> _buffer = [];
 
+  /// Resets the internal buffer and cached state.
+  void reset() {
+    _buffer.clear();
+    _cachedFft = null;
+    _cachedSize = null;
+    _cachedWindow = null;
+    _cachedWindowType = null;
+  }
+
   /// Processes signal samples and returns the FFT magnitudes.
   /// [samples] can be real or interleaved complex [I, Q, I, Q, ...].
   /// If [isComplex] is true, [windowSize] refers to the number of I/Q pairs.
@@ -38,16 +47,6 @@ class FftService {
 
     if (_buffer.length < requiredSamples) {
       return [];
-    }
-
-    // Extract the latest chunk
-    final processingSamples = Float64List.fromList(
-      _buffer.sublist(_buffer.length - requiredSamples)
-    );
-
-    // Clear buffer to avoid indefinite growth
-    if (_buffer.length > requiredSamples * 2) {
-      _buffer.removeRange(0, _buffer.length - requiredSamples);
     }
 
     // Cache FFT instance if the size hasn't changed.
@@ -77,12 +76,14 @@ class FftService {
     }
 
     try {
+      final bufferOffset = _buffer.length - requiredSamples;
+
       if (isComplex) {
         // Complex FFT (I/Q data)
         final windowedComplexSamples = Float64x2List(windowSize);
         for (int i = 0; i < windowSize; i++) {
-          final iVal = processingSamples[i * 2] * _cachedWindow![i];
-          final qVal = processingSamples[i * 2 + 1] * _cachedWindow![i];
+          final iVal = _buffer[bufferOffset + i * 2] * _cachedWindow![i];
+          final qVal = _buffer[bufferOffset + i * 2 + 1] * _cachedWindow![i];
           windowedComplexSamples[i] = Float64x2(iVal, qVal);
         }
 
@@ -97,16 +98,29 @@ class FftService {
         for (int i = 0; i < windowSize; i++) {
           shifted[(i + half) % windowSize] = magnitudes[i];
         }
+
+        // Clear buffer to avoid indefinite growth
+        if (_buffer.length > requiredSamples * 2) {
+          _buffer.removeRange(0, _buffer.length - requiredSamples);
+        }
+
         return shifted;
       } else {
         // Real FFT
         final windowedSamples = Float64List(windowSize);
         for (int i = 0; i < windowSize; i++) {
-          windowedSamples[i] = processingSamples[i] * _cachedWindow![i];
+          windowedSamples[i] = _buffer[bufferOffset + i] * _cachedWindow![i];
         }
 
         final freq = _cachedFft!.realFft(windowedSamples);
-        return freq.discardConjugates().magnitudes();
+        final result = freq.discardConjugates().magnitudes();
+
+        // Clear buffer to avoid indefinite growth
+        if (_buffer.length > requiredSamples * 2) {
+          _buffer.removeRange(0, _buffer.length - requiredSamples);
+        }
+
+        return result;
       }
     } catch (e) {
       debugPrint("FFT processing error: $e");

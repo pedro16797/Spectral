@@ -2,61 +2,40 @@
 
 This document outlines the strategic plan for Spectral, from MVP to future iterations.
 
-## Current Sprint 4.1: RF Foundation & Signal Abstraction
-The focus of this sprint is to transition Spectral from a pure audio visualizer to a multi-source spectral analysis tool.
+## Phase 4: Active Development
 
-### Task 1: Signal Architecture Refactoring
-- [x] **Subtask 1.1: SignalProvider Interface:** Create a generic abstraction for interleaved data streams.
-- [x] **Subtask 1.2: Audio Service Migration:** Adapt existing microphone capture to the new interface.
-- [x] **Subtask 1.3: Complex FFT Engine:** Support I/Q magnitude calculation and FFT shifting.
+### Current Sprint 4.2: Advanced Spectral Analysis & SDR Enhancements
+Building on the RF foundation to provide professional-grade signal analysis tools.
 
-### Task 2: RF Infrastructure & Mocking
-- [x] **Subtask 2.1: Mock RF Service:** Implement a simulated I/Q generator with noise and signal peaks.
-- [x] **Subtask 2.2: Extended Settings:** Add Center Frequency and Bandwidth controls.
+#### Task 1: Peak Analysis & Signal Stability
+- [ ] **Subtask 1.1: Peak Hold:** Implement a visual persistence mode for spectral peaks.
+- [ ] **Subtask 1.2: FFT Averaging:** Add selectable averaging modes (Linear, Exponential) for noise reduction.
+- [ ] **Subtask 1.3: SNR Estimation:** Real-time signal-to-noise ratio calculation for the primary peak.
 
-### Task 3: Device & Hardware Investigation
-- [x] **Subtask 3.1: Internal Antenna Access:** Investigate Android/iOS APIs for raw RF access (restricted).
-- [x] **Subtask 3.2: External SDR Bindings:** Integrated USB OTG driver support for RTL-SDR hardware.
-- [x] **Subtask 3.3: Headphone Antenna Support:** Investigated (hardware-dependent/proprietary).
+#### Task 2: Interactive Analysis Tools
+- [ ] **Subtask 2.1: Spectral Markers:** Allow users to place movable markers on the FFT chart to measure delta-frequency/power.
+- [ ] **Subtask 2.2: Harmonic Overlays:** Visual indicators for integer multiples of a selected fundamental frequency.
 
-## Phase 1: Project Setup & Foundation
-- [x] Initialize project structure.
-- [x] Create core documentation (README, CONTRIBUTING, AGENTS).
-- [x] Define directory layout.
-- [x] Set up localization base.
-- [x] Define initial tech stack and bootstrap mobile project (Flutter).
+#### Task 3: Advanced RF Controls
+- [ ] **Subtask 3.1: RF Gain Mapping:** Map raw libusb gain stages to a user-friendly slider/dial.
+- [ ] **Subtask 3.2: Frequency Correction (PPM):** Add a calibration setting for SDR hardware oscillator offsets.
 
-## Phase 2: MVP Features (Complete)
-The goal of the MVP was to provide a functional and performant audio spectral visualizer.
+---
 
-### Core Visualizations
-- [x] **Real-time Waveform:** High-performance rendering of time-domain audio data.
-- [x] **FFT Bar Chart:** Frequency-domain visualization with configurable bins.
-- [x] **Waterfall Display:** Rolling spectrogram to visualize frequency over time.
+## Future Sprints & Upgrades
+- **Sprint 4.3: Professional Analysis Tools:** Implementation of recording and playback for captured data, data logging for long-term signal monitoring, and export features (CSV/IQ).
+- **Expanded Themes:** New high-contrast palettes and user-definable visual presets.
+- **Cross-Platform Parity:** Optimizing for iOS ecosystem and tablets/desktop.
+- **Global Localization:** Adding support for more languages (Spanish, Portuguese, Japanese, etc.).
 
-### Configuration & UI
-- [x] **Theme Support:** Initial implementation of Light and Dark modes.
-- [x] **Range Control:** Ability to set frequency and amplitude ranges.
-- [x] **Modern Interface:** Clean, responsive design for Android devices.
+---
 
-### Technical Foundation
-- [x] **Audio Engine:** Low-latency audio capture and processing.
-- [x] **Signal Processing:** Efficient FFT implementation and windowing.
-- [x] **Localization:** Full support for English, ready for other languages.
+## Completed Milestones
 
-## Phase 3: UI Modernization & UX Streamlining (Complete)
-- [x] **Liquid Glass Aesthetic:** Frosted glass containers, radial gradients, and organic glows.
-- [x] **Frequency Focus (Zoom):** 0–22,050Hz bands with dynamic frequency labeling.
-- [x] **Refined Interactions:** Standardized circular controls and minimalist interaction bars.
-- [x] **Modernized Typography & Layout:** De-emphasized branding with clean layouts.
-- [x] **Optimized Visualizations:** Enhanced painters with anti-aliasing and soft gradients.
-- [x] **Waveform Ghosting:** Temporal history with fading effects.
-- [x] **Slick HUD Refinement:** Waterfall background layer with scanline overlays.
-- [x] **Interactive Edge Dials:** Large semi-circular dials for Gain and Sensitivity.
+### Phases
+- **Phase 1: Foundation:** Project bootstrapping, core documentation, and cross-platform Flutter environment setup.
+- **Phase 2: MVP Features:** Functional real-time audio visualization with waveform, FFT, and waterfall displays.
+- **Phase 3: UI Modernization:** Liquid Glass aesthetic implementation with interactive edge dials and HUD focus mode.
 
-## Phase 4: Future Upgrades
-- [ ] **RF Support:** Integration with SDR (Software Defined Radio) and advanced spectrum analysis.
-- [ ] **Advanced Tools:** Markers, peak detection, harmonic analysis.
-- [ ] **Expanded Themes:** More color palettes and customizable UI elements.
-- [ ] **iOS Port:** Ensuring compatibility and optimizing for the iOS ecosystem.
-- [ ] **Global Localization:** Adding support for more languages (Spanish, Portuguese, Japanese, etc.).
+### Sprints
+- **Sprint 4.1: RF Foundation:** Established signal abstraction layer and integrated SDR support via libusb and rtl_tcp.
