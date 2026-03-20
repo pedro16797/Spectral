@@ -25,6 +25,7 @@ class _SettingsViewState extends State<SettingsView> {
   late final TextEditingController _bwController;
   late final TextEditingController _rtlHostController;
   late final TextEditingController _rtlPortController;
+  late final TextEditingController _ppmController;
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _SettingsViewState extends State<SettingsView> {
     _bwController = TextEditingController(text: _currentSettings.rfBandwidth.toString());
     _rtlHostController = TextEditingController(text: _currentSettings.rtlTcpHost);
     _rtlPortController = TextEditingController(text: _currentSettings.rtlTcpPort.toString());
+    _ppmController = TextEditingController(text: _currentSettings.ppmCorrection.toString());
   }
 
   @override
@@ -42,6 +44,7 @@ class _SettingsViewState extends State<SettingsView> {
     _bwController.dispose();
     _rtlHostController.dispose();
     _rtlPortController.dispose();
+    _ppmController.dispose();
     super.dispose();
   }
 
@@ -172,7 +175,49 @@ class _SettingsViewState extends State<SettingsView> {
                               if (bw != null) _updateSettings(_currentSettings.copyWith(rfBandwidth: bw));
                             },
                           ),
+                          const SizedBox(height: 16),
+                          _buildTextField(
+                            label: LocalizationHelper.get('settings.ppm_correction'),
+                            controller: _ppmController,
+                            onChanged: (val) {
+                              final double? ppm = double.tryParse(val);
+                              if (ppm != null) _updateSettings(_currentSettings.copyWith(ppmCorrection: ppm));
+                            },
+                          ),
                         ],
+
+                        const SizedBox(height: 32),
+                        _buildSectionTitle(LocalizationHelper.get('settings.analysis')),
+                        const SizedBox(height: 16),
+                        _buildSwitch(
+                          label: LocalizationHelper.get('settings.peak_hold'),
+                          value: _currentSettings.peakHoldEnabled,
+                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(peakHoldEnabled: val)),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildDropdown<FftAveragingMode>(
+                          label: LocalizationHelper.get('settings.averaging_mode'),
+                          value: _currentSettings.fftAveragingMode,
+                          items: FftAveragingMode.values,
+                          itemLabel: (type) => LocalizationHelper.get('settings.averaging_modes.${type.name}'),
+                          onChanged: (val) {
+                            if (val != null) _updateSettings(_currentSettings.copyWith(fftAveragingMode: val));
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSlider(
+                          label: LocalizationHelper.get('settings.averaging_count'),
+                          value: _currentSettings.fftAveragingCount.toDouble(),
+                          min: 2,
+                          max: 50,
+                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(fftAveragingCount: val.toInt())),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSwitch(
+                          label: LocalizationHelper.get('settings.show_harmonics'),
+                          value: _currentSettings.showHarmonics,
+                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(showHarmonics: val)),
+                        ),
 
                         const SizedBox(height: 32),
                         _buildSectionTitle(LocalizationHelper.get('settings.theme')),
@@ -454,6 +499,24 @@ class _SettingsViewState extends State<SettingsView> {
           },
           activeColor: Theme.of(context).colorScheme.secondary,
           inactiveColor: Colors.white.withOpacity(0.05),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSwitch({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeColor: Theme.of(context).colorScheme.secondary,
         ),
       ],
     );

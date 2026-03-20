@@ -28,6 +28,12 @@
     "fft_window_type": "FFT Window Type",
     "frequency_skew": "Frequency Skew",
     "fft_smoothing": "FFT Smoothing",
+    "peak_hold": "Peak Hold",
+    "averaging_mode": "FFT Averaging",
+    "averaging_count": "Averaging Frames",
+    "ppm_correction": "PPM Correction",
+    "show_harmonics": "Harmonic Overlays",
+    "analysis": "Signal Analysis",
     "themes": {
       "frost": "Frost",
       "magma": "Magma",
@@ -40,6 +46,11 @@
       "hamming": "Hamming",
       "blackman": "Blackman",
       "bartlett": "Bartlett"
+    },
+    "averaging_modes": {
+      "none": "None",
+      "linear": "Linear",
+      "exponential": "Exponential"
     },
     "signal_sources": {
       "audio": "Internal Microphone",
