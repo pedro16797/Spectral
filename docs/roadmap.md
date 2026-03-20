@@ -2,13 +2,14 @@
 
 This document outlines the strategic plan for Spectral, from MVP to future iterations.
 
-## Current Sprint 4.1: RF Foundation & Signal Abstraction
-The focus of this sprint is to transition Spectral from a pure audio visualizer to a multi-source spectral analysis tool.
+## Sprint 4.1: RF Foundation & Signal Abstraction (Complete)
+The focus of this sprint was to transition Spectral from a pure audio visualizer to a multi-source spectral analysis tool.
 
 ### Task 1: Signal Architecture Refactoring
 - [x] **Subtask 1.1: SignalProvider Interface:** Create a generic abstraction for interleaved data streams.
 - [x] **Subtask 1.2: Audio Service Migration:** Adapt existing microphone capture to the new interface.
 - [x] **Subtask 1.3: Complex FFT Engine:** Support I/Q magnitude calculation and FFT shifting.
+- [x] **Subtask 1.4: Optimization & Performance:** (Cleanup) Refactored buffer handling and UI snapshoting to reduce GC pressure.
 
 ### Task 2: RF Infrastructure & Mocking
 - [x] **Subtask 2.1: Mock RF Service:** Implement a simulated I/Q generator with noise and signal peaks.
@@ -18,6 +19,22 @@ The focus of this sprint is to transition Spectral from a pure audio visualizer 
 - [x] **Subtask 3.1: Internal Antenna Access:** Investigate Android/iOS APIs for raw RF access (restricted).
 - [x] **Subtask 3.2: External SDR Bindings:** Integrated USB OTG driver support for RTL-SDR hardware.
 - [x] **Subtask 3.3: Headphone Antenna Support:** Investigated (hardware-dependent/proprietary).
+
+## Current Sprint 4.2: Advanced Spectral Analysis & SDR Enhancements
+Building on the RF foundation to provide professional-grade signal analysis tools.
+
+### Task 1: Peak Analysis & Signal Stability
+- [ ] **Subtask 1.1: Peak Hold:** Implement a visual persistence mode for spectral peaks.
+- [ ] **Subtask 1.2: FFT Averaging:** Add selectable averaging modes (Linear, Exponential) for noise reduction.
+- [ ] **Subtask 1.3: SNR Estimation:** Real-time signal-to-noise ratio calculation for the primary peak.
+
+### Task 2: Interactive Analysis Tools
+- [ ] **Subtask 2.1: Spectral Markers:** Allow users to place movable markers on the FFT chart to measure delta-frequency/power.
+- [ ] **Subtask 2.2: Harmonic Overlays:** Visual indicators for integer multiples of a selected fundamental frequency.
+
+### Task 3: Advanced RF Controls
+- [ ] **Subtask 3.1: RF Gain Mapping:** Map raw libusb gain stages to a user-friendly slider/dial.
+- [ ] **Subtask 3.2: Frequency Correction (PPM):** Add a calibration setting for SDR hardware oscillator offsets.
 
 ## Phase 1: Project Setup & Foundation
 - [x] Initialize project structure.
