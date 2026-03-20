@@ -4,6 +4,7 @@ import subprocess
 import http.server
 import socketserver
 import threading
+import json
 from playwright.sync_api import sync_playwright
 
 PORT = 8081
@@ -37,24 +38,48 @@ def generate_screenshots():
             # Set a mobile-like viewport (450x800)
             context = browser.new_context(viewport={'width': 450, 'height': 800})
 
-            def new_clean_page(url_suffix=""):
+            def new_configured_page(settings=None, url_suffix=""):
                 page = context.new_page()
                 page.goto(f"http://localhost:{PORT}/{url_suffix}")
-                # Clear localStorage to ensure fresh settings
                 page.evaluate("window.localStorage.clear()")
+                if settings:
+                    # shared_preferences on web uses 'flutter.' prefix
+                    page.evaluate(f"window.localStorage.setItem('flutter.app_settings', '{json.dumps(settings)}')")
                 page.reload()
                 page.wait_for_timeout(5000)
                 return page
 
+            # Default clean settings
+            default_settings = {
+                "theme": "frost",
+                "signalSource": "audio",
+                "rfSource": "mock",
+                "rtlTcpHost": "127.0.0.1",
+                "rtlTcpPort": 1234,
+                "centerFrequency": 100.0,
+                "rfBandwidth": 2.0,
+                "fftWindowSize": 1024,
+                "fftWindowType": "hanning",
+                "language": "en",
+                "frequencySkew": 1.0,
+                "fftSmoothing": 0.0,
+                "peakHoldEnabled": False,
+                "fftAveragingMode": "none",
+                "fftAveragingCount": 5,
+                "ppmCorrection": 0.0,
+                "showHarmonics": False,
+                "showSnr": False
+            }
+
             # Screenshot 1: Home Screen
             print("Capturing home screen...")
-            page = new_clean_page()
+            page = new_configured_page(default_settings)
             page.screenshot(path="resources/screenshots/home_screen.png")
             page.close()
 
             # Screenshot 2: Demo Capturing (Active UI)
             print("Capturing demo capturing screen...")
-            page = new_clean_page("?demo=true")
+            page = new_configured_page(default_settings, "?demo=true")
             page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(3000)
             page.screenshot(path="resources/screenshots/demo_capturing.png")
@@ -62,7 +87,7 @@ def generate_screenshots():
 
             # Screenshot 3: Settings View
             print("Capturing settings view...")
-            page = new_clean_page()
+            page = new_configured_page(default_settings)
             page.mouse.click(360, 45) # Settings icon
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/settings_view.png")
@@ -70,22 +95,17 @@ def generate_screenshots():
 
             # Screenshot 4: SDR Configuration
             print("Capturing SDR configuration settings...")
-            page = new_clean_page()
+            sdr_settings = default_settings.copy()
+            sdr_settings["signalSource"] = "rf"
+            page = new_configured_page(sdr_settings)
             page.mouse.click(360, 45) # Settings
-            page.wait_for_timeout(1000)
-            # Click Mode dropdown (Section 1)
-            page.mouse.click(225, 230)
-            page.wait_for_timeout(500)
-            # Select SDR
-            page.keyboard.press("ArrowDown")
-            page.keyboard.press("Enter")
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/sdr_settings.png")
             page.close()
 
             # Screenshot 5: Waterfall Focus Mode
             print("Capturing waterfall focus mode...")
-            page = new_clean_page("?demo=true")
+            page = new_configured_page(default_settings, "?demo=true")
             page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(1000)
             page.mouse.click(410, 45) # Toggle Focus ON
@@ -95,45 +115,33 @@ def generate_screenshots():
 
             # Screenshot 6: SDR Advanced Analysis
             print("Capturing SDR advanced analysis...")
-            page = new_clean_page("?demo=true")
-            # Switch to SDR first
-            page.mouse.click(360, 45) # Settings
-            page.wait_for_timeout(500)
-            page.mouse.click(225, 230) # Mode
-            page.wait_for_timeout(200)
-            page.keyboard.press("ArrowDown")
-            page.keyboard.press("Enter")
-            page.wait_for_timeout(500)
-            # Enable Peak Hold and SNR (using direct coordinates to avoid dropdown/semantics issues if any)
-            # Peak Hold is roughly at y=600 if we scrolled, or lower down.
-            # Let's try to find text and click its center
-            try:
-                page.get_by_text("Peak Hold").click()
-                page.wait_for_timeout(200)
-                page.get_by_text("Show SNR Overlay").click()
-            except:
-                # Fallback to clicks if text locators fail
-                page.mouse.click(400, 600) # Toggle 1
-                page.mouse.click(400, 650) # Toggle 2
-
-            page.wait_for_timeout(500)
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(1000)
+            adv_settings = default_settings.copy()
+            adv_settings.update({
+                "signalSource": "rf",
+                "peakHoldEnabled": True,
+                "showSnr": True,
+                "showHarmonics": True,
+                "centerFrequency": 98.5,
+                "rfBandwidth": 1.0,
+                "fftAveragingMode": "exponential"
+            })
+            page = new_configured_page(adv_settings, "?demo=true")
             page.mouse.click(225, 740) # Start Capture
-            page.wait_for_timeout(2000)
-            # Place markers
+            page.wait_for_timeout(3000)
+            # Place markers on the FFT chart (middle section)
+            # Y coordinate for FFT chart is roughly 400-600 in portrait
             page.mouse.click(100, 500)
-            page.mouse.click(200, 500)
-            page.mouse.click(350, 500)
+            page.mouse.click(225, 450)
+            page.mouse.click(350, 550)
             page.wait_for_timeout(1000)
             page.screenshot(path="resources/screenshots/sdr_advanced_analysis.png")
             page.close()
 
             # Screenshot 7: Edge Dial Interaction (Gain)
             print("Capturing edge dial interaction (Gain)...")
-            page = new_clean_page("?demo=true")
+            page = new_configured_page(default_settings, "?demo=true")
             page.mouse.click(225, 740) # Start Capture
-            page.wait_for_timeout(500)
+            page.wait_for_timeout(1000)
             page.mouse.click(60, 740) # Gain trigger
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/gain_dial.png")
@@ -145,9 +153,10 @@ def generate_screenshots():
             page_ls = context_ls.new_page()
             page_ls.goto(f"http://localhost:{PORT}/?demo=true")
             page_ls.evaluate("window.localStorage.clear()")
+            page_ls.evaluate(f"window.localStorage.setItem('flutter.app_settings', '{json.dumps(default_settings)}')")
             page_ls.reload()
             page_ls.wait_for_timeout(5000)
-            page_ls.mouse.click(670, 45) # Start capture in landscape
+            page_ls.mouse.click(670, 45) # Start capture in landscape (top right ish)
             page_ls.wait_for_timeout(3000)
             page_ls.screenshot(path="resources/screenshots/landscape_active.png")
             page_ls.close()
