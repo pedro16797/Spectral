@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../utils/frequency_formatter.dart';
 
 class FftBarChartPainter extends CustomPainter {
   final List<double> fftData;
@@ -138,7 +139,7 @@ class FftBarChartPainter extends CustomPainter {
       canvas.drawLine(Offset(x, 0), Offset(x, height - 20), markerPaint);
 
       // Label
-      final label = markerFreq >= 1000 ? "${(markerFreq / 1000).toStringAsFixed(2)}k" : "${markerFreq.toInt()}";
+      final label = FrequencyFormatter.format(markerFreq, shortUnit: true, precision: 2);
       _drawText(canvas, label, Offset(x + 4, 10), Colors.white70);
     }
 
@@ -214,12 +215,11 @@ class FftBarChartPainter extends CustomPainter {
       final freq = minFreq + (maxFreq - minFreq) * t;
       final x = ratio * size.width;
 
-      String label;
-      if (maxFreq - minFreq < 100) {
-        label = freq >= 1000 ? "${(freq / 1000).toStringAsFixed(3)}k" : freq.toStringAsFixed(1);
-      } else {
-        label = freq >= 1000 ? "${(freq / 1000).toStringAsFixed(1)}k" : "${freq.toInt()}";
-      }
+      String label = FrequencyFormatter.format(
+        freq,
+        shortUnit: true,
+        precision: (maxFreq - minFreq < 100) ? 3 : 1,
+      );
 
       if (i > 0 && label == lastLabelText && maxFreq - minFreq < 1) continue;
 
