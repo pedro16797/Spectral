@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
@@ -20,11 +21,27 @@ import 'src/ui/radio_dial_focus_slider.dart';
 import 'src/ui/settings_view.dart';
 import 'src/utils/localization_helper.dart';
 import 'src/services/settings_service.dart';
+import 'src/utils/mock_file_signal_source.dart';
 
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    final settings = await SettingsService.loadSettings();
+
+    // Support state injection via base64 encoded settings in URL (headless environments)
+    AppSettings settings;
+    final String? b64 = Uri.base.queryParameters['settings_b64'];
+    if (b64 != null) {
+      try {
+        final decoded = utf8.decode(base64Decode(b64));
+        settings = AppSettings.fromMap(json.decode(decoded));
+      } catch (e) {
+        debugPrint("Error decoding settings_b64: $e");
+        settings = await SettingsService.loadSettings();
+      }
+    } else {
+      settings = await SettingsService.loadSettings();
+    }
+
     await LocalizationHelper.load(settings.language);
 
     // Initialize the SDR driver based on the current platform
@@ -228,6 +245,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   final List<double> _markers = [];
   bool _isCapturing = false;
   bool _isDemoMode = false;
+  String? _playFile;
   Timer? _demoTimer;
   bool _waterfallFocusMode = false;
 
@@ -246,6 +264,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   void initState() {
     super.initState();
     _isDemoMode = Uri.base.queryParameters['demo'] == 'true';
+    _playFile = Uri.base.queryParameters['play_file'];
 
     // Initial dummy source to avoid late initialization error
     _signalSource = AudioCaptureService();
@@ -271,7 +290,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
       _fftService.reset();
 
-      if (currentSettings.signalSource == SignalSourceType.rf) {
+      if (_playFile != null) {
+        _signalSource = MockFileSignalSource(
+          assetPath: _playFile!,
+          isComplex: currentSettings.signalSource == SignalSourceType.rf,
+          sampleRate: currentSettings.signalSource == SignalSourceType.rf
+              ? (currentSettings.rfBandwidth * 1e6).toInt()
+              : 44100,
+        );
+      } else if (currentSettings.signalSource == SignalSourceType.rf) {
         if (currentSettings.rfSource == RfSourceType.rtlTcp) {
           _signalSource = RtlTcpCaptureService(
             host: currentSettings.rtlTcpHost,
@@ -295,12 +322,16 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             bandwidth: currentSettings.rfBandwidth * 1e6,
           );
         }
+      } else {
+        _signalSource = AudioCaptureService();
+      }
+
+      if (currentSettings.signalSource == SignalSourceType.rf) {
         _freqRange = RangeValues(
           (currentSettings.centerFrequency - currentSettings.rfBandwidth / 2) * 1e6,
           (currentSettings.centerFrequency + currentSettings.rfBandwidth / 2) * 1e6,
         );
       } else {
-        _signalSource = AudioCaptureService();
         _freqRange = const RangeValues(0, 22050);
       }
 

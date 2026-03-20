@@ -5,6 +5,7 @@ import http.server
 import socketserver
 import threading
 import json
+import base64
 from playwright.sync_api import sync_playwright
 
 PORT = 8081
@@ -40,14 +41,29 @@ def generate_screenshots():
 
             def new_configured_page(settings=None, url_suffix=""):
                 page = context.new_page()
-                page.goto(f"http://localhost:{PORT}/{url_suffix}")
-                page.evaluate("window.localStorage.clear()")
+                full_url = f"http://localhost:{PORT}/{url_suffix}"
+
                 if settings:
-                    # shared_preferences on web uses 'flutter.' prefix
-                    page.evaluate(f"window.localStorage.setItem('flutter.app_settings', '{json.dumps(settings)}')")
-                page.reload()
+                    # Ensure enums are serialized as strings for the model's fromMap
+                    settings_copy = settings.copy()
+                    for key, value in settings_copy.items():
+                        if hasattr(value, 'name'):
+                            settings_copy[key] = value.name
+
+                    # Use settings_b64 URL parameter for more robust state injection
+                    settings_json = json.dumps(settings_copy)
+                    settings_b64 = base64.b64encode(settings_json.encode()).decode()
+
+                    separator = "&" if "?" in full_url else "?"
+                    full_url += f"{separator}settings_b64={settings_b64}"
+
+                page.goto(full_url)
                 page.wait_for_timeout(5000)
                 return page
+
+            # Sample paths (relative to root in dev, but Flutter Web needs the assets/ prefix)
+            SINE_SAMPLE = "resources/samples/audio/sine_440_880.wav"
+            SDR_SAMPLE = "resources/samples/rf/fm_multi_signals.iq"
 
             # Default clean settings
             default_settings = {
@@ -79,7 +95,8 @@ def generate_screenshots():
 
             # Screenshot 2: Demo Capturing (Active UI)
             print("Capturing demo capturing screen...")
-            page = new_configured_page(default_settings, "?demo=true")
+            page = new_configured_page(default_settings, f"?play_file={SINE_SAMPLE}")
+            page.wait_for_timeout(2000)
             page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(3000)
             page.screenshot(path="resources/screenshots/demo_capturing.png")
@@ -98,6 +115,7 @@ def generate_screenshots():
             sdr_settings = default_settings.copy()
             sdr_settings["signalSource"] = "rf"
             page = new_configured_page(sdr_settings)
+            page.wait_for_timeout(2000)
             page.mouse.click(360, 45) # Settings
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/sdr_settings.png")
@@ -105,7 +123,8 @@ def generate_screenshots():
 
             # Screenshot 5: Waterfall Focus Mode
             print("Capturing waterfall focus mode...")
-            page = new_configured_page(default_settings, "?demo=true")
+            page = new_configured_page(default_settings, f"?play_file={SINE_SAMPLE}")
+            page.wait_for_timeout(1000)
             page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(1000)
             page.mouse.click(410, 45) # Toggle Focus ON
@@ -121,25 +140,26 @@ def generate_screenshots():
                 "peakHoldEnabled": True,
                 "showSnr": True,
                 "showHarmonics": True,
-                "centerFrequency": 98.5,
-                "rfBandwidth": 1.0,
+                "centerFrequency": 0.0,
+                "rfBandwidth": 1.0, # 1MHz as generated
                 "fftAveragingMode": "exponential"
             })
-            page = new_configured_page(adv_settings, "?demo=true")
+            page = new_configured_page(adv_settings, f"?play_file={SDR_SAMPLE}")
+            page.wait_for_timeout(2000)
             page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(3000)
-            # Place markers on the FFT chart (middle section)
-            # Y coordinate for FFT chart is roughly 400-600 in portrait
-            page.mouse.click(100, 500)
-            page.mouse.click(225, 450)
-            page.mouse.click(350, 550)
+            # Place markers on the FFT chart
+            page.mouse.click(225, 500) # Center DC signal
+            page.mouse.click(350, 480) # +250kHz signal
+            page.mouse.click(150, 520) # -100kHz signal
             page.wait_for_timeout(1000)
             page.screenshot(path="resources/screenshots/sdr_advanced_analysis.png")
             page.close()
 
             # Screenshot 7: Edge Dial Interaction (Gain)
             print("Capturing edge dial interaction (Gain)...")
-            page = new_configured_page(default_settings, "?demo=true")
+            page = new_configured_page(default_settings, f"?play_file={SINE_SAMPLE}")
+            page.wait_for_timeout(1000)
             page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(1000)
             page.mouse.click(60, 740) # Gain trigger
@@ -151,12 +171,14 @@ def generate_screenshots():
             print("Capturing landscape layout...")
             context_ls = browser.new_context(viewport={'width': 800, 'height': 450})
             page_ls = context_ls.new_page()
-            page_ls.goto(f"http://localhost:{PORT}/?demo=true")
-            page_ls.evaluate("window.localStorage.clear()")
-            page_ls.evaluate(f"window.localStorage.setItem('flutter.app_settings', '{json.dumps(default_settings)}')")
-            page_ls.reload()
+
+            # Encode settings for landscape
+            ls_settings_json = json.dumps(default_settings)
+            ls_settings_b64 = base64.b64encode(ls_settings_json.encode()).decode()
+
+            page_ls.goto(f"http://localhost:{PORT}/?play_file={SINE_SAMPLE}&settings_b64={ls_settings_b64}")
             page_ls.wait_for_timeout(5000)
-            page_ls.mouse.click(670, 45) # Start capture in landscape (top right ish)
+            page_ls.mouse.click(670, 45) # Start capture in landscape
             page_ls.wait_for_timeout(3000)
             page_ls.screenshot(path="resources/screenshots/landscape_active.png")
             page_ls.close()
