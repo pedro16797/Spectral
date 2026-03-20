@@ -22,6 +22,7 @@ import 'src/ui/settings_view.dart';
 import 'src/utils/localization_helper.dart';
 import 'src/services/settings_service.dart';
 import 'src/utils/mock_file_signal_source.dart';
+import 'src/utils/frequency_formatter.dart';
 
 void main() async {
   try {
@@ -956,9 +957,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       ));
     } else {
       final t = _detectedTone!;
-      final freqStr = t.frequency >= 9999.5
-          ? "${(t.frequency / 1000).toStringAsFixed(1)}kHz"
-          : "${t.frequency.toStringAsFixed(0)}Hz";
+      final freqStr = FrequencyFormatter.format(t.frequency, shortUnit: true);
       labelWidgets.add(SizedBox(
         width: 52,
         child: Text(
@@ -1002,9 +1001,11 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
     String rangeText;
     if (widget.settings.signalSource == SignalSourceType.rf) {
-      rangeText = "${(widget.settings.centerFrequency - widget.settings.rfBandwidth / 2).toStringAsFixed(3)} - ${(widget.settings.centerFrequency + widget.settings.rfBandwidth / 2).toStringAsFixed(3)} MHz";
+      final start = (widget.settings.centerFrequency - widget.settings.rfBandwidth / 2) * 1e6;
+      final end = (widget.settings.centerFrequency + widget.settings.rfBandwidth / 2) * 1e6;
+      rangeText = "${FrequencyFormatter.format(start, precision: 3)} - ${FrequencyFormatter.format(end, precision: 3)}";
     } else {
-      rangeText = "${(_freqRange.start / 1000).toStringAsFixed(1)} - ${(_freqRange.end / 1000).toStringAsFixed(1)}kHz";
+      rangeText = "${FrequencyFormatter.format(_freqRange.start)} - ${FrequencyFormatter.format(_freqRange.end)}";
     }
 
     return Column(

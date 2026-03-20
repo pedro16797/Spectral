@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/frequency_formatter.dart';
 
 class RadioDialFocusSlider extends StatefulWidget {
   final RangeValues values;
@@ -205,7 +206,7 @@ class RadioDialPainter extends CustomPainter {
 
       if (isMajor && activeFactor > 0.5) {
         final double freq = min + (i / tickCount) * (max - min);
-        final String label = "${(freq / 1000).toStringAsFixed(0)}k";
+        final String label = FrequencyFormatter.format(freq, precision: 0, shortUnit: true);
         final textPainter = TextPainter(
           text: TextSpan(
             text: label,
