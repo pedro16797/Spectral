@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import '../core/signal_source.dart';
-// import 'native_sdr_driver.dart'; // Temporarily disabled for web build
+import 'native_sdr_driver.dart';
 
 /// Capture service that uses the integrated native SDR driver.
 /// For this prototype, it simulates data after successful native driver initialization.
@@ -32,8 +32,7 @@ class IntegratedRfCaptureService implements SignalSource {
 
   @override
   Future<bool> checkPermission() async {
-    // return NativeSdrDriver().isInitialized;
-    return true; // Simplified for web build
+    return NativeSdrDriver().isInitialized;
   }
 
   @override
@@ -42,14 +41,12 @@ class IntegratedRfCaptureService implements SignalSource {
 
     // In a real implementation, this would trigger libusb bulk transfers.
     // For this prototype, we'll simulate high-quality RF data if the driver is ready.
-    /*
     if (!NativeSdrDriver().isInitialized) {
        throw Exception("Native SDR Driver not initialized.");
     }
-    */
 
     // Apply PPM correction to internal state if this were talking to hardware
-    // await NativeSdrDriver().setPpm(ppmCorrection.toInt());
+    await NativeSdrDriver().setPpm(ppmCorrection.toInt());
 
     _isCapturing = true;
     _timer = Timer.periodic(const Duration(milliseconds: 40), (timer) {

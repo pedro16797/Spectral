@@ -29,7 +29,7 @@ void main() async {
 
     // Initialize the SDR driver based on the current platform
     // This is handled via conditional imports above
-    NativeSdrDriver().setDelegate(NativeSdrDriverFfi());
+    NativeSdrDriver().setDelegate(NativeSdrDriverDelegate());
 
     runApp(SpectralApp(initialSettings: settings));
   } catch (e) {

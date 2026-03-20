@@ -7,7 +7,7 @@ import 'package:libusb_android/libusb_android.dart';
 import 'package:libusb_android_helper/libusb_android_helper.dart';
 import 'native_sdr_driver.dart';
 
-class NativeSdrDriverFfi implements NativeSdrDriverInterface {
+class NativeSdrDriverDelegate implements NativeSdrDriverInterface {
   LibusbAndroidBindings? _bindings;
   Pointer<libusb_context>? _context;
   bool _isInitialized = false;

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'native_sdr_driver.dart';
 
-class NativeSdrDriverWeb implements NativeSdrDriverInterface {
+class NativeSdrDriverDelegate implements NativeSdrDriverInterface {
   bool _isInitialized = false;
 
   @override
