@@ -46,6 +46,7 @@
       "rf": "SDR (RF Support)"
     },
     "rf_sources": {
+      "integrated": "Integrated RTL-SDR",
       "mock": "Mock Simulation",
       "rtlTcp": "RTL-SDR (via rtl_tcp)"
     },

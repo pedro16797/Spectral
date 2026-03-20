@@ -12,6 +12,7 @@ enum SignalSourceType {
 }
 
 enum RfSourceType {
+  integrated,
   mock,
   rtlTcp,
 }
@@ -40,7 +41,7 @@ class AppSettings {
   const AppSettings({
     this.theme = AppTheme.frost,
     this.signalSource = SignalSourceType.audio,
-    this.rfSource = RfSourceType.mock,
+    this.rfSource = RfSourceType.integrated,
     this.rtlTcpHost = '127.0.0.1',
     this.rtlTcpPort = 1234,
     this.centerFrequency = 100.0, // Default to 100 MHz (FM band center-ish)
@@ -110,8 +111,8 @@ class AppSettings {
         orElse: () => SignalSourceType.audio,
       ),
       rfSource: RfSourceType.values.firstWhere(
-        (e) => e.name == (map['rfSource'] ?? 'mock'),
-        orElse: () => RfSourceType.mock,
+        (e) => e.name == (map['rfSource'] ?? 'integrated'),
+        orElse: () => RfSourceType.integrated,
       ),
       rtlTcpHost: map['rtlTcpHost'] ?? '127.0.0.1',
       rtlTcpPort: map['rtlTcpPort'] ?? 1234,

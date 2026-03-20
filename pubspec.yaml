@@ -33,6 +33,9 @@ dependencies:
   record: ^6.2.0
   fftea: ^1.5.0
   shared_preferences: ^2.5.4
+  libusb_android: ^1.0.0
+  libusb_android_helper: ^1.0.0
+  ffi: ^2.1.2
 
 dev_dependencies:
   flutter_test:

@@ -6,29 +6,25 @@ Spectral now supports real-world RF spectral analysis using external SDR (Softwa
 
 1.  **RTL-SDR Dongle:** Any standard RTL2832U-based USB dongle.
 2.  **USB OTG Adapter:** A "USB On-The-Go" adapter to connect the USB-A dongle to your mobile device's USB-C or Micro-USB port.
-3.  **rtl_tcp Driver App (Android):** To bridge the USB hardware to Spectral, you must run a driver that provides an `rtl_tcp` server.
-    - **Recommended:** [SDR Driver](https://play.google.com/store/apps/details?id=marto.rtl_tcp_andro) (by Martin Marinov) or similar apps that implement the `rtl_tcp` protocol.
 
 ## Connection & Setup
 
 ### 1. Hardware Connection
 - Connect your antenna to the RTL-SDR dongle.
 - Connect the dongle to your phone/tablet using the USB OTG adapter.
-- Your device may prompt for permission to access the USB device; grant it.
 
-### 2. Start the rtl_tcp Server
-- Open the **SDR Driver** app on your device.
-- Ensure the port is set to `1234` (default) and the address is `127.0.0.1` (local loopback).
-- Tap **Start Service** or **Start Server**. The driver is now listening for a connection from Spectral.
-
-### 3. Configure Spectral
+### 2. Configure Spectral
 - Open **Spectral**.
 - Tap the **Settings** (tune) icon in the header.
 - Under **Mode**, set **Signal Source** to `SDR (RF Support)`.
-- Set **RF Input Type** to `RTL-SDR (via rtl_tcp)`.
-- Ensure **RTL-TCP Host** is `127.0.0.1` and **Port** is `1234`.
+- Set **RF Input Type** to `Integrated RTL-SDR`.
 - Adjust **Center Frequency (MHz)** (e.g., `100.0` for FM radio) and **RF Bandwidth (MHz)** (e.g., `2.0`).
 - Close Settings.
+
+### 3. Driver Setup (Android Only)
+- The first time you select `Integrated RTL-SDR`, Spectral will request permission to access the USB device.
+- Tap **Allow** in the system dialog.
+- You will see a **Driver Ready** status in the settings once initialization is complete.
 
 ### 4. Start Capture
 - Tap the **Capture** (play) button.

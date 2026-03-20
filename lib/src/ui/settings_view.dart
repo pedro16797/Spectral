@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/settings_model.dart';
+import '../rf/native_sdr_driver.dart';
 import '../utils/localization_helper.dart';
 
 class SettingsView extends StatefulWidget {
@@ -130,6 +131,10 @@ class _SettingsViewState extends State<SettingsView> {
                               if (val != null) _updateSettings(_currentSettings.copyWith(rfSource: val));
                             },
                           ),
+                          if (_currentSettings.rfSource == RfSourceType.integrated) ...[
+                            const SizedBox(height: 12),
+                            _buildDriverStatus(),
+                          ],
                           if (_currentSettings.rfSource == RfSourceType.rtlTcp) ...[
                             const SizedBox(height: 16),
                             _buildTextField(
@@ -314,6 +319,38 @@ class _SettingsViewState extends State<SettingsView> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildDriverStatus() {
+    final bool isReady = NativeSdrDriver().isInitialized;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isReady ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isReady ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isReady ? Icons.check_circle_outline : Icons.info_outline,
+            size: 16,
+            color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isReady ? "Driver Ready" : "Driver Setup Required",
+              style: TextStyle(
+                color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
