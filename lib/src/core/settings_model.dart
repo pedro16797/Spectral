@@ -30,6 +30,12 @@ enum FftAveragingMode {
   exponential,
 }
 
+enum DemodulationMode {
+  none,
+  am,
+  fm,
+}
+
 class AppSettings {
   final AppTheme theme;
   final SignalSourceType signalSource;
@@ -49,6 +55,8 @@ class AppSettings {
   final double ppmCorrection;
   final bool showHarmonics;
   final bool showSnr;
+  final DemodulationMode demodulationMode;
+  final bool audioOutputEnabled;
 
   const AppSettings({
     this.theme = AppTheme.frost,
@@ -69,6 +77,8 @@ class AppSettings {
     this.ppmCorrection = 0.0,
     this.showHarmonics = false,
     this.showSnr = false,
+    this.demodulationMode = DemodulationMode.none,
+    this.audioOutputEnabled = false,
   });
 
   AppSettings copyWith({
@@ -90,6 +100,8 @@ class AppSettings {
     double? ppmCorrection,
     bool? showHarmonics,
     bool? showSnr,
+    DemodulationMode? demodulationMode,
+    bool? audioOutputEnabled,
   }) {
     return AppSettings(
       theme: theme ?? this.theme,
@@ -110,6 +122,8 @@ class AppSettings {
       ppmCorrection: ppmCorrection ?? this.ppmCorrection,
       showHarmonics: showHarmonics ?? this.showHarmonics,
       showSnr: showSnr ?? this.showSnr,
+      demodulationMode: demodulationMode ?? this.demodulationMode,
+      audioOutputEnabled: audioOutputEnabled ?? this.audioOutputEnabled,
     );
   }
 
@@ -133,6 +147,8 @@ class AppSettings {
       'ppmCorrection': ppmCorrection,
       'showHarmonics': showHarmonics,
       'showSnr': showSnr,
+      'demodulationMode': demodulationMode.name,
+      'audioOutputEnabled': audioOutputEnabled,
     };
   }
 
@@ -171,6 +187,11 @@ class AppSettings {
       ppmCorrection: (map['ppmCorrection'] ?? 0.0).toDouble(),
       showHarmonics: map['showHarmonics'] ?? false,
       showSnr: map['showSnr'] ?? false,
+      demodulationMode: DemodulationMode.values.firstWhere(
+        (e) => e.name == (map['demodulationMode'] ?? 'none'),
+        orElse: () => DemodulationMode.none,
+      ),
+      audioOutputEnabled: map['audioOutputEnabled'] ?? false,
     );
   }
 }

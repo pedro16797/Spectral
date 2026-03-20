@@ -36,6 +36,7 @@ dependencies:
   libusb_android: ^1.0.0
   libusb_android_helper: ^1.0.0
   ffi: ^2.1.2
+  mp_audio_stream: ^0.2.2
 
 dev_dependencies:
   flutter_test:
