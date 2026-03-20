@@ -250,17 +250,20 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   Future<void> _initializeSignalSource({AppSettings? newSettings}) async {
-    final currentSettings = newSettings ?? widget.settings;
-    final bool wasCapturing = _isCapturing;
+    try {
+      final currentSettings = newSettings ?? widget.settings;
+      final bool wasCapturing = _isCapturing;
 
-    // Gracefully stop and dispose of the current source
-    if (wasCapturing) {
-      await _signalSource.stopCapture();
-    }
-    _signalSubscription?.cancel();
-    _signalSource.dispose();
+      // Gracefully stop and dispose of the current source
+      if (wasCapturing) {
+        await _signalSource.stopCapture();
+      }
+      _signalSubscription?.cancel();
+      _signalSource.dispose();
 
-    if (currentSettings.signalSource == SignalSourceType.rf) {
+      _fftService.reset();
+
+      if (currentSettings.signalSource == SignalSourceType.rf) {
       if (currentSettings.rfSource == RfSourceType.rtlTcp) {
         _signalSource = RtlTcpCaptureService(
           host: currentSettings.rtlTcpHost,
@@ -308,22 +311,30 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       }
     });
 
-    if (wasCapturing) {
-      // Re-start capture if it was active
-      final hasPermission = await _signalSource.checkPermission();
-      if (hasPermission) {
-        await _signalSource.startCapture();
-      } else {
-        setState(() {
-          _isCapturing = false;
-          _pulseController.stop();
-        });
+      if (wasCapturing) {
+        // Re-start capture if it was active
+        final hasPermission = await _signalSource.checkPermission();
+        if (hasPermission) {
+          await _signalSource.startCapture();
+        } else {
+          setState(() {
+            _isCapturing = false;
+            _pulseController.stop();
+          });
+        }
       }
+    } catch (e) {
+      debugPrint("Failed to initialize signal source: $e");
     }
   }
 
   void _updateAudioData(Float64List rawData) {
-    final processedAudio = Float64List.fromList(rawData.map((x) => x * _gain).toList());
+    final processedAudio = Float64List(rawData.length);
+    final gain = _gain;
+    for (int i = 0; i < rawData.length; i++) {
+      processedAudio[i] = rawData[i] * gain;
+    }
+
     if (_currentAudioData.isNotEmpty) {
       _audioHistory.insert(0, _currentAudioData);
       if (_audioHistory.length > 5) _audioHistory.removeLast();
@@ -345,7 +356,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         adjustedFft[i] = (rawFft[i] * sensitivity) * alpha + (_currentFftData[i] * (1.0 - alpha));
       }
     } else {
-      adjustedFft = rawFft.map((x) => x * sensitivity).toList();
+      adjustedFft = List<double>.filled(rawFft.length, 0);
+      for (int i = 0; i < rawFft.length; i++) {
+        adjustedFft[i] = rawFft[i] * sensitivity;
+      }
     }
 
     _currentFftData = adjustedFft;
@@ -505,7 +519,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               child: CustomPaint(
                 size: Size.infinite,
                 painter: WaterfallPainter(
-                  fftHistory: List.from(_fftHistory),
+                  fftHistory: _fftHistory,
                   minFreq: _freqRange.start,
                   maxFreq: _freqRange.end,
                   sampleRate: _signalSource.sampleRate,
@@ -568,7 +582,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                             size: Size.infinite,
                                             painter: WaveformPainter(
                                               audioData: _currentAudioData,
-                                              history: List.from(_audioHistory),
+                                              history: _audioHistory,
                                               color: Colors.white.withOpacity(0.8),
                                             ),
                                           ),
@@ -606,7 +620,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                             size: Size.infinite,
                                             painter: WaveformPainter(
                                               audioData: _currentAudioData,
-                                              history: List.from(_audioHistory),
+                                              history: _audioHistory,
                                               color: Colors.white.withOpacity(0.8),
                                             ),
                                           ),
