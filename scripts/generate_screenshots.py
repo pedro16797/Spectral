@@ -5,6 +5,7 @@ import http.server
 import socketserver
 import threading
 import json
+import base64
 from playwright.sync_api import sync_playwright
 
 PORT = 8081
@@ -40,12 +41,23 @@ def generate_screenshots():
 
             def new_configured_page(settings=None, url_suffix=""):
                 page = context.new_page()
-                page.goto(f"http://localhost:{PORT}/{url_suffix}")
-                page.evaluate("window.localStorage.clear()")
+                full_url = f"http://localhost:{PORT}/{url_suffix}"
+
                 if settings:
-                    # shared_preferences on web uses 'flutter.' prefix
-                    page.evaluate(f"window.localStorage.setItem('flutter.app_settings', '{json.dumps(settings)}')")
-                page.reload()
+                    # Ensure enums are serialized as strings for the model's fromMap
+                    settings_copy = settings.copy()
+                    for key, value in settings_copy.items():
+                        if hasattr(value, 'name'):
+                            settings_copy[key] = value.name
+
+                    # Use settings_b64 URL parameter for more robust state injection
+                    settings_json = json.dumps(settings_copy)
+                    settings_b64 = base64.b64encode(settings_json.encode()).decode()
+
+                    separator = "&" if "?" in full_url else "?"
+                    full_url += f"{separator}settings_b64={settings_b64}"
+
+                page.goto(full_url)
                 page.wait_for_timeout(5000)
                 return page
 
@@ -98,6 +110,7 @@ def generate_screenshots():
             sdr_settings = default_settings.copy()
             sdr_settings["signalSource"] = "rf"
             page = new_configured_page(sdr_settings)
+            page.wait_for_timeout(2000)
             page.mouse.click(360, 45) # Settings
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/sdr_settings.png")
@@ -126,6 +139,7 @@ def generate_screenshots():
                 "fftAveragingMode": "exponential"
             })
             page = new_configured_page(adv_settings, "?demo=true")
+            page.wait_for_timeout(2000)
             page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(3000)
             # Place markers on the FFT chart (middle section)

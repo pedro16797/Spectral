@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
@@ -24,7 +25,22 @@ import 'src/services/settings_service.dart';
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    final settings = await SettingsService.loadSettings();
+
+    // Support state injection via base64 encoded settings in URL (headless environments)
+    AppSettings settings;
+    final String? b64 = Uri.base.queryParameters['settings_b64'];
+    if (b64 != null) {
+      try {
+        final decoded = utf8.decode(base64Decode(b64));
+        settings = AppSettings.fromMap(json.decode(decoded));
+      } catch (e) {
+        debugPrint("Error decoding settings_b64: $e");
+        settings = await SettingsService.loadSettings();
+      }
+    } else {
+      settings = await SettingsService.loadSettings();
+    }
+
     await LocalizationHelper.load(settings.language);
 
     // Initialize the SDR driver based on the current platform
