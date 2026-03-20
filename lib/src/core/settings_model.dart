@@ -24,6 +24,12 @@ enum FftWindowType {
   bartlett,
 }
 
+enum FftAveragingMode {
+  none,
+  linear,
+  exponential,
+}
+
 class AppSettings {
   final AppTheme theme;
   final SignalSourceType signalSource;
@@ -37,6 +43,12 @@ class AppSettings {
   final String language;
   final double frequencySkew;
   final double fftSmoothing;
+  final bool peakHoldEnabled;
+  final FftAveragingMode fftAveragingMode;
+  final int fftAveragingCount;
+  final double ppmCorrection;
+  final bool showHarmonics;
+  final bool showSnr;
 
   const AppSettings({
     this.theme = AppTheme.frost,
@@ -51,6 +63,12 @@ class AppSettings {
     this.language = 'en',
     this.frequencySkew = 1.0,
     this.fftSmoothing = 0.0,
+    this.peakHoldEnabled = false,
+    this.fftAveragingMode = FftAveragingMode.none,
+    this.fftAveragingCount = 5,
+    this.ppmCorrection = 0.0,
+    this.showHarmonics = false,
+    this.showSnr = false,
   });
 
   AppSettings copyWith({
@@ -66,6 +84,12 @@ class AppSettings {
     String? language,
     double? frequencySkew,
     double? fftSmoothing,
+    bool? peakHoldEnabled,
+    FftAveragingMode? fftAveragingMode,
+    int? fftAveragingCount,
+    double? ppmCorrection,
+    bool? showHarmonics,
+    bool? showSnr,
   }) {
     return AppSettings(
       theme: theme ?? this.theme,
@@ -80,6 +104,12 @@ class AppSettings {
       language: language ?? this.language,
       frequencySkew: frequencySkew ?? this.frequencySkew,
       fftSmoothing: fftSmoothing ?? this.fftSmoothing,
+      peakHoldEnabled: peakHoldEnabled ?? this.peakHoldEnabled,
+      fftAveragingMode: fftAveragingMode ?? this.fftAveragingMode,
+      fftAveragingCount: fftAveragingCount ?? this.fftAveragingCount,
+      ppmCorrection: ppmCorrection ?? this.ppmCorrection,
+      showHarmonics: showHarmonics ?? this.showHarmonics,
+      showSnr: showSnr ?? this.showSnr,
     );
   }
 
@@ -97,6 +127,12 @@ class AppSettings {
       'language': language,
       'frequencySkew': frequencySkew,
       'fftSmoothing': fftSmoothing,
+      'peakHoldEnabled': peakHoldEnabled,
+      'fftAveragingMode': fftAveragingMode.name,
+      'fftAveragingCount': fftAveragingCount,
+      'ppmCorrection': ppmCorrection,
+      'showHarmonics': showHarmonics,
+      'showSnr': showSnr,
     };
   }
 
@@ -126,6 +162,15 @@ class AppSettings {
       language: map['language'] ?? 'en',
       frequencySkew: (map['frequencySkew'] ?? 1.0).toDouble(),
       fftSmoothing: (map['fftSmoothing'] ?? 0.0).toDouble(),
+      peakHoldEnabled: map['peakHoldEnabled'] ?? false,
+      fftAveragingMode: FftAveragingMode.values.firstWhere(
+        (e) => e.name == (map['fftAveragingMode'] ?? 'none'),
+        orElse: () => FftAveragingMode.none,
+      ),
+      fftAveragingCount: map['fftAveragingCount'] ?? 5,
+      ppmCorrection: (map['ppmCorrection'] ?? 0.0).toDouble(),
+      showHarmonics: map['showHarmonics'] ?? false,
+      showSnr: map['showSnr'] ?? false,
     );
   }
 }

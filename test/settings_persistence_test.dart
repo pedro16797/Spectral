@@ -17,6 +17,12 @@ void main() {
       expect(settings.fftWindowSize, 1024);
       expect(settings.fftWindowType, FftWindowType.hanning);
       expect(settings.language, 'en');
+      // Sprint 4.2 Defaults
+      expect(settings.peakHoldEnabled, false);
+      expect(settings.fftAveragingMode, FftAveragingMode.none);
+      expect(settings.fftAveragingCount, 5);
+      expect(settings.ppmCorrection, 0.0);
+      expect(settings.showHarmonics, false);
     });
 
     test('saveSettings and loadSettings persists data', () async {
@@ -25,6 +31,11 @@ void main() {
         fftWindowSize: 2048,
         fftWindowType: FftWindowType.blackman,
         language: 'en',
+        peakHoldEnabled: true,
+        fftAveragingMode: FftAveragingMode.exponential,
+        fftAveragingCount: 10,
+        ppmCorrection: 15.5,
+        showHarmonics: true,
       );
 
       await SettingsService.saveSettings(customSettings);
@@ -34,6 +45,11 @@ void main() {
       expect(loadedSettings.fftWindowSize, customSettings.fftWindowSize);
       expect(loadedSettings.fftWindowType, customSettings.fftWindowType);
       expect(loadedSettings.language, customSettings.language);
+      expect(loadedSettings.peakHoldEnabled, true);
+      expect(loadedSettings.fftAveragingMode, FftAveragingMode.exponential);
+      expect(loadedSettings.fftAveragingCount, 10);
+      expect(loadedSettings.ppmCorrection, 15.5);
+      expect(loadedSettings.showHarmonics, true);
     });
 
     test('fromMap handles missing fields with defaults', () {
@@ -41,6 +57,7 @@ void main() {
       final settings = AppSettings.fromMap(map);
       expect(settings.theme, AppTheme.emerald);
       expect(settings.fftWindowSize, 1024); // Default
+      expect(settings.peakHoldEnabled, false); // Default
     });
   });
 }

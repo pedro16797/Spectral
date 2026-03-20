@@ -9,6 +9,7 @@ import 'src/rf/rf_capture_service.dart';
 import 'src/rf/rtl_tcp_capture_service.dart';
 import 'src/rf/integrated_rf_capture_service.dart';
 import 'src/rf/native_sdr_driver.dart';
+import 'src/rf/native_sdr_driver_ffi.dart' if (dart.library.html) 'src/rf/native_sdr_driver_web.dart';
 import 'src/core/signal_source.dart';
 import 'src/core/fft_service.dart';
 import 'src/core/settings_model.dart';
@@ -25,6 +26,11 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     final settings = await SettingsService.loadSettings();
     await LocalizationHelper.load(settings.language);
+
+    // Initialize the SDR driver based on the current platform
+    // This is handled via conditional imports above
+    NativeSdrDriver().setDelegate(NativeSdrDriverDelegate());
+
     runApp(SpectralApp(initialSettings: settings));
   } catch (e) {
     debugPrint("Startup error: $e");
@@ -218,6 +224,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   final List<List<double>> _fftHistory = [];
   static const int _maxHistory = 40;
   ToneInfo? _detectedTone;
+  double? _snr;
+  final List<double> _markers = [];
   bool _isCapturing = false;
   bool _isDemoMode = false;
   Timer? _demoTimer;
@@ -264,52 +272,56 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       _fftService.reset();
 
       if (currentSettings.signalSource == SignalSourceType.rf) {
-      if (currentSettings.rfSource == RfSourceType.rtlTcp) {
-        _signalSource = RtlTcpCaptureService(
-          host: currentSettings.rtlTcpHost,
-          port: currentSettings.rtlTcpPort,
-          sampleRate: (currentSettings.rfBandwidth * 1e6).toInt(),
-          frequency: (currentSettings.centerFrequency * 1e6).toInt(),
-        );
-      } else if (currentSettings.rfSource == RfSourceType.integrated) {
-        // Trigger driver setup if needed
-        if (!NativeSdrDriver().isInitialized) {
-          _setupIntegratedDriver();
+        if (currentSettings.rfSource == RfSourceType.rtlTcp) {
+          _signalSource = RtlTcpCaptureService(
+            host: currentSettings.rtlTcpHost,
+            port: currentSettings.rtlTcpPort,
+            sampleRate: (currentSettings.rfBandwidth * 1e6).toInt(),
+            frequency: (currentSettings.centerFrequency * 1e6).toInt(),
+          );
+        } else if (currentSettings.rfSource == RfSourceType.integrated) {
+          // Trigger driver setup if needed
+          if (!NativeSdrDriver().isInitialized) {
+            _setupIntegratedDriver();
+          }
+          _signalSource = IntegratedRfCaptureService(
+            centerFrequency: currentSettings.centerFrequency * 1e6,
+            bandwidth: currentSettings.rfBandwidth * 1e6,
+            ppmCorrection: currentSettings.ppmCorrection,
+          );
+        } else {
+          _signalSource = RfCaptureService(
+            centerFrequency: currentSettings.centerFrequency * 1e6,
+            bandwidth: currentSettings.rfBandwidth * 1e6,
+          );
         }
-        _signalSource = IntegratedRfCaptureService(
-          centerFrequency: currentSettings.centerFrequency * 1e6,
-          bandwidth: currentSettings.rfBandwidth * 1e6,
+        _freqRange = RangeValues(
+          (currentSettings.centerFrequency - currentSettings.rfBandwidth / 2) * 1e6,
+          (currentSettings.centerFrequency + currentSettings.rfBandwidth / 2) * 1e6,
         );
       } else {
-        _signalSource = RfCaptureService(
-          centerFrequency: currentSettings.centerFrequency * 1e6,
-          bandwidth: currentSettings.rfBandwidth * 1e6,
-        );
+        _signalSource = AudioCaptureService();
+        _freqRange = const RangeValues(0, 22050);
       }
-      _freqRange = RangeValues(
-        (currentSettings.centerFrequency - currentSettings.rfBandwidth / 2) * 1e6,
-        (currentSettings.centerFrequency + currentSettings.rfBandwidth / 2) * 1e6,
-      );
-    } else {
-      _signalSource = AudioCaptureService();
-      _freqRange = const RangeValues(0, 22050);
-    }
 
-    _signalSubscription = _signalSource.dataStream.listen((data) {
-      if (mounted) {
-        setState(() {
-          _updateAudioData(data);
+      _signalSubscription = _signalSource.dataStream.listen((data) {
+        if (mounted) {
+          setState(() {
+            _updateAudioData(data);
 
-          final fft = _fftService.processSignalData(
-            data,
-            windowSize: widget.settings.fftWindowSize,
-            windowType: widget.settings.fftWindowType,
-            isComplex: _signalSource.isComplex,
-          );
-          _processFftFrame(fft);
-        });
-      }
-    });
+            final fft = _fftService.processSignalData(
+              data,
+              windowSize: widget.settings.fftWindowSize,
+              windowType: widget.settings.fftWindowType,
+              isComplex: _signalSource.isComplex,
+              peakHoldEnabled: widget.settings.peakHoldEnabled,
+              averagingMode: widget.settings.fftAveragingMode,
+              averagingCount: widget.settings.fftAveragingCount,
+            );
+            _processFftFrame(fft);
+          });
+        }
+      });
 
       if (wasCapturing) {
         // Re-start capture if it was active
@@ -364,6 +376,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
     _currentFftData = adjustedFft;
     _detectedTone = _signalSource.isComplex ? null : _fftService.detectPrimaryTone(adjustedFft, _signalSource.sampleRate);
+    _snr = _fftService.calculateSNR(adjustedFft);
+
     if (adjustedFft.isNotEmpty) {
       _fftHistory.insert(0, adjustedFft);
       if (_fftHistory.length > _maxHistory) {
@@ -398,6 +412,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             windowSize: widget.settings.fftWindowSize,
             windowType: widget.settings.fftWindowType,
             isComplex: false,
+            peakHoldEnabled: widget.settings.peakHoldEnabled,
+            averagingMode: widget.settings.fftAveragingMode,
+            averagingCount: widget.settings.fftAveragingCount,
           );
           _processFftFrame(fft);
         });
@@ -422,6 +439,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           _audioHistory.clear();
           _currentFftData = [];
           _fftHistory.clear();
+          _snr = null;
+          _fftService.clearPeakHold();
+          _fftService.clearAveraging();
         });
       } else {
         if (_isDemoMode) {
@@ -464,16 +484,22 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             final oldSource = widget.settings.signalSource;
             final oldFreq = widget.settings.centerFrequency;
             final oldBw = widget.settings.rfBandwidth;
+            final oldPpm = widget.settings.ppmCorrection;
 
             widget.onSettingsChanged(newSettings);
 
             if (oldSource != newSettings.signalSource ||
                 oldFreq != newSettings.centerFrequency ||
                 oldBw != newSettings.rfBandwidth ||
+                oldPpm != newSettings.ppmCorrection ||
                 widget.settings.rfSource != newSettings.rfSource ||
                 widget.settings.rtlTcpHost != newSettings.rtlTcpHost ||
                 widget.settings.rtlTcpPort != newSettings.rtlTcpPort) {
               _initializeSignalSource(newSettings: newSettings);
+            }
+
+            if (!newSettings.peakHoldEnabled) {
+              _fftService.clearPeakHold();
             }
           },
         ),
@@ -481,6 +507,37 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     } catch (e) {
       debugPrint("Error showing settings: $e");
     }
+  }
+
+  void _handleFftTap(Offset localOffset, Size size) {
+    final freq = _screenOffsetToFreq(localOffset.dx, size.width);
+    setState(() {
+      // Find and remove if close (within a small frequency epsilon or visual range)
+      final double epsilon = (_freqRange.end - _freqRange.start) * 0.02;
+      int existingIndex = -1;
+      for (int i = 0; i < _markers.length; i++) {
+        if ((_markers[i] - freq).abs() < epsilon) {
+          existingIndex = i;
+          break;
+        }
+      }
+
+      if (existingIndex != -1) {
+        _markers.removeAt(existingIndex);
+      } else {
+        if (_markers.length >= 3) _markers.removeAt(0);
+        _markers.add(freq);
+        HapticFeedback.selectionClick();
+      }
+    });
+  }
+
+  double _screenOffsetToFreq(double x, double width) {
+    double t = x / width;
+    if (widget.settings.frequencySkew != 1.0) {
+      t = math.pow(t, widget.settings.frequencySkew).toDouble();
+    }
+    return _freqRange.start + (_freqRange.end - _freqRange.start) * t;
   }
 
   @override
@@ -591,21 +648,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
-                                      child: _buildGlassCard(
-                                        child: SizedBox.expand(
-                                          child: CustomPaint(
-                                            size: Size.infinite,
-                                            painter: FftBarChartPainter(
-                                              fftData: _currentFftData,
-                                              color: accentColor,
-                                              minFreq: _freqRange.start,
-                                              maxFreq: _freqRange.end,
-                                              sampleRate: _signalSource.sampleRate,
-                                              frequencySkew: widget.settings.frequencySkew,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                      child: _buildFftCard(accentColor),
                                     ),
                                   ],
                                 )
@@ -630,21 +673,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                     const SizedBox(height: 16),
                                     Expanded(
                                       flex: 3,
-                                      child: _buildGlassCard(
-                                        child: SizedBox.expand(
-                                          child: CustomPaint(
-                                            size: Size.infinite,
-                                            painter: FftBarChartPainter(
-                                              fftData: _currentFftData,
-                                              color: accentColor,
-                                              minFreq: _freqRange.start,
-                                              maxFreq: _freqRange.end,
-                                              sampleRate: _signalSource.sampleRate,
-                                              frequencySkew: widget.settings.frequencySkew,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                      child: _buildFftCard(accentColor),
                                     ),
                                   ],
                                 ),
@@ -682,6 +711,34 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         ],
       ),
     );
+  }
+
+  Widget _buildFftCard(Color accentColor) {
+    return LayoutBuilder(builder: (context, constraints) {
+      return GestureDetector(
+        onTapDown: (details) => _handleFftTap(details.localPosition, constraints.biggest),
+        child: _buildGlassCard(
+          child: SizedBox.expand(
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: FftBarChartPainter(
+                fftData: _currentFftData,
+                peakHoldData: widget.settings.peakHoldEnabled ? _fftService.peakHoldBuffer : null,
+                markers: _markers,
+                showHarmonics: widget.settings.showHarmonics,
+                fundamentalFreq: _detectedTone?.frequency,
+                snrValue: widget.settings.showSnr ? _snr : null,
+                color: accentColor,
+                minFreq: _freqRange.start,
+                maxFreq: _freqRange.end,
+                sampleRate: _signalSource.sampleRate,
+                frequencySkew: widget.settings.frequencySkew,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildLargeEdgeDial(

@@ -4,6 +4,7 @@ import subprocess
 import http.server
 import socketserver
 import threading
+import json
 from playwright.sync_api import sync_playwright
 
 PORT = 8081
@@ -20,7 +21,7 @@ def serve_forever(httpd):
         pass
 
 def generate_screenshots():
-    # 2. Start local server
+    # Start local server
     print(f"Starting server on port {PORT}...")
     socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.TCPServer(("", PORT), Handler)
@@ -30,79 +31,140 @@ def generate_screenshots():
     server_thread.start()
     print(f"Serving at http://localhost:{PORT}")
 
-    # 3. Use Playwright to capture screenshots
+    # Use Playwright to capture screenshots
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch()
-            # Set a mobile-like viewport for better app screenshots
-            # Using 450x800 for portrait (iPhone-like)
+            # Set a mobile-like viewport (450x800)
             context = browser.new_context(viewport={'width': 450, 'height': 800})
-            page = context.new_page()
+
+            def new_configured_page(settings=None, url_suffix=""):
+                page = context.new_page()
+                page.goto(f"http://localhost:{PORT}/{url_suffix}")
+                page.evaluate("window.localStorage.clear()")
+                if settings:
+                    # shared_preferences on web uses 'flutter.' prefix
+                    page.evaluate(f"window.localStorage.setItem('flutter.app_settings', '{json.dumps(settings)}')")
+                page.reload()
+                page.wait_for_timeout(5000)
+                return page
+
+            # Default clean settings
+            default_settings = {
+                "theme": "frost",
+                "signalSource": "audio",
+                "rfSource": "mock",
+                "rtlTcpHost": "127.0.0.1",
+                "rtlTcpPort": 1234,
+                "centerFrequency": 100.0,
+                "rfBandwidth": 2.0,
+                "fftWindowSize": 1024,
+                "fftWindowType": "hanning",
+                "language": "en",
+                "frequencySkew": 1.0,
+                "fftSmoothing": 0.0,
+                "peakHoldEnabled": False,
+                "fftAveragingMode": "none",
+                "fftAveragingCount": 5,
+                "ppmCorrection": 0.0,
+                "showHarmonics": False,
+                "showSnr": False
+            }
 
             # Screenshot 1: Home Screen
             print("Capturing home screen...")
-            page.goto(f"http://localhost:{PORT}", wait_until="networkidle")
-            page.wait_for_timeout(5000) # Give more time for Flutter to render
+            page = new_configured_page(default_settings)
             page.screenshot(path="resources/screenshots/home_screen.png")
+            page.close()
 
             # Screenshot 2: Demo Capturing (Active UI)
             print("Capturing demo capturing screen...")
-            page.goto(f"http://localhost:{PORT}/?demo=true", wait_until="networkidle")
-            page.wait_for_timeout(5000)
-            print("Clicking Start Capture...")
-            page.mouse.click(225, 740) # Center Capture button in portrait
+            page = new_configured_page(default_settings, "?demo=true")
+            page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(3000)
             page.screenshot(path="resources/screenshots/demo_capturing.png")
+            page.close()
 
             # Screenshot 3: Settings View
             print("Capturing settings view...")
-            page.mouse.click(360, 45) # Tune icon (settings) in header
+            page = new_configured_page(default_settings)
+            page.mouse.click(360, 45) # Settings icon
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/settings_view.png")
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(1000)
+            page.close()
 
-            # Screenshot 4: Waterfall Focus Mode
+            # Screenshot 4: SDR Configuration
+            print("Capturing SDR configuration settings...")
+            sdr_settings = default_settings.copy()
+            sdr_settings["signalSource"] = "rf"
+            page = new_configured_page(sdr_settings)
+            page.mouse.click(360, 45) # Settings
+            page.wait_for_timeout(2000)
+            page.screenshot(path="resources/screenshots/sdr_settings.png")
+            page.close()
+
+            # Screenshot 5: Waterfall Focus Mode
             print("Capturing waterfall focus mode...")
-            page.mouse.click(410, 45) # Layers icon in header
+            page = new_configured_page(default_settings, "?demo=true")
+            page.mouse.click(225, 740) # Start Capture
+            page.wait_for_timeout(1000)
+            page.mouse.click(410, 45) # Toggle Focus ON
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/waterfall_focus.png")
-            page.mouse.click(410, 45) # Back to normal mode
-            page.wait_for_timeout(1000)
+            page.close()
 
-            # Screenshot 5: Edge Dial Interaction (Gain)
+            # Screenshot 6: SDR Advanced Analysis
+            print("Capturing SDR advanced analysis...")
+            adv_settings = default_settings.copy()
+            adv_settings.update({
+                "signalSource": "rf",
+                "peakHoldEnabled": True,
+                "showSnr": True,
+                "showHarmonics": True,
+                "centerFrequency": 98.5,
+                "rfBandwidth": 1.0,
+                "fftAveragingMode": "exponential"
+            })
+            page = new_configured_page(adv_settings, "?demo=true")
+            page.mouse.click(225, 740) # Start Capture
+            page.wait_for_timeout(3000)
+            # Place markers on the FFT chart (middle section)
+            # Y coordinate for FFT chart is roughly 400-600 in portrait
+            page.mouse.click(100, 500)
+            page.mouse.click(225, 450)
+            page.mouse.click(350, 550)
+            page.wait_for_timeout(1000)
+            page.screenshot(path="resources/screenshots/sdr_advanced_analysis.png")
+            page.close()
+
+            # Screenshot 7: Edge Dial Interaction (Gain)
             print("Capturing edge dial interaction (Gain)...")
-            page.mouse.click(60, 740) # Gain trigger (bottom left)
+            page = new_configured_page(default_settings, "?demo=true")
+            page.mouse.click(225, 740) # Start Capture
+            page.wait_for_timeout(1000)
+            page.mouse.click(60, 740) # Gain trigger
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/gain_dial.png")
-            page.mouse.click(60, 740) # Hide dial
-            page.wait_for_timeout(1000)
+            page.close()
 
-            # Screenshot 6: Edge Dial Interaction (Sensitivity)
-            print("Capturing edge dial interaction (Sensitivity)...")
-            page.mouse.click(390, 740) # Sens trigger (bottom right)
-            page.wait_for_timeout(2000)
-            page.screenshot(path="resources/screenshots/sens_dial.png")
-            page.mouse.click(390, 740) # Hide dial
-            page.wait_for_timeout(1000)
-
-            # Screenshot 7: Landscape Mode (side-by-side)
+            # Screenshot 8: Landscape Mode
             print("Capturing landscape layout...")
-            context_landscape = browser.new_context(viewport={'width': 800, 'height': 450})
-            page_ls = context_landscape.new_page()
-            page_ls.goto(f"http://localhost:{PORT}/?demo=true", wait_until="networkidle")
+            context_ls = browser.new_context(viewport={'width': 800, 'height': 450})
+            page_ls = context_ls.new_page()
+            page_ls.goto(f"http://localhost:{PORT}/?demo=true")
+            page_ls.evaluate("window.localStorage.clear()")
+            page_ls.evaluate(f"window.localStorage.setItem('flutter.app_settings', '{json.dumps(default_settings)}')")
+            page_ls.reload()
             page_ls.wait_for_timeout(5000)
-            # In landscape, start capture button is in header or bottom row depending on layout
-            # Let's just click the header play button (first action button)
-            page_ls.mouse.click(670, 45) # Header Play/Stop
+            page_ls.mouse.click(670, 45) # Start capture in landscape (top right ish)
             page_ls.wait_for_timeout(3000)
             page_ls.screenshot(path="resources/screenshots/landscape_active.png")
+            page_ls.close()
 
             browser.close()
     except Exception as e:
         print(f"Error during screenshot generation: {e}")
     finally:
-        # 4. Stop server
         httpd.shutdown()
         httpd.server_close()
         print("Server stopped.")

@@ -25,6 +25,13 @@ class FftService {
   // Internal buffer for accumulating samples to match window size
   final List<double> _buffer = [];
 
+  // Peak hold buffer
+  List<double>? _peakHoldBuffer;
+
+  // Averaging state
+  final List<List<double>> _averagingBuffer = [];
+  List<double>? _lastAveragedFft;
+
   /// Resets the internal buffer and cached state.
   void reset() {
     _buffer.clear();
@@ -32,12 +39,33 @@ class FftService {
     _cachedSize = null;
     _cachedWindow = null;
     _cachedWindowType = null;
+    clearPeakHold();
+    clearAveraging();
   }
+
+  void clearPeakHold() {
+    _peakHoldBuffer = null;
+  }
+
+  void clearAveraging() {
+    _averagingBuffer.clear();
+    _lastAveragedFft = null;
+  }
+
+  List<double>? get peakHoldBuffer => _peakHoldBuffer;
 
   /// Processes signal samples and returns the FFT magnitudes.
   /// [samples] can be real or interleaved complex [I, Q, I, Q, ...].
   /// If [isComplex] is true, [windowSize] refers to the number of I/Q pairs.
-  List<double> processSignalData(Float64List samples, {int windowSize = 1024, FftWindowType windowType = FftWindowType.hanning, bool isComplex = false}) {
+  List<double> processSignalData(
+    Float64List samples, {
+    int windowSize = 1024,
+    FftWindowType windowType = FftWindowType.hanning,
+    bool isComplex = false,
+    bool peakHoldEnabled = false,
+    FftAveragingMode averagingMode = FftAveragingMode.none,
+    int averagingCount = 5,
+  }) {
     if (samples.isEmpty) return [];
 
     // Add new samples to buffer
@@ -54,6 +82,8 @@ class FftService {
       _cachedFft = FFT(windowSize);
       _cachedSize = windowSize;
       _cachedWindow = null; // Reset window if size changed
+      clearPeakHold();
+      clearAveraging();
     }
 
     // Cache window if type or size changed
@@ -77,6 +107,7 @@ class FftService {
 
     try {
       final bufferOffset = _buffer.length - requiredSamples;
+      List<double> magnitudes;
 
       if (isComplex) {
         // Complex FFT (I/Q data)
@@ -92,19 +123,13 @@ class FftService {
 
         // For complex FFT, we don't discard conjugates as the spectrum is asymmetrical.
         // We shift it so that DC is in the center.
-        final magnitudes = freq.magnitudes();
+        final rawMagnitudes = freq.magnitudes();
         final shifted = List<double>.filled(windowSize, 0);
         final half = windowSize ~/ 2;
         for (int i = 0; i < windowSize; i++) {
-          shifted[(i + half) % windowSize] = magnitudes[i];
+          shifted[(i + half) % windowSize] = rawMagnitudes[i];
         }
-
-        // Clear buffer to avoid indefinite growth
-        if (_buffer.length > requiredSamples * 2) {
-          _buffer.removeRange(0, _buffer.length - requiredSamples);
-        }
-
-        return shifted;
+        magnitudes = shifted;
       } else {
         // Real FFT
         final windowedSamples = Float64List(windowSize);
@@ -113,19 +138,120 @@ class FftService {
         }
 
         final freq = _cachedFft!.realFft(windowedSamples);
-        final result = freq.discardConjugates().magnitudes();
-
-        // Clear buffer to avoid indefinite growth
-        if (_buffer.length > requiredSamples * 2) {
-          _buffer.removeRange(0, _buffer.length - requiredSamples);
-        }
-
-        return result;
+        magnitudes = freq.discardConjugates().magnitudes();
       }
+
+      // Clear buffer to avoid indefinite growth
+      if (_buffer.length > requiredSamples * 2) {
+        _buffer.removeRange(0, _buffer.length - requiredSamples);
+      }
+
+      // Apply Averaging
+      magnitudes = _applyAveraging(magnitudes, averagingMode, averagingCount);
+
+      // Apply Peak Hold
+      if (peakHoldEnabled) {
+        _applyPeakHold(magnitudes);
+      } else {
+        _peakHoldBuffer = null;
+      }
+
+      return magnitudes;
     } catch (e) {
       debugPrint("FFT processing error: $e");
       return [];
     }
+  }
+
+  List<double> _applyAveraging(List<double> magnitudes, FftAveragingMode mode, int count) {
+    if (mode == FftAveragingMode.none || count <= 1) {
+      clearAveraging();
+      return magnitudes;
+    }
+
+    if (mode == FftAveragingMode.linear) {
+      _averagingBuffer.add(List<double>.from(magnitudes));
+      if (_averagingBuffer.length > count) {
+        _averagingBuffer.removeAt(0);
+      }
+
+      final avg = List<double>.filled(magnitudes.length, 0);
+      for (final frame in _averagingBuffer) {
+        for (int i = 0; i < magnitudes.length; i++) {
+          avg[i] += frame[i];
+        }
+      }
+      for (int i = 0; i < magnitudes.length; i++) {
+        avg[i] /= _averagingBuffer.length;
+      }
+      return avg;
+    } else if (mode == FftAveragingMode.exponential) {
+      if (_lastAveragedFft == null || _lastAveragedFft!.length != magnitudes.length) {
+        _lastAveragedFft = List<double>.from(magnitudes);
+        return magnitudes;
+      }
+
+      final double alpha = 2.0 / (count + 1);
+      for (int i = 0; i < magnitudes.length; i++) {
+        _lastAveragedFft![i] = magnitudes[i] * alpha + _lastAveragedFft![i] * (1.0 - alpha);
+      }
+      return List<double>.from(_lastAveragedFft!);
+    }
+
+    return magnitudes;
+  }
+
+  void _applyPeakHold(List<double> magnitudes) {
+    if (_peakHoldBuffer == null || _peakHoldBuffer!.length != magnitudes.length) {
+      _peakHoldBuffer = List<double>.from(magnitudes);
+      return;
+    }
+
+    for (int i = 0; i < magnitudes.length; i++) {
+      if (magnitudes[i] > _peakHoldBuffer![i]) {
+        _peakHoldBuffer![i] = magnitudes[i];
+      }
+    }
+  }
+
+  /// Calculates the Signal-to-Noise Ratio (SNR) in dB for the primary peak.
+  double calculateSNR(List<double> magnitudes) {
+    if (magnitudes.isEmpty) return 0;
+
+    // Find the primary peak
+    double peakPower = 0;
+    int peakIndex = -1;
+    for (int i = 0; i < magnitudes.length; i++) {
+      if (magnitudes[i] > peakPower) {
+        peakPower = magnitudes[i];
+        peakIndex = i;
+      }
+    }
+
+    if (peakIndex == -1 || peakPower <= 0) return 0;
+
+    // Estimate noise floor (average of all bins excluding the peak area)
+    double noiseSum = 0;
+    int noiseCount = 0;
+    const peakWidth = 5; // Assume peak spans 5 bins
+
+    for (int i = 0; i < magnitudes.length; i++) {
+      if ((i - peakIndex).abs() > peakWidth) {
+        noiseSum += magnitudes[i];
+        noiseCount++;
+      }
+    }
+
+    if (noiseCount == 0) return 0;
+    double avgNoise = noiseSum / noiseCount;
+
+    if (avgNoise <= 0) return 100; // Arbitrary high value if noise is zero
+
+    // SNR in dB = 10 * log10(SignalPower / NoisePower)
+    // Here magnitudes are usually amplitudes, so we use 20 * log10(Signal / Noise)
+    // Or if they are already power magnitudes, use 10 * log10.
+    // In our case, fftea.magnitudes() returns sqrt(re^2 + im^2), which is amplitude.
+    return 20 * math.log(peakPower / avgNoise) / math.ln10;
   }
 
   /// Backward compatibility for existing audio processing.
@@ -137,7 +263,7 @@ class FftService {
   ToneInfo? detectPrimaryTone(List<double> magnitudes, int sampleRate) {
     if (magnitudes.isEmpty) return null;
 
-    // Find the peak, skipping DC (index 0)
+    // Find the peak, skipping DC (index 0) for real signals
     double maxMag = 0;
     int peakIndex = -1;
     for (int i = 1; i < magnitudes.length; i++) {
@@ -151,7 +277,7 @@ class FftService {
     if (peakIndex == -1 || maxMag < 0.5) return null;
 
     // Calculate fundamental frequency
-    // N is (magnitudes.length - 1) * 2
+    // N is (magnitudes.length - 1) * 2 for real signals
     final n = (magnitudes.length - 1) * 2;
     final fundamentalFreq = peakIndex * sampleRate / n;
 
