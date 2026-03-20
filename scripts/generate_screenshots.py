@@ -36,80 +36,121 @@ def generate_screenshots():
             browser = p.chromium.launch()
             # Set a mobile-like viewport (450x800)
             context = browser.new_context(viewport={'width': 450, 'height': 800})
-            page = context.new_page()
+
+            def new_clean_page(url_suffix=""):
+                page = context.new_page()
+                page.goto(f"http://localhost:{PORT}/{url_suffix}")
+                # Clear localStorage to ensure fresh settings
+                page.evaluate("window.localStorage.clear()")
+                page.reload()
+                page.wait_for_timeout(5000)
+                return page
 
             # Screenshot 1: Home Screen
             print("Capturing home screen...")
-            page.goto(f"http://localhost:{PORT}", wait_until="networkidle")
-            page.wait_for_timeout(5000)
+            page = new_clean_page()
             page.screenshot(path="resources/screenshots/home_screen.png")
+            page.close()
 
             # Screenshot 2: Demo Capturing (Active UI)
             print("Capturing demo capturing screen...")
-            page.goto(f"http://localhost:{PORT}/?demo=true", wait_until="networkidle")
-            page.wait_for_timeout(5000)
-            print("Clicking Start Capture...")
-            page.mouse.click(225, 740) # Center Capture button
+            page = new_clean_page("?demo=true")
+            page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(3000)
             page.screenshot(path="resources/screenshots/demo_capturing.png")
+            page.close()
 
             # Screenshot 3: Settings View
             print("Capturing settings view...")
+            page = new_clean_page()
             page.mouse.click(360, 45) # Settings icon
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/settings_view.png")
+            page.close()
 
-            # Screenshot 4: SDR Configuration (RF mode)
+            # Screenshot 4: SDR Configuration
             print("Capturing SDR configuration settings...")
-            # Open Mode dropdown
-            page.mouse.click(225, 230)
+            page = new_clean_page()
+            page.mouse.click(360, 45) # Settings
             page.wait_for_timeout(1000)
-            # Find the option (try to click exactly where it should appear)
-            # dropdown options usually appear in a popup or overlay.
-            # In Flutter Web, they might be rendered in the same canvas.
-            # Let's try to click below the dropdown
-            page.mouse.click(225, 280)
+            # Click Mode dropdown (Section 1)
+            page.mouse.click(225, 230)
+            page.wait_for_timeout(500)
+            # Select SDR
+            page.keyboard.press("ArrowDown")
+            page.keyboard.press("Enter")
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/sdr_settings.png")
-
-            page.keyboard.press("Escape")
-            page.wait_for_timeout(1000)
+            page.close()
 
             # Screenshot 5: Waterfall Focus Mode
             print("Capturing waterfall focus mode...")
-            page.mouse.click(410, 45) # Layers icon
+            page = new_clean_page("?demo=true")
+            page.mouse.click(225, 740) # Start Capture
+            page.wait_for_timeout(1000)
+            page.mouse.click(410, 45) # Toggle Focus ON
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/waterfall_focus.png")
-            page.mouse.click(410, 45) # Back to normal
-            page.wait_for_timeout(1000)
+            page.close()
 
             # Screenshot 6: SDR Advanced Analysis
             print("Capturing SDR advanced analysis...")
-            # Try to place markers even if we failed to switch to SDR (it will just show audio markers)
-            page.mouse.click(300, 500)
+            page = new_clean_page("?demo=true")
+            # Switch to SDR first
+            page.mouse.click(360, 45) # Settings
+            page.wait_for_timeout(500)
+            page.mouse.click(225, 230) # Mode
             page.wait_for_timeout(200)
-            page.mouse.click(150, 500)
+            page.keyboard.press("ArrowDown")
+            page.keyboard.press("Enter")
+            page.wait_for_timeout(500)
+            # Enable Peak Hold and SNR (using direct coordinates to avoid dropdown/semantics issues if any)
+            # Peak Hold is roughly at y=600 if we scrolled, or lower down.
+            # Let's try to find text and click its center
+            try:
+                page.get_by_text("Peak Hold").click()
+                page.wait_for_timeout(200)
+                page.get_by_text("Show SNR Overlay").click()
+            except:
+                # Fallback to clicks if text locators fail
+                page.mouse.click(400, 600) # Toggle 1
+                page.mouse.click(400, 650) # Toggle 2
+
+            page.wait_for_timeout(500)
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(1000)
+            page.mouse.click(225, 740) # Start Capture
+            page.wait_for_timeout(2000)
+            # Place markers
+            page.mouse.click(100, 500)
+            page.mouse.click(200, 500)
+            page.mouse.click(350, 500)
             page.wait_for_timeout(1000)
             page.screenshot(path="resources/screenshots/sdr_advanced_analysis.png")
+            page.close()
 
             # Screenshot 7: Edge Dial Interaction (Gain)
             print("Capturing edge dial interaction (Gain)...")
+            page = new_clean_page("?demo=true")
+            page.mouse.click(225, 740) # Start Capture
+            page.wait_for_timeout(500)
             page.mouse.click(60, 740) # Gain trigger
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/gain_dial.png")
-            page.mouse.click(60, 740)
-            page.wait_for_timeout(1000)
+            page.close()
 
             # Screenshot 8: Landscape Mode
             print("Capturing landscape layout...")
-            context_landscape = browser.new_context(viewport={'width': 800, 'height': 450})
-            page_ls = context_landscape.new_page()
-            page_ls.goto(f"http://localhost:{PORT}/?demo=true", wait_until="networkidle")
+            context_ls = browser.new_context(viewport={'width': 800, 'height': 450})
+            page_ls = context_ls.new_page()
+            page_ls.goto(f"http://localhost:{PORT}/?demo=true")
+            page_ls.evaluate("window.localStorage.clear()")
+            page_ls.reload()
             page_ls.wait_for_timeout(5000)
-            # Start capture in landscape (Header button)
-            page_ls.mouse.click(670, 45)
+            page_ls.mouse.click(670, 45) # Start capture in landscape
             page_ls.wait_for_timeout(3000)
             page_ls.screenshot(path="resources/screenshots/landscape_active.png")
+            page_ls.close()
 
             browser.close()
     except Exception as e:
