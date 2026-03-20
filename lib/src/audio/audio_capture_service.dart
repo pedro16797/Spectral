@@ -25,8 +25,11 @@ class AudioCaptureService implements SignalSource {
   @override
   Future<bool> checkPermission() async {
     try {
-      return await _audioRecorder.hasPermission();
+      final hasPermission = await _audioRecorder.hasPermission();
+      debugPrint("AudioCaptureService: Permission check result: $hasPermission");
+      return hasPermission;
     } catch (e) {
+      debugPrint("AudioCaptureService: Error checking permission: $e");
       return false;
     }
   }
@@ -34,9 +37,13 @@ class AudioCaptureService implements SignalSource {
   @override
   Future<void> startCapture() async {
     try {
-      if (await _audioRecorder.isRecording()) return;
+      if (await _audioRecorder.isRecording()) {
+        debugPrint("AudioCaptureService: Already recording.");
+        return;
+      }
 
       if (await _audioRecorder.hasPermission()) {
+        debugPrint("AudioCaptureService: Starting stream with sample rate $sampleRate...");
         final config = RecordConfig(
           encoder: AudioEncoder.pcm16bits,
           sampleRate: sampleRate,
@@ -48,33 +55,45 @@ class AudioCaptureService implements SignalSource {
         await _audioStreamSubscription?.cancel();
         _audioStreamSubscription = stream.listen((data) {
           if (!_audioDataController.isClosed) {
-            final normalizedData = AudioUtils.convertPcmToDouble(data);
-            _audioDataController.add(normalizedData);
+            try {
+              final normalizedData = AudioUtils.convertPcmToDouble(data);
+              _audioDataController.add(normalizedData);
+            } catch (e) {
+              debugPrint("AudioCaptureService: Normalization error: $e, Data length: ${data.length}, Offset: ${data.offsetInBytes}");
+            }
           }
         }, onError: (error) {
-          debugPrint("Audio stream error: $error");
+          debugPrint("AudioCaptureService: Audio stream error: $error");
+        }, onDone: () {
+          debugPrint("AudioCaptureService: Audio stream closed.");
         });
+        debugPrint("AudioCaptureService: Stream started successfully.");
+      } else {
+        debugPrint("AudioCaptureService: Missing microphone permission.");
       }
     } catch (e) {
-      debugPrint("Audio capture error: $e");
+      debugPrint("AudioCaptureService: Capture error: $e");
     }
   }
 
   @override
   Future<void> stopCapture() async {
     try {
+      debugPrint("AudioCaptureService: Stopping capture...");
       await _audioStreamSubscription?.cancel();
       _audioStreamSubscription = null;
       if (await _audioRecorder.isRecording()) {
         await _audioRecorder.stop();
       }
+      debugPrint("AudioCaptureService: Capture stopped.");
     } catch (e) {
-      debugPrint("Error stopping audio capture: $e");
+      debugPrint("AudioCaptureService: Error stopping audio capture: $e");
     }
   }
 
   @override
   void dispose() {
+    debugPrint("AudioCaptureService: Disposing...");
     _audioDataController.close();
     _audioRecorder.dispose();
   }
