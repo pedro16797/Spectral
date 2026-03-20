@@ -727,7 +727,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                 markers: _markers,
                 showHarmonics: widget.settings.showHarmonics,
                 fundamentalFreq: _detectedTone?.frequency,
-                snrValue: _snr,
+                snrValue: widget.settings.showSnr ? _snr : null,
                 color: accentColor,
                 minFreq: _freqRange.start,
                 maxFreq: _freqRange.end,

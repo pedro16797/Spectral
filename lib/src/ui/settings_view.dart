@@ -112,6 +112,7 @@ class _SettingsViewState extends State<SettingsView> {
                         _buildHeader(context),
                         const SizedBox(height: 32),
 
+                        // Section 1: Mode
                         _buildSectionTitle(LocalizationHelper.get('settings.mode')),
                         const SizedBox(height: 12),
                         _buildDropdown<SignalSourceType>(
@@ -123,7 +124,31 @@ class _SettingsViewState extends State<SettingsView> {
                             if (val != null) _updateSettings(_currentSettings.copyWith(signalSource: val));
                           },
                         ),
+
+                        const SizedBox(height: 32),
+                        // Section 2: Language
+                        _buildSectionTitle(LocalizationHelper.get('settings.language')),
+                        const SizedBox(height: 12),
+                        _buildDropdown<String>(
+                          label: LocalizationHelper.get('settings.language'),
+                          value: _currentSettings.language,
+                          items: ['en'],
+                          itemLabel: (lang) => lang == 'en' ? 'English' : lang,
+                          onChanged: (val) {
+                             if (val != null) _updateSettings(_currentSettings.copyWith(language: val));
+                          },
+                        ),
+
+                        const SizedBox(height: 32),
+                        // Section 3: Theme
+                        _buildSectionTitle(LocalizationHelper.get('settings.theme')),
+                        const SizedBox(height: 12),
+                        _buildThemeSelector(),
+
+                        // SDR Specific Settings (Only visible in RF mode)
                         if (_currentSettings.signalSource == SignalSourceType.rf) ...[
+                          const SizedBox(height: 32),
+                          _buildSectionTitle("SDR CONFIGURATION"),
                           const SizedBox(height: 16),
                           _buildDropdown<RfSourceType>(
                             label: LocalizationHelper.get('settings.rf_source'),
@@ -218,11 +243,12 @@ class _SettingsViewState extends State<SettingsView> {
                           value: _currentSettings.showHarmonics,
                           onChanged: (val) => _updateSettings(_currentSettings.copyWith(showHarmonics: val)),
                         ),
-
-                        const SizedBox(height: 32),
-                        _buildSectionTitle(LocalizationHelper.get('settings.theme')),
-                        const SizedBox(height: 12),
-                        _buildThemeSelector(),
+                        const SizedBox(height: 16),
+                        _buildSwitch(
+                          label: LocalizationHelper.get('settings.show_snr'),
+                          value: _currentSettings.showSnr,
+                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(showSnr: val)),
+                        ),
 
                         const SizedBox(height: 32),
                         _buildSectionTitle(LocalizationHelper.get('settings.technical')),
@@ -260,19 +286,6 @@ class _SettingsViewState extends State<SettingsView> {
                           min: 0.0,
                           max: 0.95,
                           onChanged: (val) => _updateSettings(_currentSettings.copyWith(fftSmoothing: val)),
-                        ),
-
-                        const SizedBox(height: 32),
-                        _buildSectionTitle(LocalizationHelper.get('settings.language')),
-                        const SizedBox(height: 12),
-                        _buildDropdown<String>(
-                          label: LocalizationHelper.get('settings.language'),
-                          value: _currentSettings.language,
-                          items: ['en'],
-                          itemLabel: (lang) => lang == 'en' ? 'English' : lang,
-                          onChanged: (val) {
-                             if (val != null) _updateSettings(_currentSettings.copyWith(language: val));
-                          },
                         ),
                         const SizedBox(height: 40),
                       ],

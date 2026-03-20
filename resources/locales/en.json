@@ -33,6 +33,7 @@
     "averaging_count": "Averaging Frames",
     "ppm_correction": "PPM Correction",
     "show_harmonics": "Harmonic Overlays",
+    "show_snr": "Show SNR Overlay",
     "analysis": "Signal Analysis",
     "themes": {
       "frost": "Frost",

@@ -59,10 +59,21 @@ def generate_screenshots():
             page.mouse.click(360, 45) # Tune icon (settings) in header
             page.wait_for_timeout(2000)
             page.screenshot(path="resources/screenshots/settings_view.png")
+
+            # Screenshot 4: SDR Configuration (RF mode)
+            print("Capturing SDR configuration settings...")
+            # Click Signal Source dropdown (Section 1)
+            # Based on layout, it's roughly near the top
+            page.mouse.click(225, 230)
+            page.wait_for_timeout(500)
+            page.get_by_role("option", name="SDR (RF Support)").click()
+            page.wait_for_timeout(1000)
+            page.screenshot(path="resources/screenshots/sdr_settings.png")
+
             page.keyboard.press("Escape")
             page.wait_for_timeout(1000)
 
-            # Screenshot 4: Waterfall Focus Mode
+            # Screenshot 5: Waterfall Focus Mode
             print("Capturing waterfall focus mode...")
             page.mouse.click(410, 45) # Layers icon in header
             page.wait_for_timeout(2000)
@@ -70,7 +81,25 @@ def generate_screenshots():
             page.mouse.click(410, 45) # Back to normal mode
             page.wait_for_timeout(1000)
 
-            # Screenshot 5: Edge Dial Interaction (Gain)
+            # Screenshot 6: SDR Advanced Analysis
+            print("Capturing SDR advanced analysis...")
+            # Settings already set to SDR from previous step
+            # Enable Peak Hold and Markers
+            page.mouse.click(360, 45) # Settings
+            page.wait_for_timeout(1000)
+            # Toggle Peak Hold (should be visible now)
+            page.get_by_label("Peak Hold").click()
+            page.wait_for_timeout(500)
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(1000)
+            # Click on FFT to place markers
+            page.mouse.click(300, 500) # Marker 1
+            page.wait_for_timeout(200)
+            page.mouse.click(150, 500) # Marker 2
+            page.wait_for_timeout(1000)
+            page.screenshot(path="resources/screenshots/sdr_advanced_analysis.png")
+
+            # Screenshot 7: Edge Dial Interaction (Gain)
             print("Capturing edge dial interaction (Gain)...")
             page.mouse.click(60, 740) # Gain trigger (bottom left)
             page.wait_for_timeout(2000)
@@ -78,22 +107,12 @@ def generate_screenshots():
             page.mouse.click(60, 740) # Hide dial
             page.wait_for_timeout(1000)
 
-            # Screenshot 6: Edge Dial Interaction (Sensitivity)
-            print("Capturing edge dial interaction (Sensitivity)...")
-            page.mouse.click(390, 740) # Sens trigger (bottom right)
-            page.wait_for_timeout(2000)
-            page.screenshot(path="resources/screenshots/sens_dial.png")
-            page.mouse.click(390, 740) # Hide dial
-            page.wait_for_timeout(1000)
-
-            # Screenshot 7: Landscape Mode (side-by-side)
+            # Screenshot 8: Landscape Mode (side-by-side)
             print("Capturing landscape layout...")
             context_landscape = browser.new_context(viewport={'width': 800, 'height': 450})
             page_ls = context_landscape.new_page()
             page_ls.goto(f"http://localhost:{PORT}/?demo=true", wait_until="networkidle")
             page_ls.wait_for_timeout(5000)
-            # In landscape, start capture button is in header or bottom row depending on layout
-            # Let's just click the header play button (first action button)
             page_ls.mouse.click(670, 45) # Header Play/Stop
             page_ls.wait_for_timeout(3000)
             page_ls.screenshot(path="resources/screenshots/landscape_active.png")
