@@ -44,7 +44,15 @@
     "signal_sources": {
       "audio": "Internal Microphone",
       "rf": "SDR (RF Support)"
-    }
+    },
+    "rf_sources": {
+      "integrated": "Integrated RTL-SDR",
+      "mock": "Mock Simulation",
+      "rtlTcp": "RTL-SDR (via rtl_tcp)"
+    },
+    "rf_source": "RF Input Type",
+    "rtl_tcp_host": "RTL-TCP Host",
+    "rtl_tcp_port": "RTL-TCP Port"
   },
   "common": {
     "save": "Save",

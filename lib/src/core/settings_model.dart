@@ -11,6 +11,12 @@ enum SignalSourceType {
   rf,
 }
 
+enum RfSourceType {
+  integrated,
+  mock,
+  rtlTcp,
+}
+
 enum FftWindowType {
   hanning,
   hamming,
@@ -21,6 +27,9 @@ enum FftWindowType {
 class AppSettings {
   final AppTheme theme;
   final SignalSourceType signalSource;
+  final RfSourceType rfSource;
+  final String rtlTcpHost;
+  final int rtlTcpPort;
   final double centerFrequency; // MHz
   final double rfBandwidth; // MHz
   final int fftWindowSize;
@@ -32,6 +41,9 @@ class AppSettings {
   const AppSettings({
     this.theme = AppTheme.frost,
     this.signalSource = SignalSourceType.audio,
+    this.rfSource = RfSourceType.integrated,
+    this.rtlTcpHost = '127.0.0.1',
+    this.rtlTcpPort = 1234,
     this.centerFrequency = 100.0, // Default to 100 MHz (FM band center-ish)
     this.rfBandwidth = 2.0, // Default to 2 MHz
     this.fftWindowSize = 1024,
@@ -44,6 +56,9 @@ class AppSettings {
   AppSettings copyWith({
     AppTheme? theme,
     SignalSourceType? signalSource,
+    RfSourceType? rfSource,
+    String? rtlTcpHost,
+    int? rtlTcpPort,
     double? centerFrequency,
     double? rfBandwidth,
     int? fftWindowSize,
@@ -55,6 +70,9 @@ class AppSettings {
     return AppSettings(
       theme: theme ?? this.theme,
       signalSource: signalSource ?? this.signalSource,
+      rfSource: rfSource ?? this.rfSource,
+      rtlTcpHost: rtlTcpHost ?? this.rtlTcpHost,
+      rtlTcpPort: rtlTcpPort ?? this.rtlTcpPort,
       centerFrequency: centerFrequency ?? this.centerFrequency,
       rfBandwidth: rfBandwidth ?? this.rfBandwidth,
       fftWindowSize: fftWindowSize ?? this.fftWindowSize,
@@ -69,6 +87,9 @@ class AppSettings {
     return {
       'theme': theme.name,
       'signalSource': signalSource.name,
+      'rfSource': rfSource.name,
+      'rtlTcpHost': rtlTcpHost,
+      'rtlTcpPort': rtlTcpPort,
       'centerFrequency': centerFrequency,
       'rfBandwidth': rfBandwidth,
       'fftWindowSize': fftWindowSize,
@@ -89,6 +110,12 @@ class AppSettings {
         (e) => e.name == (map['signalSource'] ?? 'audio'),
         orElse: () => SignalSourceType.audio,
       ),
+      rfSource: RfSourceType.values.firstWhere(
+        (e) => e.name == (map['rfSource'] ?? 'integrated'),
+        orElse: () => RfSourceType.integrated,
+      ),
+      rtlTcpHost: map['rtlTcpHost'] ?? '127.0.0.1',
+      rtlTcpPort: map['rtlTcpPort'] ?? 1234,
       centerFrequency: (map['centerFrequency'] ?? 100.0).toDouble(),
       rfBandwidth: (map['rfBandwidth'] ?? 2.0).toDouble(),
       fftWindowSize: map['fftWindowSize'] ?? 1024,

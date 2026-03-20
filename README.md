@@ -14,6 +14,7 @@ Spectral aims to provide users with a powerful yet user-friendly tool to observe
 - **FFT Bar Chart:** High-performance frequency analysis with dynamic scaling.
 - **Waterfall Display:** Time-frequency visualization for detecting patterns over time, integrated as a background layer.
 - **Slick HUD Architecture:** Immersive "Waterfall Focus Mode" for a data-centric experience.
+- **SDR (RF Support):** Initial integration for external RTL-SDR hardware via `rtl_tcp` (see [SDR Usage Guide](docs/sdr_usage_guide.md)).
 - **Frequency Focus (Zoom):** Advanced Radio Dial Slider for panning and zooming into specific frequency bands.
 - **Edge Dial Interaction:** Space-saving, tactile dials for Gain and Sensitivity adjustments.
 - **Highly Configurable:** Customizable themes (Liquid Blue, Inferno, Monochrome, Emerald) and technical parameters (FFT Window Size/Type).

@@ -9,11 +9,19 @@ class RfCaptureService implements SignalSource {
   Timer? _timer;
   bool _isCapturing = false;
 
+  final double centerFrequency; // Hz
+  final double bandwidth; // Hz
+
+  RfCaptureService({
+    this.centerFrequency = 100000000, // 100 MHz
+    this.bandwidth = 2000000, // 2 MHz
+  });
+
   @override
   Stream<Float64List> get dataStream => _dataController.stream;
 
   @override
-  int get sampleRate => 2048000; // 2.048 MHz typical for RTL-SDR
+  int get sampleRate => bandwidth.toInt();
 
   @override
   bool get isComplex => true;
@@ -30,11 +38,11 @@ class RfCaptureService implements SignalSource {
       final samples = Float64List(1024 * 2); // 1024 I/Q pairs
       final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
 
-      // Simulate some RF signals
-      // A strong signal at +250kHz from center
-      const freq1 = 250000.0;
-      // A weaker signal at -500kHz from center
-      const freq2 = -500000.0;
+      // Simulate some RF signals relative to center
+      // A strong signal at some offset
+      final freq1 = bandwidth * 0.125;
+      // A weaker signal at another offset
+      final freq2 = -bandwidth * 0.25;
 
       for (int i = 0; i < 1024; i++) {
         final t = i / sampleRate;

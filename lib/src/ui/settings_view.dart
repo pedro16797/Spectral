@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/settings_model.dart';
+import '../rf/native_sdr_driver.dart';
 import '../utils/localization_helper.dart';
 
 class SettingsView extends StatefulWidget {
@@ -22,6 +23,8 @@ class _SettingsViewState extends State<SettingsView> {
   late AppSettings _currentSettings;
   late final TextEditingController _freqController;
   late final TextEditingController _bwController;
+  late final TextEditingController _rtlHostController;
+  late final TextEditingController _rtlPortController;
 
   @override
   void initState() {
@@ -29,12 +32,16 @@ class _SettingsViewState extends State<SettingsView> {
     _currentSettings = widget.settings;
     _freqController = TextEditingController(text: _currentSettings.centerFrequency.toString());
     _bwController = TextEditingController(text: _currentSettings.rfBandwidth.toString());
+    _rtlHostController = TextEditingController(text: _currentSettings.rtlTcpHost);
+    _rtlPortController = TextEditingController(text: _currentSettings.rtlTcpPort.toString());
   }
 
   @override
   void dispose() {
     _freqController.dispose();
     _bwController.dispose();
+    _rtlHostController.dispose();
+    _rtlPortController.dispose();
     super.dispose();
   }
 
@@ -114,6 +121,39 @@ class _SettingsViewState extends State<SettingsView> {
                           },
                         ),
                         if (_currentSettings.signalSource == SignalSourceType.rf) ...[
+                          const SizedBox(height: 16),
+                          _buildDropdown<RfSourceType>(
+                            label: LocalizationHelper.get('settings.rf_source'),
+                            value: _currentSettings.rfSource,
+                            items: RfSourceType.values,
+                            itemLabel: (type) => LocalizationHelper.get('settings.rf_sources.${type.name}'),
+                            onChanged: (val) {
+                              if (val != null) _updateSettings(_currentSettings.copyWith(rfSource: val));
+                            },
+                          ),
+                          if (_currentSettings.rfSource == RfSourceType.integrated) ...[
+                            const SizedBox(height: 12),
+                            _buildDriverStatus(),
+                          ],
+                          if (_currentSettings.rfSource == RfSourceType.rtlTcp) ...[
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              label: LocalizationHelper.get('settings.rtl_tcp_host'),
+                              controller: _rtlHostController,
+                              onChanged: (val) {
+                                _updateSettings(_currentSettings.copyWith(rtlTcpHost: val));
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              label: LocalizationHelper.get('settings.rtl_tcp_port'),
+                              controller: _rtlPortController,
+                              onChanged: (val) {
+                                final int? port = int.tryParse(val);
+                                if (port != null) _updateSettings(_currentSettings.copyWith(rtlTcpPort: port));
+                              },
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           _buildTextField(
                             label: LocalizationHelper.get('settings.center_frequency'),
@@ -279,6 +319,38 @@ class _SettingsViewState extends State<SettingsView> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildDriverStatus() {
+    final bool isReady = NativeSdrDriver().isInitialized;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isReady ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isReady ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isReady ? Icons.check_circle_outline : Icons.info_outline,
+            size: 16,
+            color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isReady ? "Driver Ready" : "Driver Setup Required",
+              style: TextStyle(
+                color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
