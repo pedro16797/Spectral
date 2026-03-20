@@ -169,6 +169,12 @@ class _SettingsViewState extends State<SettingsView> {
                               if (val != null) _updateSettings(_currentSettings.copyWith(demodulationMode: val));
                             },
                           ),
+                          const SizedBox(height: 16),
+                          _buildSwitch(
+                            label: LocalizationHelper.get('settings.audio_output'),
+                            value: _currentSettings.audioOutputEnabled,
+                            onChanged: (val) => _updateSettings(_currentSettings.copyWith(audioOutputEnabled: val)),
+                          ),
                           if (_currentSettings.rfSource == RfSourceType.integrated) ...[
                             const SizedBox(height: 12),
                             _buildDriverStatus(),

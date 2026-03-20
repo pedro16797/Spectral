@@ -69,6 +69,7 @@
     },
     "rf_source": "RF Input Type",
     "demodulation_mode": "Demodulation Mode",
+    "audio_output": "Audio Output",
     "rtl_tcp_host": "RTL-TCP Host",
     "rtl_tcp_port": "RTL-TCP Port"
   },
