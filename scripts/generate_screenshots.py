@@ -140,8 +140,8 @@ def generate_screenshots():
                 "peakHoldEnabled": True,
                 "showSnr": True,
                 "showHarmonics": True,
-                "centerFrequency": 0.0,
-                "rfBandwidth": 1.0, # 1MHz as generated
+                "centerFrequency": 100.0,
+                "rfBandwidth": 2.0,
                 "fftAveragingMode": "exponential"
             })
             page = new_configured_page(adv_settings, f"?play_file={SDR_SAMPLE}")
@@ -149,9 +149,9 @@ def generate_screenshots():
             page.mouse.click(225, 740) # Start Capture
             page.wait_for_timeout(3000)
             # Place markers on the FFT chart
-            page.mouse.click(225, 500) # Center DC signal
-            page.mouse.click(350, 480) # +250kHz signal
-            page.mouse.click(150, 520) # -100kHz signal
+            page.mouse.click(225, 450) # Approx 100 MHz
+            page.mouse.click(350, 430) # Approx 100.5 MHz
+            page.mouse.click(150, 470) # Approx 99.5 MHz
             page.wait_for_timeout(1000)
             page.screenshot(path="resources/screenshots/sdr_advanced_analysis.png")
             page.close()
