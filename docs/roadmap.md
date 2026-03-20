@@ -22,6 +22,14 @@ Building on the RF foundation to provide professional-grade signal analysis tool
 
 ---
 
+## Future Sprints & Upgrades
+- **Sprint 4.3: Professional Analysis Tools:** Implementation of recording and playback for captured data, data logging for long-term signal monitoring, and export features (CSV/IQ).
+- **Expanded Themes:** New high-contrast palettes and user-definable visual presets.
+- **Cross-Platform Parity:** Optimizing for iOS ecosystem and tablets/desktop.
+- **Global Localization:** Adding support for more languages (Spanish, Portuguese, Japanese, etc.).
+
+---
+
 ## Completed Milestones
 
 ### Phases
