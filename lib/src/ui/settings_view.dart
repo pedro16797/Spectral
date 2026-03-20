@@ -159,6 +159,16 @@ class _SettingsViewState extends State<SettingsView> {
                               if (val != null) _updateSettings(_currentSettings.copyWith(rfSource: val));
                             },
                           ),
+                          const SizedBox(height: 16),
+                          _buildDropdown<DemodulationMode>(
+                            label: LocalizationHelper.get('settings.demodulation_mode'),
+                            value: _currentSettings.demodulationMode,
+                            items: DemodulationMode.values,
+                            itemLabel: (mode) => LocalizationHelper.get('settings.demodulation_modes.${mode.name}'),
+                            onChanged: (val) {
+                              if (val != null) _updateSettings(_currentSettings.copyWith(demodulationMode: val));
+                            },
+                          ),
                           if (_currentSettings.rfSource == RfSourceType.integrated) ...[
                             const SizedBox(height: 12),
                             _buildDriverStatus(),

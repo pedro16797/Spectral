@@ -242,6 +242,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   static const int _maxHistory = 40;
   ToneInfo? _detectedTone;
   double? _snr;
+  double? _lastI;
+  double? _lastQ;
   final List<double> _markers = [];
   bool _isCapturing = false;
   bool _isDemoMode = false;
@@ -289,6 +291,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       _signalSource.dispose();
 
       _fftService.reset();
+      _lastI = null;
+      _lastQ = null;
 
       if (_playFile != null) {
         _signalSource = MockFileSignalSource(
@@ -338,18 +342,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       _signalSubscription = _signalSource.dataStream.listen((data) {
         if (mounted) {
           setState(() {
-            _updateAudioData(data);
+            final audio = _updateAudioData(data);
+            final bool useDemod = _signalSource.isComplex && widget.settings.demodulationMode != DemodulationMode.none;
 
             final fft = _fftService.processSignalData(
-              data,
+              useDemod ? audio : data,
               windowSize: widget.settings.fftWindowSize,
               windowType: widget.settings.fftWindowType,
-              isComplex: _signalSource.isComplex,
+              isComplex: useDemod ? false : _signalSource.isComplex,
               peakHoldEnabled: widget.settings.peakHoldEnabled,
               averagingMode: widget.settings.fftAveragingMode,
               averagingCount: widget.settings.fftAveragingCount,
             );
-            _processFftFrame(fft);
+            _processFftFrame(fft, isComplex: useDemod ? false : _signalSource.isComplex);
           });
         }
       });
@@ -371,11 +376,42 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     }
   }
 
-  void _updateAudioData(Float64List rawData) {
-    final processedAudio = Float64List(rawData.length);
+  Float64List _updateAudioData(Float64List rawData) {
+    Float64List processedAudio;
     final gain = _gain;
-    for (int i = 0; i < rawData.length; i++) {
-      processedAudio[i] = rawData[i] * gain;
+    final bool useDemod = _signalSource.isComplex && widget.settings.demodulationMode != DemodulationMode.none;
+
+    if (useDemod) {
+      final int numPairs = rawData.length ~/ 2;
+      processedAudio = Float64List(numPairs);
+
+      if (widget.settings.demodulationMode == DemodulationMode.am) {
+        // AM Demodulation: Magnitude (Envelope detection)
+        for (int i = 0; i < numPairs; i++) {
+          final I = rawData[i * 2];
+          final Q = rawData[i * 2 + 1];
+          processedAudio[i] = math.sqrt(I * I + Q * Q) * gain;
+        }
+      } else {
+        // FM Demodulation: Quadrature demodulation (phase difference)
+        for (int i = 0; i < numPairs; i++) {
+          final I = rawData[i * 2];
+          final Q = rawData[i * 2 + 1];
+
+          if (_lastI != null && _lastQ != null) {
+            processedAudio[i] = math.atan2(I * _lastQ! - Q * _lastI!, I * _lastI! + Q * _lastQ!) * gain;
+          } else {
+            processedAudio[i] = 0;
+          }
+          _lastI = I;
+          _lastQ = Q;
+        }
+      }
+    } else {
+      processedAudio = Float64List(rawData.length);
+      for (int i = 0; i < rawData.length; i++) {
+        processedAudio[i] = rawData[i] * gain;
+      }
     }
 
     if (_currentAudioData.isNotEmpty) {
@@ -383,9 +419,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       if (_audioHistory.length > 5) _audioHistory.removeLast();
     }
     _currentAudioData = processedAudio;
+    return processedAudio;
   }
 
-  void _processFftFrame(List<double> rawFft) {
+  void _processFftFrame(List<double> rawFft, {required bool isComplex}) {
     if (rawFft.isEmpty) return;
 
     final double sensitivity = _sensitivity;
@@ -406,7 +443,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     }
 
     _currentFftData = adjustedFft;
-    _detectedTone = _signalSource.isComplex ? null : _fftService.detectPrimaryTone(adjustedFft, _signalSource.sampleRate);
+    // Tone detection is only meaningful for real-valued signals (audio or demodulated RF)
+    _detectedTone = isComplex ? null : _fftService.detectPrimaryTone(adjustedFft, _signalSource.sampleRate);
     _snr = _fftService.calculateSNR(adjustedFft);
 
     if (adjustedFft.isNotEmpty) {
@@ -447,7 +485,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             averagingMode: widget.settings.fftAveragingMode,
             averagingCount: widget.settings.fftAveragingCount,
           );
-          _processFftFrame(fft);
+          _processFftFrame(fft, isComplex: false);
         });
       }
     });
@@ -471,6 +509,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           _currentFftData = [];
           _fftHistory.clear();
           _snr = null;
+          _lastI = null;
+          _lastQ = null;
           _fftService.clearPeakHold();
           _fftService.clearAveraging();
         });

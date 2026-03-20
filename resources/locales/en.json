@@ -53,6 +53,11 @@
       "linear": "Linear",
       "exponential": "Exponential"
     },
+    "demodulation_modes": {
+      "none": "None (Raw)",
+      "am": "AM (Envelope)",
+      "fm": "FM (Quadrature)"
+    },
     "signal_sources": {
       "audio": "Internal Microphone",
       "rf": "SDR (RF Support)"
@@ -63,6 +68,7 @@
       "rtlTcp": "RTL-SDR (via rtl_tcp)"
     },
     "rf_source": "RF Input Type",
+    "demodulation_mode": "Demodulation Mode",
     "rtl_tcp_host": "RTL-TCP Host",
     "rtl_tcp_port": "RTL-TCP Port"
   },
