@@ -28,6 +28,8 @@ The Frequency Focus Slider is a powerful tool for zooming into specific spectral
 
 Sprint 4.2 introduced professional-grade tools for deep signal analysis.
 
+![Advanced Analysis](../resources/screenshots/sdr_advanced_analysis.png)
+
 ### Peak Hold
 - **Function:** Retains the maximum magnitude of every frequency bin over time.
 - **Visual:** Displayed as a thin, persistent line above the real-time FFT bars.
@@ -78,6 +80,8 @@ Fine-tune the spectral engine to match your hardware and signal type.
 ## 📡 SDR (RF Support)
 
 Spectral supports real-world RF spectral analysis using external SDR (Software Defined Radio) hardware.
+
+![SDR Settings](../resources/screenshots/sdr_settings.png)
 
 - **External Hardware:** Connect standard RTL-SDR dongles via USB OTG.
 - **PPM Correction:** Calibrate for hardware oscillator offsets to ensure frequency accuracy.
