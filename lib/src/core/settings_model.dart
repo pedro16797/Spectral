@@ -48,7 +48,6 @@ class AppSettings {
   final FftWindowType fftWindowType;
   final String language;
   final double frequencySkew;
-  final double fftSmoothing;
   final bool peakHoldEnabled;
   final FftAveragingMode fftAveragingMode;
   final int fftAveragingCount;
@@ -70,7 +69,6 @@ class AppSettings {
     this.fftWindowType = FftWindowType.hanning,
     this.language = 'en',
     this.frequencySkew = 1.0,
-    this.fftSmoothing = 0.0,
     this.peakHoldEnabled = false,
     this.fftAveragingMode = FftAveragingMode.none,
     this.fftAveragingCount = 5,
@@ -93,7 +91,6 @@ class AppSettings {
     FftWindowType? fftWindowType,
     String? language,
     double? frequencySkew,
-    double? fftSmoothing,
     bool? peakHoldEnabled,
     FftAveragingMode? fftAveragingMode,
     int? fftAveragingCount,
@@ -115,7 +112,6 @@ class AppSettings {
       fftWindowType: fftWindowType ?? this.fftWindowType,
       language: language ?? this.language,
       frequencySkew: frequencySkew ?? this.frequencySkew,
-      fftSmoothing: fftSmoothing ?? this.fftSmoothing,
       peakHoldEnabled: peakHoldEnabled ?? this.peakHoldEnabled,
       fftAveragingMode: fftAveragingMode ?? this.fftAveragingMode,
       fftAveragingCount: fftAveragingCount ?? this.fftAveragingCount,
@@ -140,7 +136,6 @@ class AppSettings {
       'fftWindowType': fftWindowType.name,
       'language': language,
       'frequencySkew': frequencySkew,
-      'fftSmoothing': fftSmoothing,
       'peakHoldEnabled': peakHoldEnabled,
       'fftAveragingMode': fftAveragingMode.name,
       'fftAveragingCount': fftAveragingCount,
@@ -177,7 +172,6 @@ class AppSettings {
       ),
       language: map['language'] ?? 'en',
       frequencySkew: (map['frequencySkew'] ?? 1.0).toDouble(),
-      fftSmoothing: (map['fftSmoothing'] ?? 0.0).toDouble(),
       peakHoldEnabled: map['peakHoldEnabled'] ?? false,
       fftAveragingMode: FftAveragingMode.values.firstWhere(
         (e) => e.name == (map['fftAveragingMode'] ?? 'none'),

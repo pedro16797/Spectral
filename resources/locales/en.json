@@ -27,7 +27,6 @@
     "fft_window_size": "FFT Window Size",
     "fft_window_type": "FFT Window Type",
     "frequency_skew": "Frequency Skew",
-    "fft_smoothing": "FFT Smoothing",
     "peak_hold": "Peak Hold",
     "averaging_mode": "FFT Averaging",
     "averaging_count": "Averaging Frames",

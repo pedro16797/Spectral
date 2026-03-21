@@ -452,20 +452,11 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     if (rawFft.isEmpty) return;
 
     final double sensitivity = _sensitivity;
-    final double smoothing = widget.settings.fftSmoothing;
-    final double alpha = 1.0 - smoothing;
 
     List<double> adjustedFft;
-    if (smoothing > 0 && _currentFftData.length == rawFft.length) {
-      adjustedFft = List<double>.filled(rawFft.length, 0);
-      for (int i = 0; i < rawFft.length; i++) {
-        adjustedFft[i] = (rawFft[i] * sensitivity) * alpha + (_currentFftData[i] * (1.0 - alpha));
-      }
-    } else {
-      adjustedFft = List<double>.filled(rawFft.length, 0);
-      for (int i = 0; i < rawFft.length; i++) {
-        adjustedFft[i] = rawFft[i] * sensitivity;
-      }
+    adjustedFft = List<double>.filled(rawFft.length, 0);
+    for (int i = 0; i < rawFft.length; i++) {
+      adjustedFft[i] = rawFft[i] * sensitivity;
     }
 
     _currentFftData = adjustedFft;
