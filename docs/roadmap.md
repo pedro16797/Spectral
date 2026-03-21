@@ -4,17 +4,20 @@ This document outlines the strategic plan for Spectral, from MVP to future itera
 
 ## Phase 4: Active Development
 
-### Current Sprint 4.3: Professional Analysis Tools
-- [ ] **Data Recording:** Implement recording and playback for captured signal data.
-- [ ] **Data Export:** Support exporting captured data to CSV and IQ formats.
-- [ ] **Data Logging:** Long-term signal monitoring and power logging.
+### Current Sprint 4.3: Mobile Expansion & Multi-Language Support
+- [ ] **Mobile Parity:** Achieving full feature parity and performance optimization on iOS.
+- [ ] **Tablet Optimization:** Dedicated large-screen layouts with multi-pane visualization for iPads and Android tablets.
+- [ ] **Global Localization:** Adding support for Chinese, Japanese, French, German, and Italian.
+- [ ] **Regional Localization:** Adding support for Spanish, Galician, Portuguese, Catalonian, and Basque.
 
 ---
 
 ## Future Sprints & Upgrades
-- **Expanded Themes:** New high-contrast palettes and user-definable visual presets.
-- **Cross-Platform Parity:** Optimizing for iOS ecosystem and tablets/desktop.
-- **Global Localization:** Adding support for more languages (Spanish, Portuguese, Japanese, etc.).
+- **Professional Analysis Tools:** Data recording, playback, and export (CSV/IQ).
+- **SIGINT Module:** Automated protocol identification for common digital signals (DMR, AIS, ADS-B).
+- **Remote SDR Clusters:** Support for connecting to multiple distributed `rtl_tcp` nodes simultaneously.
+- **Expanded Hardware Support:** Integration with additional SDR front-ends beyond RTL-SDR.
+- **Spectrum Archiving:** Efficient storage and indexing of historical signal activity.
 
 ---
 

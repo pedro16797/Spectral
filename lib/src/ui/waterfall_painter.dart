@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../core/settings_model.dart';
@@ -29,31 +30,37 @@ class WaterfallPainter extends CustomPainter {
     final rowHeight = height / historyCount;
 
     final totalNyquist = sampleRate / 2;
+    final double startNormalized = (minFreq / totalNyquist);
+    final double endNormalized = (maxFreq / totalNyquist);
+    final double range = endNormalized - startNormalized;
+    const int binCount = 160;
+    final barWidth = width / binCount;
+
+    // Pre-calculate skew if needed
+    final skewedIndices = Int32List(binCount);
+    for (int j = 0; j < binCount; j++) {
+      double t = j / binCount;
+      if (frequencySkew != 1.0) {
+        t = math.pow(t, frequencySkew).toDouble();
+      }
+      final double freqNorm = startNormalized + t * range;
+      // Note: fftData length might vary if window size changes, but usually it's stable.
+      // We'll calculate indices relative to a normalized factor.
+      skewedIndices[j] = (freqNorm * 1e6).toInt(); // Use a high precision factor
+    }
+
+    const double logScale = 1.0 / 4.0;
 
     for (var i = 0; i < historyCount; i++) {
       final fftData = fftHistory[i];
       if (fftData.isEmpty) continue;
 
-      final double startNormalized = (minFreq / totalNyquist);
-      final double endNormalized = (maxFreq / totalNyquist);
-      final double range = endNormalized - startNormalized;
-
-      const int binCount = 160;
-      final barWidth = width / binCount;
-
       for (var j = 0; j < binCount; j++) {
-        // Apply skew to the frequency axis
-        double t = j / binCount;
-        if (frequencySkew != 1.0) {
-          t = math.pow(t, frequencySkew).toDouble();
-        }
-
-        final double freqNorm = startNormalized + t * range;
-        final int dataIndex = (freqNorm * fftData.length).floor().clamp(0, fftData.length - 1);
+        final int dataIndex = (skewedIndices[j] * fftData.length ~/ 1e6).clamp(0, fftData.length - 1);
 
         final magnitude = fftData[dataIndex];
         // Use consistent scale with FftBarChartPainter
-        final normalized = (math.log(magnitude + 1) / 4.0).clamp(0.0, 1.1);
+        final normalized = (math.log(magnitude + 1) * logScale).clamp(0.0, 1.1);
 
         if (normalized < 0.05) continue;
 
