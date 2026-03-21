@@ -70,7 +70,28 @@
     "demodulation_mode": "復調モード",
     "audio_output": "オーディオ出力",
     "rtl_tcp_host": "RTL-TCP ホスト",
-    "rtl_tcp_port": "RTL-TCP ポート"
+    "rtl_tcp_port": "RTL-TCP ポート",
+    "tooltips": {
+      "signal_source": "Switch between internal microphone and Software Defined Radio (SDR) input.",
+      "language": "Change the application display language.",
+      "theme": "Select the visual theme for the spectrum and UI.",
+      "rf_source": "Choose the SDR hardware or simulation source.",
+      "demodulation_mode": "Select the method to extract audio from the RF signal.",
+      "audio_output": "Enable audio playback of the demodulated signal.",
+      "rtl_tcp_host": "IP address or hostname of the rtl_tcp server.",
+      "rtl_tcp_port": "Network port of the rtl_tcp server.",
+      "center_frequency": "Base frequency for the SDR tuner in MHz.",
+      "rf_bandwidth": "Capture bandwidth for the SDR in MHz.",
+      "ppm_correction": "Adjust for frequency drift in hardware (Parts Per Million).",
+      "peak_hold": "Display the maximum magnitude reached for each frequency.",
+      "averaging_mode": "Method used to smooth spectral data over time.",
+      "averaging_count": "Number of frames to include in the smoothing average.",
+      "show_harmonics": "Show indicators at multiples of the detected peak frequency.",
+      "show_snr": "Estimate and display Signal-to-Noise Ratio for the peak.",
+      "fft_window_size": "Resolution of the spectral analysis (samples per frame).",
+      "fft_window_type": "Mathematical function applied to reduce spectral leakage.",
+      "frequency_skew": "Visual stretching or compression of the frequency axis."
+    }
   },
   "common": {
     "save": "保存",
