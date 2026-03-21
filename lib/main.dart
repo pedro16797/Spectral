@@ -643,6 +643,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   @override
   Widget build(BuildContext context) {
     final accentColor = Theme.of(context).colorScheme.secondary;
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final useTabletLayout = isTablet && isLandscape;
 
     return Scaffold(
       body: Stack(
@@ -700,99 +703,115 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
           // Main Content Layout
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Builder(
-                builder: (context) {
-                  final orientation = MediaQuery.of(context).orientation;
-                  final isLandscape = orientation == Orientation.landscape;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Top Minimalist Header
-                      _buildMinimalHeader(isLandscape),
-                      SizedBox(height: isLandscape ? 12 : 20),
-
-                      if (_waterfallFocusMode) const Spacer(),
-
-                      // Visualizations
-                      if (!_waterfallFocusMode)
-                        Expanded(
-                          flex: 5,
-                          child: isLandscape
-                              ? Row(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Expanded(
-                                      child: _buildGlassCard(
-                                        child: SizedBox.expand(
-                                          child: CustomPaint(
-                                            size: Size.infinite,
-                                            painter: WaveformPainter(
-                                              audioData: _currentAudioData,
-                                              history: _audioHistory,
-                                              color: Colors.white.withOpacity(0.8),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: _buildFftCard(accentColor),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: _buildGlassCard(
-                                        child: SizedBox.expand(
-                                          child: CustomPaint(
-                                            size: Size.infinite,
-                                            painter: WaveformPainter(
-                                              audioData: _currentAudioData,
-                                              history: _audioHistory,
-                                              color: Colors.white.withOpacity(0.8),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Expanded(
-                                      flex: 3,
-                                      child: _buildFftCard(accentColor),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      if (!_waterfallFocusMode) SizedBox(height: isLandscape ? 12 : 16),
-
-                      // Frequency Focus Card & Interaction Bar
-                      if (isLandscape && !_waterfallFocusMode)
-                        Row(
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Builder(
+                      builder: (context) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _buildGainTrigger(),
-                            const SizedBox(width: 16),
-                            Expanded(child: _buildGlassCard(child: _buildFrequencyFocusSlider())),
-                            const SizedBox(width: 16),
-                            _buildSensTrigger(),
+                            // Top Minimalist Header
+                            _buildMinimalHeader(isLandscape),
+                            SizedBox(height: isLandscape ? 12 : 20),
+
+                            if (_waterfallFocusMode) const Spacer(),
+
+                            // Visualizations
+                            if (!_waterfallFocusMode)
+                              Expanded(
+                                flex: 5,
+                                child: isLandscape
+                                    ? Row(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(
+                                            child: _buildGlassCard(
+                                              child: SizedBox.expand(
+                                                child: CustomPaint(
+                                                  size: Size.infinite,
+                                                  painter: WaveformPainter(
+                                                    audioData: _currentAudioData,
+                                                    history: _audioHistory,
+                                                    color: Colors.white.withOpacity(0.8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: _buildFftCard(accentColor),
+                                          ),
+                                        ],
+                                      )
+                                    : Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(
+                                            flex: 2,
+                                            child: _buildGlassCard(
+                                              child: SizedBox.expand(
+                                                child: CustomPaint(
+                                                  size: Size.infinite,
+                                                  painter: WaveformPainter(
+                                                    audioData: _currentAudioData,
+                                                    history: _audioHistory,
+                                                    color: Colors.white.withOpacity(0.8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Expanded(
+                                            flex: 3,
+                                            child: _buildFftCard(accentColor),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            if (!_waterfallFocusMode) SizedBox(height: isLandscape ? 12 : 16),
+
+                            // Frequency Focus Card & Interaction Bar
+                            if (isLandscape && !_waterfallFocusMode)
+                              Row(
+                                children: [
+                                  _buildGainTrigger(),
+                                  const SizedBox(width: 16),
+                                  Expanded(child: _buildGlassCard(child: _buildFrequencyFocusSlider())),
+                                  const SizedBox(width: 16),
+                                  _buildSensTrigger(),
+                                ],
+                              )
+                            else ...[
+                              _buildGlassCard(child: _buildFrequencyFocusSlider()),
+                              if (!_waterfallFocusMode) ...[
+                                const SizedBox(height: 16),
+                                _buildInteractionBar(),
+                              ],
+                            ],
                           ],
-                        )
-                      else ...[
-                        _buildGlassCard(child: _buildFrequencyFocusSlider()),
-                        if (!_waterfallFocusMode) ...[
-                          const SizedBox(height: 16),
-                          _buildInteractionBar(),
-                        ],
-                      ],
-                    ],
-                  );
-                },
-              ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                if (useTabletLayout)
+                  Container(
+                    width: 350,
+                    margin: const EdgeInsets.only(right: 20, top: 10, bottom: 10),
+                    child: _buildGlassCard(
+                      child: SettingsContent(
+                        settings: widget.settings,
+                        onSettingsChanged: widget.onSettingsChanged,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
@@ -943,11 +962,12 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ),
           const SizedBox(width: 12),
         ],
-        Semantics(
-          label: "Settings",
-          button: true,
-          child: _buildHeaderAction(icon: Icons.tune_rounded, onPressed: _showSettings),
-        ),
+        if (!isLandscape || MediaQuery.of(context).size.shortestSide < 600)
+          Semantics(
+            label: "Settings",
+            button: true,
+            child: _buildHeaderAction(icon: Icons.tune_rounded, onPressed: _showSettings),
+          ),
         const SizedBox(width: 12),
         Semantics(
           label: "Toggle Focus",
@@ -1076,8 +1096,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       children: [
         Row(
           children: [
-            ...labelWidgets,
-            const Spacer(),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: labelWidgets,
+                ),
+              ),
+            ),
             Text(
                 rangeText,
                 style: const TextStyle(fontSize: 10, color: Colors.white38)),

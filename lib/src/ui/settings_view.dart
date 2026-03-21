@@ -21,31 +21,11 @@ class SettingsView extends StatefulWidget {
 
 class _SettingsViewState extends State<SettingsView> {
   late AppSettings _currentSettings;
-  late final TextEditingController _freqController;
-  late final TextEditingController _bwController;
-  late final TextEditingController _rtlHostController;
-  late final TextEditingController _rtlPortController;
-  late final TextEditingController _ppmController;
 
   @override
   void initState() {
     super.initState();
     _currentSettings = widget.settings;
-    _freqController = TextEditingController(text: _currentSettings.centerFrequency.toString());
-    _bwController = TextEditingController(text: _currentSettings.rfBandwidth.toString());
-    _rtlHostController = TextEditingController(text: _currentSettings.rtlTcpHost);
-    _rtlPortController = TextEditingController(text: _currentSettings.rtlTcpPort.toString());
-    _ppmController = TextEditingController(text: _currentSettings.ppmCorrection.toString());
-  }
-
-  @override
-  void dispose() {
-    _freqController.dispose();
-    _bwController.dispose();
-    _rtlHostController.dispose();
-    _rtlPortController.dispose();
-    _ppmController.dispose();
-    super.dispose();
   }
 
   void _updateSettings(AppSettings newSettings) {
@@ -104,205 +84,300 @@ class _SettingsViewState extends State<SettingsView> {
                 borderRadius: BorderRadius.circular(32),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(context),
-                        const SizedBox(height: 32),
-
-                        // Section 1: Mode
-                        _buildSectionTitle(LocalizationHelper.get('settings.mode')),
-                        const SizedBox(height: 12),
-                        _buildDropdown<SignalSourceType>(
-                          label: LocalizationHelper.get('settings.signal_source'),
-                          value: _currentSettings.signalSource,
-                          items: SignalSourceType.values,
-                          itemLabel: (type) => LocalizationHelper.get('settings.signal_sources.${type.name}'),
-                          onChanged: (val) {
-                            if (val != null) _updateSettings(_currentSettings.copyWith(signalSource: val));
-                          },
-                        ),
-
-                        const SizedBox(height: 32),
-                        // Section 2: Language
-                        _buildSectionTitle(LocalizationHelper.get('settings.language')),
-                        const SizedBox(height: 12),
-                        _buildDropdown<String>(
-                          label: LocalizationHelper.get('settings.language'),
-                          value: _currentSettings.language,
-                          items: ['en'],
-                          itemLabel: (lang) => lang == 'en' ? 'English' : lang,
-                          onChanged: (val) {
-                             if (val != null) _updateSettings(_currentSettings.copyWith(language: val));
-                          },
-                        ),
-
-                        const SizedBox(height: 32),
-                        // Section 3: Theme
-                        _buildSectionTitle(LocalizationHelper.get('settings.theme')),
-                        const SizedBox(height: 12),
-                        _buildThemeSelector(),
-
-                        // SDR Specific Settings (Only visible in RF mode)
-                        if (_currentSettings.signalSource == SignalSourceType.rf) ...[
-                          const SizedBox(height: 32),
-                          _buildSectionTitle("SDR CONFIGURATION"),
-                          const SizedBox(height: 16),
-                          _buildDropdown<RfSourceType>(
-                            label: LocalizationHelper.get('settings.rf_source'),
-                            value: _currentSettings.rfSource,
-                            items: RfSourceType.values,
-                            itemLabel: (type) => LocalizationHelper.get('settings.rf_sources.${type.name}'),
-                            onChanged: (val) {
-                              if (val != null) _updateSettings(_currentSettings.copyWith(rfSource: val));
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          _buildDropdown<DemodulationMode>(
-                            label: LocalizationHelper.get('settings.demodulation_mode'),
-                            value: _currentSettings.demodulationMode,
-                            items: DemodulationMode.values,
-                            itemLabel: (mode) => LocalizationHelper.get('settings.demodulation_modes.${mode.name}'),
-                            onChanged: (val) {
-                              if (val != null) _updateSettings(_currentSettings.copyWith(demodulationMode: val));
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          _buildSwitch(
-                            label: LocalizationHelper.get('settings.audio_output'),
-                            value: _currentSettings.audioOutputEnabled,
-                            onChanged: (val) => _updateSettings(_currentSettings.copyWith(audioOutputEnabled: val)),
-                          ),
-                          if (_currentSettings.rfSource == RfSourceType.integrated) ...[
-                            const SizedBox(height: 12),
-                            _buildDriverStatus(),
-                          ],
-                          if (_currentSettings.rfSource == RfSourceType.rtlTcp) ...[
-                            const SizedBox(height: 16),
-                            _buildTextField(
-                              label: LocalizationHelper.get('settings.rtl_tcp_host'),
-                              controller: _rtlHostController,
-                              onChanged: (val) {
-                                _updateSettings(_currentSettings.copyWith(rtlTcpHost: val));
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildTextField(
-                              label: LocalizationHelper.get('settings.rtl_tcp_port'),
-                              controller: _rtlPortController,
-                              onChanged: (val) {
-                                final int? port = int.tryParse(val);
-                                if (port != null) _updateSettings(_currentSettings.copyWith(rtlTcpPort: port));
-                              },
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-                          _buildTextField(
-                            label: LocalizationHelper.get('settings.center_frequency'),
-                            controller: _freqController,
-                            onChanged: (val) {
-                              final double? freq = double.tryParse(val);
-                              if (freq != null) _updateSettings(_currentSettings.copyWith(centerFrequency: freq));
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          _buildTextField(
-                            label: LocalizationHelper.get('settings.rf_bandwidth'),
-                            controller: _bwController,
-                            onChanged: (val) {
-                              final double? bw = double.tryParse(val);
-                              if (bw != null) _updateSettings(_currentSettings.copyWith(rfBandwidth: bw));
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          _buildTextField(
-                            label: LocalizationHelper.get('settings.ppm_correction'),
-                            controller: _ppmController,
-                            onChanged: (val) {
-                              final double? ppm = double.tryParse(val);
-                              if (ppm != null) _updateSettings(_currentSettings.copyWith(ppmCorrection: ppm));
-                            },
-                          ),
-                        ],
-
-                        const SizedBox(height: 32),
-                        _buildSectionTitle(LocalizationHelper.get('settings.analysis')),
-                        const SizedBox(height: 16),
-                        _buildSwitch(
-                          label: LocalizationHelper.get('settings.peak_hold'),
-                          value: _currentSettings.peakHoldEnabled,
-                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(peakHoldEnabled: val)),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildDropdown<FftAveragingMode>(
-                          label: LocalizationHelper.get('settings.averaging_mode'),
-                          value: _currentSettings.fftAveragingMode,
-                          items: FftAveragingMode.values,
-                          itemLabel: (type) => LocalizationHelper.get('settings.averaging_modes.${type.name}'),
-                          onChanged: (val) {
-                            if (val != null) _updateSettings(_currentSettings.copyWith(fftAveragingMode: val));
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSlider(
-                          label: LocalizationHelper.get('settings.averaging_count'),
-                          value: _currentSettings.fftAveragingCount.toDouble(),
-                          min: 2,
-                          max: 50,
-                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(fftAveragingCount: val.toInt())),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSwitch(
-                          label: LocalizationHelper.get('settings.show_harmonics'),
-                          value: _currentSettings.showHarmonics,
-                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(showHarmonics: val)),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSwitch(
-                          label: LocalizationHelper.get('settings.show_snr'),
-                          value: _currentSettings.showSnr,
-                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(showSnr: val)),
-                        ),
-
-                        const SizedBox(height: 32),
-                        _buildSectionTitle(LocalizationHelper.get('settings.technical')),
-                        const SizedBox(height: 16),
-                        _buildDropdown<int>(
-                          label: LocalizationHelper.get('settings.fft_window_size'),
-                          value: _currentSettings.fftWindowSize,
-                          items: [512, 1024, 2048, 4096],
-                          onChanged: (val) {
-                            if (val != null) _updateSettings(_currentSettings.copyWith(fftWindowSize: val));
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildDropdown<FftWindowType>(
-                          label: LocalizationHelper.get('settings.fft_window_type'),
-                          value: _currentSettings.fftWindowType,
-                          items: FftWindowType.values,
-                          itemLabel: (type) => LocalizationHelper.get('settings.window_types.${type.name}'),
-                          onChanged: (val) {
-                            if (val != null) _updateSettings(_currentSettings.copyWith(fftWindowType: val));
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSlider(
-                          label: LocalizationHelper.get('settings.frequency_skew'),
-                          value: _currentSettings.frequencySkew,
-                          min: 0.2,
-                          max: 3.0,
-                          onChanged: (val) => _updateSettings(_currentSettings.copyWith(frequencySkew: val)),
-                        ),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
+                  child: SettingsContent(
+                    settings: _currentSettings,
+                    onSettingsChanged: _updateSettings,
+                    showCloseButton: true,
                   ),
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class SettingsContent extends StatefulWidget {
+  final AppSettings settings;
+  final ValueChanged<AppSettings> onSettingsChanged;
+  final bool showCloseButton;
+
+  const SettingsContent({
+    super.key,
+    required this.settings,
+    required this.onSettingsChanged,
+    this.showCloseButton = false,
+  });
+
+  @override
+  State<SettingsContent> createState() => _SettingsContentState();
+}
+
+class _SettingsContentState extends State<SettingsContent> {
+  late final TextEditingController _freqController;
+  late final TextEditingController _bwController;
+  late final TextEditingController _rtlHostController;
+  late final TextEditingController _rtlPortController;
+  late final TextEditingController _ppmController;
+
+  @override
+  void initState() {
+    super.initState();
+    _freqController = TextEditingController(text: widget.settings.centerFrequency.toString());
+    _bwController = TextEditingController(text: widget.settings.rfBandwidth.toString());
+    _rtlHostController = TextEditingController(text: widget.settings.rtlTcpHost);
+    _rtlPortController = TextEditingController(text: widget.settings.rtlTcpPort.toString());
+    _ppmController = TextEditingController(text: widget.settings.ppmCorrection.toString());
+  }
+
+  @override
+  void didUpdateWidget(SettingsContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.settings.centerFrequency != double.tryParse(_freqController.text)) {
+      _freqController.text = widget.settings.centerFrequency.toString();
+    }
+    if (widget.settings.rfBandwidth != double.tryParse(_bwController.text)) {
+      _bwController.text = widget.settings.rfBandwidth.toString();
+    }
+    if (widget.settings.rtlTcpHost != _rtlHostController.text) {
+      _rtlHostController.text = widget.settings.rtlTcpHost;
+    }
+    if (widget.settings.rtlTcpPort != int.tryParse(_rtlPortController.text)) {
+      _rtlPortController.text = widget.settings.rtlTcpPort.toString();
+    }
+    if (widget.settings.ppmCorrection != double.tryParse(_ppmController.text)) {
+      _ppmController.text = widget.settings.ppmCorrection.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _freqController.dispose();
+    _bwController.dispose();
+    _rtlHostController.dispose();
+    _rtlPortController.dispose();
+    _ppmController.dispose();
+    super.dispose();
+  }
+
+  void _updateSettings(AppSettings newSettings) {
+    widget.onSettingsChanged(newSettings);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: 32),
+
+          // Section 1: Mode
+          _buildSectionTitle(LocalizationHelper.get('settings.mode')),
+          const SizedBox(height: 12),
+          _buildDropdown<SignalSourceType>(
+            label: LocalizationHelper.get('settings.signal_source'),
+            value: widget.settings.signalSource,
+            items: SignalSourceType.values,
+            itemLabel: (type) => LocalizationHelper.get('settings.signal_sources.${type.name}'),
+            onChanged: (val) {
+              if (val != null) _updateSettings(widget.settings.copyWith(signalSource: val));
+            },
+          ),
+
+          const SizedBox(height: 32),
+          // Section 2: Language
+          _buildSectionTitle(LocalizationHelper.get('settings.language')),
+          const SizedBox(height: 12),
+          _buildDropdown<String>(
+            label: LocalizationHelper.get('settings.language'),
+            value: widget.settings.language,
+            items: ['en', 'zh', 'ja', 'fr', 'de', 'it', 'es', 'gl', 'pt', 'ca', 'eu'],
+            itemLabel: (lang) {
+              switch (lang) {
+                case 'en': return 'English';
+                case 'zh': return '中文 (Chinese)';
+                case 'ja': return '日本語 (Japanese)';
+                case 'fr': return 'Français (French)';
+                case 'de': return 'Deutsch (German)';
+                case 'it': return 'Italiano (Italian)';
+                case 'es': return 'Español (Spanish)';
+                case 'gl': return 'Galego (Galician)';
+                case 'pt': return 'Português (Portuguese)';
+                case 'ca': return 'Català (Catalan)';
+                case 'eu': return 'Euskara (Basque)';
+                default: return lang;
+              }
+            },
+            onChanged: (val) async {
+              if (val != null) {
+                await LocalizationHelper.load(val);
+                _updateSettings(widget.settings.copyWith(language: val));
+              }
+            },
+          ),
+
+          const SizedBox(height: 32),
+          // Section 3: Theme
+          _buildSectionTitle(LocalizationHelper.get('settings.theme')),
+          const SizedBox(height: 12),
+          _buildThemeSelector(),
+
+          // SDR Specific Settings (Only visible in RF mode)
+          if (widget.settings.signalSource == SignalSourceType.rf) ...[
+            const SizedBox(height: 32),
+            _buildSectionTitle("SDR CONFIGURATION"),
+            const SizedBox(height: 16),
+            _buildDropdown<RfSourceType>(
+              label: LocalizationHelper.get('settings.rf_source'),
+              value: widget.settings.rfSource,
+              items: RfSourceType.values,
+              itemLabel: (type) => LocalizationHelper.get('settings.rf_sources.${type.name}'),
+              onChanged: (val) {
+                if (val != null) _updateSettings(widget.settings.copyWith(rfSource: val));
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildDropdown<DemodulationMode>(
+              label: LocalizationHelper.get('settings.demodulation_mode'),
+              value: widget.settings.demodulationMode,
+              items: DemodulationMode.values,
+              itemLabel: (mode) => LocalizationHelper.get('settings.demodulation_modes.${mode.name}'),
+              onChanged: (val) {
+                if (val != null) _updateSettings(widget.settings.copyWith(demodulationMode: val));
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildSwitch(
+              label: LocalizationHelper.get('settings.audio_output'),
+              value: widget.settings.audioOutputEnabled,
+              onChanged: (val) => _updateSettings(widget.settings.copyWith(audioOutputEnabled: val)),
+            ),
+            if (widget.settings.rfSource == RfSourceType.integrated) ...[
+              const SizedBox(height: 12),
+              _buildDriverStatus(),
+            ],
+            if (widget.settings.rfSource == RfSourceType.rtlTcp) ...[
+              const SizedBox(height: 16),
+              _buildTextField(
+                label: LocalizationHelper.get('settings.rtl_tcp_host'),
+                controller: _rtlHostController,
+                onChanged: (val) {
+                  _updateSettings(widget.settings.copyWith(rtlTcpHost: val));
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildTextField(
+                label: LocalizationHelper.get('settings.rtl_tcp_port'),
+                controller: _rtlPortController,
+                onChanged: (val) {
+                  final int? port = int.tryParse(val);
+                  if (port != null) _updateSettings(widget.settings.copyWith(rtlTcpPort: port));
+                },
+              ),
+            ],
+            const SizedBox(height: 16),
+            _buildTextField(
+              label: LocalizationHelper.get('settings.center_frequency'),
+              controller: _freqController,
+              onChanged: (val) {
+                final double? freq = double.tryParse(val);
+                if (freq != null) _updateSettings(widget.settings.copyWith(centerFrequency: freq));
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              label: LocalizationHelper.get('settings.rf_bandwidth'),
+              controller: _bwController,
+              onChanged: (val) {
+                final double? bw = double.tryParse(val);
+                if (bw != null) _updateSettings(widget.settings.copyWith(rfBandwidth: bw));
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              label: LocalizationHelper.get('settings.ppm_correction'),
+              controller: _ppmController,
+              onChanged: (val) {
+                final double? ppm = double.tryParse(val);
+                if (ppm != null) _updateSettings(widget.settings.copyWith(ppmCorrection: ppm));
+              },
+            ),
+          ],
+
+          const SizedBox(height: 32),
+          _buildSectionTitle(LocalizationHelper.get('settings.analysis')),
+          const SizedBox(height: 16),
+          _buildSwitch(
+            label: LocalizationHelper.get('settings.peak_hold'),
+            value: widget.settings.peakHoldEnabled,
+            onChanged: (val) => _updateSettings(widget.settings.copyWith(peakHoldEnabled: val)),
+          ),
+          const SizedBox(height: 16),
+          _buildDropdown<FftAveragingMode>(
+            label: LocalizationHelper.get('settings.averaging_mode'),
+            value: widget.settings.fftAveragingMode,
+            items: FftAveragingMode.values,
+            itemLabel: (type) => LocalizationHelper.get('settings.averaging_modes.${type.name}'),
+            onChanged: (val) {
+              if (val != null) _updateSettings(widget.settings.copyWith(fftAveragingMode: val));
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildSlider(
+            label: LocalizationHelper.get('settings.averaging_count'),
+            value: widget.settings.fftAveragingCount.toDouble(),
+            min: 2,
+            max: 50,
+            onChanged: (val) => _updateSettings(widget.settings.copyWith(fftAveragingCount: val.toInt())),
+          ),
+          const SizedBox(height: 16),
+          _buildSwitch(
+            label: LocalizationHelper.get('settings.show_harmonics'),
+            value: widget.settings.showHarmonics,
+            onChanged: (val) => _updateSettings(widget.settings.copyWith(showHarmonics: val)),
+          ),
+          const SizedBox(height: 16),
+          _buildSwitch(
+            label: LocalizationHelper.get('settings.show_snr'),
+            value: widget.settings.showSnr,
+            onChanged: (val) => _updateSettings(widget.settings.copyWith(showSnr: val)),
+          ),
+
+          const SizedBox(height: 32),
+          _buildSectionTitle(LocalizationHelper.get('settings.technical')),
+          const SizedBox(height: 16),
+          _buildDropdown<int>(
+            label: LocalizationHelper.get('settings.fft_window_size'),
+            value: widget.settings.fftWindowSize,
+            items: [512, 1024, 2048, 4096],
+            onChanged: (val) {
+              if (val != null) _updateSettings(widget.settings.copyWith(fftWindowSize: val));
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildDropdown<FftWindowType>(
+            label: LocalizationHelper.get('settings.fft_window_type'),
+            value: widget.settings.fftWindowType,
+            items: FftWindowType.values,
+            itemLabel: (type) => LocalizationHelper.get('settings.window_types.${type.name}'),
+            onChanged: (val) {
+              if (val != null) _updateSettings(widget.settings.copyWith(fftWindowType: val));
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildSlider(
+            label: LocalizationHelper.get('settings.frequency_skew'),
+            value: widget.settings.frequencySkew,
+            min: 0.2,
+            max: 3.0,
+            onChanged: (val) => _updateSettings(widget.settings.copyWith(frequencySkew: val)),
+          ),
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -313,27 +388,32 @@ class _SettingsViewState extends State<SettingsView> {
       children: [
         const Icon(Icons.tune_rounded, color: Colors.white70, size: 24),
         const SizedBox(width: 12),
-        Text(
-          LocalizationHelper.get('settings.title').toUpperCase(),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2,
+        Expanded(
+          child: Text(
+            LocalizationHelper.get('settings.title').toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-        const Spacer(),
-        Semantics(
-          label: "Close Settings",
-          button: true,
-          child: IconButton(
-            icon: const Icon(Icons.close_rounded, color: Colors.white54),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).pop();
-            },
+        if (widget.showCloseButton) ...[
+          const Spacer(),
+          Semantics(
+            label: "Close Settings",
+            button: true,
+            child: IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white54),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).pop();
+              },
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -355,14 +435,14 @@ class _SettingsViewState extends State<SettingsView> {
       spacing: 8,
       runSpacing: 8,
       children: AppTheme.values.map((t) {
-        final isSelected = _currentSettings.theme == t;
+        final isSelected = widget.settings.theme == t;
         final themeLabel = LocalizationHelper.get('settings.themes.${t.name}');
         return Semantics(
           label: themeLabel,
           button: true,
           selected: isSelected,
           child: GestureDetector(
-            onTap: () => _updateSettings(_currentSettings.copyWith(theme: t)),
+            onTap: () => _updateSettings(widget.settings.copyWith(theme: t)),
             child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -504,7 +584,7 @@ class _SettingsViewState extends State<SettingsView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12))),
             Text(value.toStringAsFixed(2), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -533,7 +613,7 @@ class _SettingsViewState extends State<SettingsView> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12))),
         Switch(
           value: value,
           onChanged: onChanged,
