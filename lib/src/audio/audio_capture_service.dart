@@ -53,10 +53,17 @@ class AudioCaptureService implements SignalSource {
         final stream = await _audioRecorder.startStream(config);
 
         await _audioStreamSubscription?.cancel();
+        // Reusable buffer for normalization
+        Float64List? normalizationBuffer;
+
         _audioStreamSubscription = stream.listen((data) {
           if (!_audioDataController.isClosed) {
             try {
-              final normalizedData = AudioUtils.convertPcmToDouble(data);
+              final int count = data.length ~/ 2;
+              if (normalizationBuffer == null || normalizationBuffer!.length < count) {
+                normalizationBuffer = Float64List(count);
+              }
+              final normalizedData = AudioUtils.convertPcmToDouble(data, target: normalizationBuffer);
               _audioDataController.add(normalizedData);
             } catch (e) {
               debugPrint("AudioCaptureService: Normalization error: $e, Data length: ${data.length}, Offset: ${data.offsetInBytes}");

@@ -49,6 +49,9 @@ class FftBarChartPainter extends CustomPainter {
     final double spacing = barWidth > 15 ? 4.0 : (barWidth > 8 ? 2.0 : (barWidth > 4 ? 1.0 : 0.0));
     final double actualWidth = math.max(1.0, barWidth - spacing);
 
+    // Scaling constant for performance (1 / log(1.1 + 1) is too low, let's use the previous 4.5)
+    const double logScale = 1.0 / 4.5;
+
     // Draw bars
     for (var i = 0; i < actualBarCount; i++) {
       double t = i / actualBarCount;
@@ -60,7 +63,9 @@ class FftBarChartPainter extends CustomPainter {
       final int dataIndex = (freqNorm * fftData.length).floor().clamp(0, fftData.length - 1);
 
       final maxMag = fftData[dataIndex];
-      final normalizedHeight = (math.log(maxMag + 1) / 4.5).clamp(0.0, 1.0);
+      // Fast log approximation for small values or just pre-scale
+      // ln(x+1) = log(x+1) * ln(10) if log is log10, but math.log is ln.
+      final normalizedHeight = (math.log(maxMag + 1) * logScale).clamp(0.0, 1.0);
       final barHeight = normalizedHeight * (height - 20);
 
       final x = i * barWidth + (spacing / 2);
@@ -105,7 +110,7 @@ class FftBarChartPainter extends CustomPainter {
         final int dataIndex = (freqNorm * peakHoldData!.length).floor().clamp(0, peakHoldData!.length - 1);
 
         final mag = peakHoldData![dataIndex];
-        final normalizedHeight = (math.log(mag + 1) / 4.5).clamp(0.0, 1.0);
+        final normalizedHeight = (math.log(mag + 1) * logScale).clamp(0.0, 1.0);
         final y = (height - 20) - (normalizedHeight * (height - 20));
         final x = i * barWidth + barWidth / 2;
 

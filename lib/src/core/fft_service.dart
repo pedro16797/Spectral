@@ -22,8 +22,15 @@ class FftService {
   Float64List? _cachedWindow;
   FftWindowType? _cachedWindowType;
 
-  // Internal buffer for accumulating samples to match window size
-  final List<double> _buffer = [];
+  // Internal circular buffer for accumulating samples
+  static const int _kMaxBufferSize = 65536;
+  final Float64List _buffer = Float64List(_kMaxBufferSize);
+  int _bufferWritePos = 0;
+  int _bufferCount = 0;
+
+  // Pre-allocated buffers to reduce GC pressure
+  Float64List? _realWorkBuffer;
+  Float64x2List? _complexWorkBuffer;
 
   // Peak hold buffer
   List<double>? _peakHoldBuffer;
@@ -34,11 +41,14 @@ class FftService {
 
   /// Resets the internal buffer and cached state.
   void reset() {
-    _buffer.clear();
+    _bufferWritePos = 0;
+    _bufferCount = 0;
     _cachedFft = null;
     _cachedSize = null;
     _cachedWindow = null;
     _cachedWindowType = null;
+    _realWorkBuffer = null;
+    _complexWorkBuffer = null;
     clearPeakHold();
     clearAveraging();
   }
@@ -68,20 +78,39 @@ class FftService {
   }) {
     if (samples.isEmpty) return [];
 
-    // Add new samples to buffer
-    _buffer.addAll(samples);
+    // Add new samples to circular buffer
+    if (samples.length >= _kMaxBufferSize) {
+      // If the incoming chunk is larger than our buffer, just take the end
+      int start = samples.length - _kMaxBufferSize;
+      _buffer.setRange(0, _kMaxBufferSize, samples, start);
+      _bufferWritePos = 0;
+      _bufferCount = _kMaxBufferSize;
+    } else {
+      int spaceToEnd = _kMaxBufferSize - _bufferWritePos;
+      if (samples.length <= spaceToEnd) {
+        _buffer.setRange(_bufferWritePos, _bufferWritePos + samples.length, samples);
+        _bufferWritePos = (_bufferWritePos + samples.length) % _kMaxBufferSize;
+      } else {
+        _buffer.setRange(_bufferWritePos, _kMaxBufferSize, samples, 0);
+        _buffer.setRange(0, samples.length - spaceToEnd, samples, spaceToEnd);
+        _bufferWritePos = samples.length - spaceToEnd;
+      }
+      _bufferCount = math.min(_kMaxBufferSize, _bufferCount + samples.length);
+    }
 
     final requiredSamples = isComplex ? windowSize * 2 : windowSize;
 
-    if (_buffer.length < requiredSamples) {
+    if (_bufferCount < requiredSamples) {
       return [];
     }
 
-    // Cache FFT instance if the size hasn't changed.
+    // Cache FFT instance and buffers if the size hasn't changed.
     if (_cachedFft == null || _cachedSize != windowSize) {
       _cachedFft = FFT(windowSize);
       _cachedSize = windowSize;
       _cachedWindow = null; // Reset window if size changed
+      _realWorkBuffer = Float64List(windowSize);
+      _complexWorkBuffer = Float64x2List(windowSize);
       clearPeakHold();
       clearAveraging();
     }
@@ -106,24 +135,26 @@ class FftService {
     }
 
     try {
-      final bufferOffset = _buffer.length - requiredSamples;
       List<double> magnitudes;
 
       if (isComplex) {
         // Complex FFT (I/Q data)
-        final windowedComplexSamples = Float64x2List(windowSize);
         for (int i = 0; i < windowSize; i++) {
-          final iVal = _buffer[bufferOffset + i * 2] * _cachedWindow![i];
-          final qVal = _buffer[bufferOffset + i * 2 + 1] * _cachedWindow![i];
-          windowedComplexSamples[i] = Float64x2(iVal, qVal);
+          // Read from circular buffer backwards from current write position
+          int idxI = (_bufferWritePos - requiredSamples + i * 2) % _kMaxBufferSize;
+          if (idxI < 0) idxI += _kMaxBufferSize;
+          int idxQ = (idxI + 1) % _kMaxBufferSize;
+
+          final iVal = _buffer[idxI] * _cachedWindow![i];
+          final qVal = _buffer[idxQ] * _cachedWindow![i];
+          _complexWorkBuffer![i] = Float64x2(iVal, qVal);
         }
 
-        _cachedFft!.inPlaceFft(windowedComplexSamples);
-        final freq = windowedComplexSamples;
+        _cachedFft!.inPlaceFft(_complexWorkBuffer!);
 
         // For complex FFT, we don't discard conjugates as the spectrum is asymmetrical.
         // We shift it so that DC is in the center.
-        final rawMagnitudes = freq.magnitudes();
+        final rawMagnitudes = _complexWorkBuffer!.magnitudes();
         final shifted = List<double>.filled(windowSize, 0);
         final half = windowSize ~/ 2;
         for (int i = 0; i < windowSize; i++) {
@@ -132,18 +163,14 @@ class FftService {
         magnitudes = shifted;
       } else {
         // Real FFT
-        final windowedSamples = Float64List(windowSize);
         for (int i = 0; i < windowSize; i++) {
-          windowedSamples[i] = _buffer[bufferOffset + i] * _cachedWindow![i];
+          int idx = (_bufferWritePos - requiredSamples + i) % _kMaxBufferSize;
+          if (idx < 0) idx += _kMaxBufferSize;
+          _realWorkBuffer![i] = _buffer[idx] * _cachedWindow![i];
         }
 
-        final freq = _cachedFft!.realFft(windowedSamples);
+        final freq = _cachedFft!.realFft(_realWorkBuffer!);
         magnitudes = freq.discardConjugates().magnitudes();
-      }
-
-      // Clear buffer to avoid indefinite growth
-      if (_buffer.length > requiredSamples * 2) {
-        _buffer.removeRange(0, _buffer.length - requiredSamples);
       }
 
       // Apply Averaging

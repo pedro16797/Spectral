@@ -24,6 +24,7 @@ import 'src/utils/localization_helper.dart';
 import 'src/services/settings_service.dart';
 import 'src/utils/mock_file_signal_source.dart';
 import 'src/utils/frequency_formatter.dart';
+import 'src/utils/audio_utils.dart';
 
 void main() async {
   try {
@@ -343,23 +344,24 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         _freqRange = const RangeValues(0, 22050);
       }
 
+      // Reusable buffers for decimation and processing
+      Float64List? decimationBuffer;
+
       _signalSubscription = _signalSource.dataStream.listen((data) {
-        if (mounted) {
+        if (!mounted) return;
+
+        try {
           setState(() {
             final audio = _updateAudioData(data);
-            final bool useDemod = _signalSource.isComplex && widget.settings.demodulationMode != DemodulationMode.none;
+            final bool useDemod =
+                _signalSource.isComplex && widget.settings.demodulationMode != DemodulationMode.none;
 
             if (useDemod && widget.settings.audioOutputEnabled) {
-              // Decimation: Simple downsampling of SDR stream to ~44.1 kHz for audio output.
-              // This prevents audio from playing too fast in high-bandwidth SDR modes.
+              // Decimation: Downsampling of SDR stream to ~44.1 kHz for audio output.
               final int decimationFactor = (_signalSource.sampleRate / 44100).round().clamp(1, 100);
               if (decimationFactor > 1) {
-                final int decimatedLength = audio.length ~/ decimationFactor;
-                final decimatedAudio = Float64List(decimatedLength);
-                for (int i = 0; i < decimatedLength; i++) {
-                  decimatedAudio[i] = audio[i * decimationFactor];
-                }
-                _audioOutputService.push(decimatedAudio);
+                decimationBuffer = AudioUtils.decimate(audio, decimationFactor, target: decimationBuffer);
+                _audioOutputService.push(decimationBuffer!);
               } else {
                 _audioOutputService.push(audio);
               }
@@ -376,6 +378,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             );
             _processFftFrame(fft, isComplex: useDemod ? false : _signalSource.isComplex);
           });
+        } catch (e) {
+          debugPrint("Signal processing error: $e");
         }
       });
 
@@ -936,11 +940,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         ),
         const Spacer(),
         if (isLandscape) ...[
-          _buildHeaderAction(
-            icon: _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
-            onPressed: _toggleCapture,
-            iconColor: _isCapturing ? Colors.redAccent : Colors.white70,
-            iconSize: 24,
+          Semantics(
+            label: "Capture Toggle",
+            button: true,
+            child: _buildHeaderAction(
+              icon: _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+              onPressed: _toggleCapture,
+              iconColor: _isCapturing ? Colors.redAccent : Colors.white70,
+              iconSize: 24,
+            ),
           ),
           const SizedBox(width: 12),
         ],
@@ -1156,28 +1164,32 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   Widget _buildCaptureButton() {
     return GestureDetector(
       onTap: _toggleCapture,
-      child: AnimatedBuilder(
-        animation: _pulseController,
-        builder: (context, child) {
-          return Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
-              border: Border.all(color: _isCapturing ? Colors.red.withOpacity(0.5) : Colors.white24, width: 2),
-              boxShadow: [
-                if (_isCapturing)
-                  BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10 + 10 * _pulseController.value)
-              ],
-            ),
-            child: Icon(
-              _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
-              color: _isCapturing ? Colors.redAccent : Colors.white,
-              size: 32,
-            ),
-          );
-        },
+      child: Semantics(
+        label: "Capture Toggle",
+        button: true,
+        child: AnimatedBuilder(
+          animation: _pulseController,
+          builder: (context, child) {
+            return Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
+                border: Border.all(color: _isCapturing ? Colors.red.withOpacity(0.5) : Colors.white24, width: 2),
+                boxShadow: [
+                  if (_isCapturing)
+                    BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10 + 10 * _pulseController.value)
+                ],
+              ),
+              child: Icon(
+                _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                color: _isCapturing ? Colors.redAccent : Colors.white,
+                size: 32,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
