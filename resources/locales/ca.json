@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "name": "Català",
+    "code": "ca-ES"
+  },
+  "app": {
+    "name": "Spectral",
+    "tagline": "Visualització Espectral Moderna"
+  },
+  "visualizations": {
+    "waveform": "Forma d'ona",
+    "fft": "FFT",
+    "waterfall": "Cascada"
+  },
+  "settings": {
+    "title": "Ajustos",
+    "theme": "Tema",
+    "language": "Idioma",
+    "range": "Rang",
+    "mode": "Mode",
+    "gain": "Guany",
+    "sensitivity": "Sensibilitat",
+    "signal_source": "Font de senyal",
+    "center_frequency": "Freqüència Central (MHz)",
+    "rf_bandwidth": "Ample de Banda RF (MHz)",
+    "technical": "Paràmetres Tècnics",
+    "fft_window_size": "Mida de la Finestra FFT",
+    "fft_window_type": "Tipus de Finestra FFT",
+    "frequency_skew": "Inclinació de Freqüència",
+    "peak_hold": "Retenció de Pic",
+    "averaging_mode": "Mitjana FFT",
+    "averaging_count": "Frames de Mitjana",
+    "ppm_correction": "Correcció PPM",
+    "show_harmonics": "Superposicions Harmòniques",
+    "show_snr": "Mostra SNR",
+    "analysis": "Anàlisi de Senyal",
+    "themes": {
+      "frost": "Escarcha",
+      "magma": "Magma",
+      "gray": "Gris",
+      "emerald": "Esmeralda",
+      "rainbow": "Arc de Sant Martí"
+    },
+    "window_types": {
+      "hanning": "Hanning",
+      "hamming": "Hamming",
+      "blackman": "Blackman",
+      "bartlett": "Bartlett"
+    },
+    "averaging_modes": {
+      "none": "Cap",
+      "linear": "Lineal",
+      "exponential": "Exponencial"
+    },
+    "demodulation_modes": {
+      "none": "Cap (Raw)",
+      "am": "AM (Envolupant)",
+      "fm": "FM (Quadratura)"
+    },
+    "signal_sources": {
+      "audio": "Micròfon Intern",
+      "rf": "SDR (Suport RF)"
+    },
+    "rf_sources": {
+      "integrated": "RTL-SDR Integrat",
+      "mock": "Simulació Mock",
+      "rtlTcp": "RTL-SDR (via rtl_tcp)"
+    },
+    "rf_source": "Tipus d'Entrada RF",
+    "demodulation_mode": "Mode de Desmodulació",
+    "audio_output": "Sortida d'Àudio",
+    "rtl_tcp_host": "Host RTL-TCP",
+    "rtl_tcp_port": "Port RTL-TCP"
+  },
+  "common": {
+    "save": "Desar",
+    "cancel": "Cancel·lar",
+    "ok": "D'acord",
+    "error": "Error",
+    "loading": "Carregant...",
+    "start_capture": "Iniciar Captura",
+    "stop_capture": "Aturar Captura",
+    "permission_denied": "Permís de micròfon denegat"
+  }
+}

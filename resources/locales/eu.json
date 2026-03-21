@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "name": "Euskara",
+    "code": "eu-ES"
+  },
+  "app": {
+    "name": "Spectral",
+    "tagline": "Espektro Bistaratze Modernoa"
+  },
+  "visualizations": {
+    "waveform": "Uhin-forma",
+    "fft": "FFT",
+    "waterfall": "Ur-jauzia"
+  },
+  "settings": {
+    "title": "Ezarpenak",
+    "theme": "Gaia",
+    "language": "Hizkuntza",
+    "range": "Barrutia",
+    "mode": "Modua",
+    "gain": "Irabazia",
+    "sensitivity": "Sentsibilitatea",
+    "signal_source": "Seinale Iturria",
+    "center_frequency": "Maiztasun Zentrala (MHz)",
+    "rf_bandwidth": "RF Banda-zabalera (MHz)",
+    "technical": "Parametro Teknikoak",
+    "fft_window_size": "FFT Leiho Tamaina",
+    "fft_window_type": "FFT Leiho Mota",
+    "frequency_skew": "Maiztasun Okerdura",
+    "peak_hold": "Gailur-mantentzea",
+    "averaging_mode": "FFT Batezbestekoa",
+    "averaging_count": "Batezbesteko Markoak",
+    "ppm_correction": "PPM Zuzenketa",
+    "show_harmonics": "Gainjarritako Harmonikoak",
+    "show_snr": "Erakutsi SNR",
+    "analysis": "Seinale Analisia",
+    "themes": {
+      "frost": "Izozte",
+      "magma": "Magma",
+      "gray": "Griz",
+      "emerald": "Esmeralda",
+      "rainbow": "Ostadarra"
+    },
+    "window_types": {
+      "hanning": "Hanning",
+      "hamming": "Hamming",
+      "blackman": "Blackman",
+      "bartlett": "Bartlett"
+    },
+    "averaging_modes": {
+      "none": "Bat ere ez",
+      "linear": "Lineala",
+      "exponential": "Esponentziala"
+    },
+    "demodulation_modes": {
+      "none": "Bat ere ez (Raw)",
+      "am": "AM (Kirun-detekzioa)",
+      "fm": "FM (Koadratura)"
+    },
+    "signal_sources": {
+      "audio": "Barne Mikrofonoa",
+      "rf": "SDR (RF Laguntza)"
+    },
+    "rf_sources": {
+      "integrated": "RTL-SDR Integratua",
+      "mock": "Mock Simulazioa",
+      "rtlTcp": "RTL-SDR (rtl_tcp bidez)"
+    },
+    "rf_source": "RF Sarrera Mota",
+    "demodulation_mode": "Demodulazio Modua",
+    "audio_output": "Audio Irteera",
+    "rtl_tcp_host": "RTL-TCP Host",
+    "rtl_tcp_port": "RTL-TCP Portua"
+  },
+  "common": {
+    "save": "Gorde",
+    "cancel": "Utzi",
+    "ok": "Ados",
+    "error": "Errorea",
+    "loading": "Kargatzen...",
+    "start_capture": "Hasi Captura",
+    "stop_capture": "Gelditu Captura",
+    "permission_denied": "Mikrofono baimena ukatuta"
+  }
+}

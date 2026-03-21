@@ -4,12 +4,6 @@ This document outlines the strategic plan for Spectral, from MVP to future itera
 
 ## Phase 4: Active Development
 
-### Current Sprint 4.3: Mobile Expansion & Multi-Language Support
-- [ ] **Mobile Parity:** Achieving full feature parity and performance optimization on iOS.
-- [ ] **Tablet Optimization:** Dedicated large-screen layouts with multi-pane visualization for iPads and Android tablets.
-- [ ] **Global Localization:** Adding support for Chinese, Japanese, French, German, and Italian.
-- [ ] **Regional Localization:** Adding support for Spanish, Galician, Portuguese, Catalonian, and Basque.
-
 ---
 
 ## Future Sprints & Upgrades
@@ -31,3 +25,4 @@ This document outlines the strategic plan for Spectral, from MVP to future itera
 ### Sprints
 - **Sprint 4.1: RF Foundation:** Established signal abstraction layer and integrated SDR support via libusb and rtl_tcp.
 - **Sprint 4.2: Advanced Spectral Analysis:** Implemented Peak Hold, FFT Averaging, SNR estimation, Spectral Markers, Harmonic Overlays, and AM/FM Demodulation with Audio Output.
+- **Sprint 4.3: Mobile Expansion & Multi-Language Support:** Achieved iOS parity, tablet-optimized multi-pane layouts, and added support for 10 new global and regional languages.

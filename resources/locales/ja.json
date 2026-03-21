@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "name": "日本語",
+    "code": "ja-JP"
+  },
+  "app": {
+    "name": "Spectral",
+    "tagline": "モダンなスペクトル可視化"
+  },
+  "visualizations": {
+    "waveform": "波形",
+    "fft": "FFT",
+    "waterfall": "ウォーターフォール"
+  },
+  "settings": {
+    "title": "設定",
+    "theme": "テーマ",
+    "language": "言語",
+    "range": "範囲",
+    "mode": "モード",
+    "gain": "ゲイン",
+    "sensitivity": "感度",
+    "signal_source": "信号源",
+    "center_frequency": "中心周波数 (MHz)",
+    "rf_bandwidth": "RF 帯域幅 (MHz)",
+    "technical": "技術パラメータ",
+    "fft_window_size": "FFT 窓サイズ",
+    "fft_window_type": "FFT 窓の種類",
+    "frequency_skew": "周波数スキュー",
+    "peak_hold": "ピークホールド",
+    "averaging_mode": "FFT 平均化",
+    "averaging_count": "平均化フレーム数",
+    "ppm_correction": "PPM 補正",
+    "show_harmonics": "高調波オーバーレイ",
+    "show_snr": "SNR オーバーレイを表示",
+    "analysis": "信号解析",
+    "themes": {
+      "frost": "フロスト",
+      "magma": "マグマ",
+      "gray": "グレー",
+      "emerald": "エメラルド",
+      "rainbow": "レインボー"
+    },
+    "window_types": {
+      "hanning": "Hanning",
+      "hamming": "Hamming",
+      "blackman": "Blackman",
+      "bartlett": "Bartlett"
+    },
+    "averaging_modes": {
+      "none": "なし",
+      "linear": "線形",
+      "exponential": "指数"
+    },
+    "demodulation_modes": {
+      "none": "なし (Raw)",
+      "am": "AM (エンベロープ)",
+      "fm": "FM (直交)"
+    },
+    "signal_sources": {
+      "audio": "内蔵マイク",
+      "rf": "SDR (RF サポート)"
+    },
+    "rf_sources": {
+      "integrated": "統合 RTL-SDR",
+      "mock": "モックシミュレーション",
+      "rtlTcp": "RTL-SDR (rtl_tcp 経由)"
+    },
+    "rf_source": "RF 入力タイプ",
+    "demodulation_mode": "復調モード",
+    "audio_output": "オーディオ出力",
+    "rtl_tcp_host": "RTL-TCP ホスト",
+    "rtl_tcp_port": "RTL-TCP ポート"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "ok": "OK",
+    "error": "エラー",
+    "loading": "読み込み中...",
+    "start_capture": "キャプチャ開始",
+    "stop_capture": "キャプチャ停止",
+    "permission_denied": "マイクの権限が拒否されました"
+  }
+}

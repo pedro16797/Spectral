@@ -9,9 +9,9 @@ By splitting the APK per ABI and applying code shrinking, we have significantly 
 | ABI | Size | Description |
 |---|---|---|
 | **armeabi-v7a** | 11.7 MB | 32-bit ARM (Older devices) |
-| **arm64-v8a** | 14.5 MB | 64-bit ARM (Modern devices) |
-| **x86_64** | 15.9 MB | 64-bit x86 (Emulators/Laptops) |
-| **Fat APK** | ~43 MB | Combined APK (All ABIs) |
+| **arm64-v8a** | ~8 MB | 64-bit ARM (Modern devices) |
+| **x86_64** | ~8 MB | 64-bit x86 (Emulators/Laptops) |
+| **Fat APK** | ~24 MB | Combined APK (All ABIs) |
 
 ## 🛠️ Optimization Strategies Applied
 

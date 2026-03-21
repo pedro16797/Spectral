@@ -71,4 +71,34 @@ void main() {
     // Check if value updated.
     expect(find.text('2.00'), findsNWidgets(2));
   });
+
+  testWidgets('Dial scaling on tablet dimensions (iPad Pro 12.9)', (WidgetTester tester) async {
+    // iPad Pro 12.9 dimensions: 1024x1366 logical pixels
+    // In landscape: 1366x1024
+    tester.view.physicalSize = const Size(2732, 2048);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const SpectralApp(initialSettings: AppSettings()));
+    await tester.pumpAndSettle();
+
+    final gainTriggerFinder = find.byKey(const Key('trigger_GAIN'));
+    await tester.tap(gainTriggerFinder);
+    await tester.pumpAndSettle();
+
+    final leftDialFinder = find.byKey(const Key('large_dial_left'));
+    expect(leftDialFinder, findsOneWidget);
+
+    final RenderBox renderBox = tester.renderObject(leftDialFinder);
+    final size = renderBox.size;
+    final center = renderBox.localToGlobal(Offset(size.width / 2, size.height / 2));
+
+    // Dial size should be proportional to screen height (size.height * 0.7)
+    // 1024 * 0.7 = 716.8
+    expect(size.height, closeTo(716.8, 1.0));
+    expect(size.width, closeTo(716.8, 1.0));
+
+    // Dial should be vertically centered (1024 / 2 = 512)
+    expect(center.dy, closeTo(512.0, 1.0));
+  });
 }

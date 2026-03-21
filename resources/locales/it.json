@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "name": "Italiano",
+    "code": "it-IT"
+  },
+  "app": {
+    "name": "Spectral",
+    "tagline": "Visualizzazione Spettrale Moderna"
+  },
+  "visualizations": {
+    "waveform": "Forma d'onda",
+    "fft": "FFT",
+    "waterfall": "Cascata"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "theme": "Tema",
+    "language": "Lingua",
+    "range": "Intervallo",
+    "mode": "Modalità",
+    "gain": "Guadagno",
+    "sensitivity": "Sensibilità",
+    "signal_source": "Sorgente Segnale",
+    "center_frequency": "Frequenza Centrale (MHz)",
+    "rf_bandwidth": "Larghezza di Banda RF (MHz)",
+    "technical": "Parametri Tecnici",
+    "fft_window_size": "Dimensione Finestra FFT",
+    "fft_window_type": "Tipo Finestra FFT",
+    "frequency_skew": "Inclinazione Frequenza",
+    "peak_hold": "Mantenimento Picco",
+    "averaging_mode": "Media FFT",
+    "averaging_count": "Frame Media",
+    "ppm_correction": "Correzione PPM",
+    "show_harmonics": "Overlay Armonici",
+    "show_snr": "Mostra SNR",
+    "analysis": "Analisi Segnale",
+    "themes": {
+      "frost": "Gelo",
+      "magma": "Magma",
+      "gray": "Grigio",
+      "emerald": "Smeraldo",
+      "rainbow": "Arcobaleno"
+    },
+    "window_types": {
+      "hanning": "Hanning",
+      "hamming": "Hamming",
+      "blackman": "Blackman",
+      "bartlett": "Bartlett"
+    },
+    "averaging_modes": {
+      "none": "Nessuna",
+      "linear": "Lineare",
+      "exponential": "Esponenziale"
+    },
+    "demodulation_modes": {
+      "none": "Nessuna (Raw)",
+      "am": "AM (Inviluppo)",
+      "fm": "FM (Quadratura)"
+    },
+    "signal_sources": {
+      "audio": "Microfono Interno",
+      "rf": "SDR (Supporto RF)"
+    },
+    "rf_sources": {
+      "integrated": "RTL-SDR Integrato",
+      "mock": "Simulazione Mock",
+      "rtlTcp": "RTL-SDR (via rtl_tcp)"
+    },
+    "rf_source": "Tipo Ingresso RF",
+    "demodulation_mode": "Modalità Demodulazione",
+    "audio_output": "Uscita Audio",
+    "rtl_tcp_host": "Host RTL-TCP",
+    "rtl_tcp_port": "Porta RTL-TCP"
+  },
+  "common": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "ok": "OK",
+    "error": "Errore",
+    "loading": "Caricamento...",
+    "start_capture": "Avvia Cattura",
+    "stop_capture": "Ferma Cattura",
+    "permission_denied": "Permesso microfono negato"
+  }
+}

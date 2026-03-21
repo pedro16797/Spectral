@@ -1,0 +1,140 @@
+name: Multi-Platform CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  FLUTTER_VERSION: '3.41.2' # Reverted to version from original working workflow
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter Test
+        run: flutter test
+
+  build-android:
+    name: Build Android APK
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Strip sample files for production build
+        run: rm -rf resources/samples/
+
+      - name: Build APK (Release)
+        run: |
+          flutter build apk --release \
+            --split-per-abi \
+            --obfuscate \
+            --split-debug-info=build/app/outputs/debug-info
+
+      - name: Upload arm64-v8a APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-apk-arm64-v8a
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+      - name: Upload armeabi-v7a APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-apk-armeabi-v7a
+          path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+
+      - name: Upload x86_64 APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-apk-x86_64
+          path: build/app/outputs/flutter-apk/app-x86_64-release.apk
+
+  build-web:
+    name: Build Web App
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Strip sample files for production build
+        run: rm -rf resources/samples/
+
+      - name: Build Web (Release)
+        run: flutter build web --release
+
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v6
+        with:
+          name: web-build
+          path: build/web/
+
+  build-ios:
+    name: Build iOS App
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Strip sample files for production build
+        run: rm -rf resources/samples/
+
+      - name: Build iOS (No-Codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Upload iOS App Bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-app-bundle
+          path: build/ios/iphoneos/Runner.app

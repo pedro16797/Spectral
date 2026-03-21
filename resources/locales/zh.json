@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "name": "中文",
+    "code": "zh-CN"
+  },
+  "app": {
+    "name": "Spectral",
+    "tagline": "现代频谱可视化"
+  },
+  "visualizations": {
+    "waveform": "波形",
+    "fft": "FFT",
+    "waterfall": "瀑布图"
+  },
+  "settings": {
+    "title": "设置",
+    "theme": "主题",
+    "language": "语言",
+    "range": "范围",
+    "mode": "模式",
+    "gain": "增益",
+    "sensitivity": "灵敏度",
+    "signal_source": "信号源",
+    "center_frequency": "中心频率 (MHz)",
+    "rf_bandwidth": "射频带宽 (MHz)",
+    "technical": "技术参数",
+    "fft_window_size": "FFT 窗口大小",
+    "fft_window_type": "FFT 窗口类型",
+    "frequency_skew": "频率倾斜",
+    "peak_hold": "峰值保持",
+    "averaging_mode": "FFT 平均",
+    "averaging_count": "平均帧数",
+    "ppm_correction": "PPM 校正",
+    "show_harmonics": "谐波叠加",
+    "show_snr": "显示 SNR 叠加",
+    "analysis": "信号分析",
+    "themes": {
+      "frost": "霜冻",
+      "magma": "岩浆",
+      "gray": "灰色",
+      "emerald": "翡翠",
+      "rainbow": "彩虹"
+    },
+    "window_types": {
+      "hanning": "Hanning",
+      "hamming": "Hamming",
+      "blackman": "Blackman",
+      "bartlett": "Bartlett"
+    },
+    "averaging_modes": {
+      "none": "无",
+      "linear": "线性",
+      "exponential": "指数"
+    },
+    "demodulation_modes": {
+      "none": "无 (原始)",
+      "am": "AM (包络)",
+      "fm": "FM (正交)"
+    },
+    "signal_sources": {
+      "audio": "内部麦克风",
+      "rf": "SDR (射频支持)"
+    },
+    "rf_sources": {
+      "integrated": "集成 RTL-SDR",
+      "mock": "模拟仿真",
+      "rtlTcp": "RTL-SDR (通过 rtl_tcp)"
+    },
+    "rf_source": "射频输入类型",
+    "demodulation_mode": "解调模式",
+    "audio_output": "音频输出",
+    "rtl_tcp_host": "RTL-TCP 主机",
+    "rtl_tcp_port": "RTL-TCP 端口"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "ok": "确定",
+    "error": "错误",
+    "loading": "加载中...",
+    "start_capture": "开始捕获",
+    "stop_capture": "停止捕获",
+    "permission_denied": "麦克风权限被拒绝"
+  }
+}
