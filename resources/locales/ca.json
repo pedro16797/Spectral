@@ -70,7 +70,28 @@
     "demodulation_mode": "Mode de Desmodulació",
     "audio_output": "Sortida d'Àudio",
     "rtl_tcp_host": "Host RTL-TCP",
-    "rtl_tcp_port": "Port RTL-TCP"
+    "rtl_tcp_port": "Port RTL-TCP",
+    "tooltips": {
+      "signal_source": "Canvia entre el micròfon intern i l'entrada de ràdio definida per programari (SDR).",
+      "language": "Canvia l'idioma de visualització de l'aplicació.",
+      "theme": "Selecciona el tema visual per a l'espectre i la interfície d'usuari.",
+      "rf_source": "Tria la font de maquinari SDR o de simulació.",
+      "demodulation_mode": "Selecciona el mètode per extreure l'àudio de la senyal de RF.",
+      "audio_output": "Activa la reproducció d'àudio de la senyal desmodulada.",
+      "rtl_tcp_host": "Adreça IP o nom d'amfitrió del servidor rtl_tcp.",
+      "rtl_tcp_port": "Port de xarxa del servidor rtl_tcp.",
+      "center_frequency": "Freqüència base per al sintonitzador SDR en MHz.",
+      "rf_bandwidth": "Ample de banda de captura per al SDR en MHz.",
+      "ppm_correction": "Ajusta la deriva de freqüència en el maquinari (parts per milió).",
+      "peak_hold": "Mostra la magnitud màxima assolida per a cada freqüència.",
+      "averaging_mode": "Mètode utilitzat per suavitzar les dades espectrals al llarg del temps.",
+      "averaging_count": "Nombre de fotogrames a incloure en la mitjana de suavitzat.",
+      "show_harmonics": "Mostra indicadors en múltiples de la freqüència de pic detectada.",
+      "show_snr": "Estima i mostra la relació senyal-soroll per al pic.",
+      "fft_window_size": "Resolució de l'anàlisi espectral (mostres per fotograma).",
+      "fft_window_type": "Funció matemàtica aplicada per reduir la fuga espectral.",
+      "frequency_skew": "Estirament o compressió visual de l'eix de freqüència."
+    }
   },
   "common": {
     "save": "Desar",

@@ -70,7 +70,28 @@
     "demodulation_mode": "Modo de Demodulación",
     "audio_output": "Saída de Audio",
     "rtl_tcp_host": "Host RTL-TCP",
-    "rtl_tcp_port": "Porto RTL-TCP"
+    "rtl_tcp_port": "Porto RTL-TCP",
+    "tooltips": {
+      "signal_source": "Alternar entre o micrófono interno e a entrada de Radio Definida por Software (SDR).",
+      "language": "Cambiar o idioma de visualización da aplicación.",
+      "theme": "Seleccionar o tema visual para o espectro e a interface de usuario.",
+      "rf_source": "Escoller a fonte de hardware SDR ou de simulación.",
+      "demodulation_mode": "Seleccionar o método para extraer audio da sinal de RF.",
+      "audio_output": "Activar a reprodución de audio da sinal demodulada.",
+      "rtl_tcp_host": "Enderezo IP o nome de host do servidor rtl_tcp.",
+      "rtl_tcp_port": "Porto de rede do servidor rtl_tcp.",
+      "center_frequency": "Frecuencia base para o sintonizador SDR en MHz.",
+      "rf_bandwidth": "Ancho de banda de captura para o SDR en MHz.",
+      "ppm_correction": "Axustar a deriva de frecuencia no hardware (partes por millón).",
+      "peak_hold": "Mostrar a magnitude máxima acadada para cada frecuencia.",
+      "averaging_mode": "Método utilizado para suavizar os datos espectrais ao longo do tempo.",
+      "averaging_count": "Número de tramas a incluír na media de suavizado.",
+      "show_harmonics": "Mostrar indicadores en múltiplos da frecuencia de pico detectada.",
+      "show_snr": "Estimar e mostrar a relación sinal-ruído para o pico.",
+      "fft_window_size": "Resolución da análise espectral (mostras por trama).",
+      "fft_window_type": "Función matemática aplicada para reducir a fuga espectral.",
+      "frequency_skew": "Estiramento ou compresión visual do eixe de frecuencia."
+    }
   },
   "common": {
     "save": "Gardar",

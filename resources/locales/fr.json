@@ -70,7 +70,28 @@
     "demodulation_mode": "Mode de Démodulation",
     "audio_output": "Sortie Audio",
     "rtl_tcp_host": "Hôte RTL-TCP",
-    "rtl_tcp_port": "Port RTL-TCP"
+    "rtl_tcp_port": "Port RTL-TCP",
+    "tooltips": {
+      "signal_source": "Basculez entre le microphone interne et l'entrée Radio Définie par Logiciel (SDR).",
+      "language": "Changez la langue d'affichage de l'application.",
+      "theme": "Sélectionnez le thème visuel pour le spectre et l'interface utilisateur.",
+      "rf_source": "Choisissez le matériel SDR ou la source de simulation.",
+      "demodulation_mode": "Sélectionnez la méthode d'extraction audio du signal RF.",
+      "audio_output": "Activez la lecture audio du signal démodulé.",
+      "rtl_tcp_host": "Adresse IP ou nom d'hôte du serveur rtl_tcp.",
+      "rtl_tcp_port": "Port réseau du serveur rtl_tcp.",
+      "center_frequency": "Fréquence de base du tuner SDR en MHz.",
+      "rf_bandwidth": "Bande passante de capture pour le SDR en MHz.",
+      "ppm_correction": "Ajustement de la dérive de fréquence du matériel (parties par million).",
+      "peak_hold": "Afficher la magnitude maximale atteinte pour chaque fréquence.",
+      "averaging_mode": "Méthode utilisée pour lisser les données spectrales au fil du temps.",
+      "averaging_count": "Nombre d'images à inclure dans la moyenne de lissage.",
+      "show_harmonics": "Afficher des indicateurs aux multiples de la fréquence de crête détectée.",
+      "show_snr": "Estimer et afficher le rapport signal/bruit pour la crête.",
+      "fft_window_size": "Résolution de l'analyse spectrale (échantillons par image).",
+      "fft_window_type": "Fonction mathématique appliquée pour réduire les fuites spectrales.",
+      "frequency_skew": "Étirement ou compression visuelle de l'axe des fréquences."
+    }
   },
   "common": {
     "save": "Enregistrer",

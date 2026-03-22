@@ -181,6 +181,7 @@ class _SettingsContentState extends State<SettingsContent> {
           const SizedBox(height: 12),
           _buildDropdown<SignalSourceType>(
             label: LocalizationHelper.get('settings.signal_source'),
+            tooltip: LocalizationHelper.get('settings.tooltips.signal_source'),
             value: widget.settings.signalSource,
             items: SignalSourceType.values,
             itemLabel: (type) => LocalizationHelper.get('settings.signal_sources.${type.name}'),
@@ -195,6 +196,7 @@ class _SettingsContentState extends State<SettingsContent> {
           const SizedBox(height: 12),
           _buildDropdown<String>(
             label: LocalizationHelper.get('settings.language'),
+            tooltip: LocalizationHelper.get('settings.tooltips.language'),
             value: widget.settings.language,
             items: ['en', 'zh', 'ja', 'fr', 'de', 'it', 'es', 'gl', 'pt', 'ca', 'eu'],
             itemLabel: (lang) {
@@ -226,6 +228,8 @@ class _SettingsContentState extends State<SettingsContent> {
           _buildSectionTitle(LocalizationHelper.get('settings.theme')),
           const SizedBox(height: 12),
           _buildThemeSelector(),
+          // Add a tooltip helper for themes if needed, but theme selector is a wrap of buttons.
+          // The prompt says "various settings", so we'll skip theme selector for now unless it's easy.
 
           // SDR Specific Settings (Only visible in RF mode)
           if (widget.settings.signalSource == SignalSourceType.rf) ...[
@@ -234,6 +238,7 @@ class _SettingsContentState extends State<SettingsContent> {
             const SizedBox(height: 16),
             _buildDropdown<RfSourceType>(
               label: LocalizationHelper.get('settings.rf_source'),
+              tooltip: LocalizationHelper.get('settings.tooltips.rf_source'),
               value: widget.settings.rfSource,
               items: RfSourceType.values,
               itemLabel: (type) => LocalizationHelper.get('settings.rf_sources.${type.name}'),
@@ -244,6 +249,7 @@ class _SettingsContentState extends State<SettingsContent> {
             const SizedBox(height: 16),
             _buildDropdown<DemodulationMode>(
               label: LocalizationHelper.get('settings.demodulation_mode'),
+              tooltip: LocalizationHelper.get('settings.tooltips.demodulation_mode'),
               value: widget.settings.demodulationMode,
               items: DemodulationMode.values,
               itemLabel: (mode) => LocalizationHelper.get('settings.demodulation_modes.${mode.name}'),
@@ -254,6 +260,7 @@ class _SettingsContentState extends State<SettingsContent> {
             const SizedBox(height: 16),
             _buildSwitch(
               label: LocalizationHelper.get('settings.audio_output'),
+              tooltip: LocalizationHelper.get('settings.tooltips.audio_output'),
               value: widget.settings.audioOutputEnabled,
               onChanged: (val) => _updateSettings(widget.settings.copyWith(audioOutputEnabled: val)),
             ),
@@ -265,6 +272,7 @@ class _SettingsContentState extends State<SettingsContent> {
               const SizedBox(height: 16),
               _buildTextField(
                 label: LocalizationHelper.get('settings.rtl_tcp_host'),
+                tooltip: LocalizationHelper.get('settings.tooltips.rtl_tcp_host'),
                 controller: _rtlHostController,
                 onChanged: (val) {
                   _updateSettings(widget.settings.copyWith(rtlTcpHost: val));
@@ -273,6 +281,7 @@ class _SettingsContentState extends State<SettingsContent> {
               const SizedBox(height: 16),
               _buildTextField(
                 label: LocalizationHelper.get('settings.rtl_tcp_port'),
+                tooltip: LocalizationHelper.get('settings.tooltips.rtl_tcp_port'),
                 controller: _rtlPortController,
                 onChanged: (val) {
                   final int? port = int.tryParse(val);
@@ -283,6 +292,7 @@ class _SettingsContentState extends State<SettingsContent> {
             const SizedBox(height: 16),
             _buildTextField(
               label: LocalizationHelper.get('settings.center_frequency'),
+              tooltip: LocalizationHelper.get('settings.tooltips.center_frequency'),
               controller: _freqController,
               onChanged: (val) {
                 final double? freq = double.tryParse(val);
@@ -292,6 +302,7 @@ class _SettingsContentState extends State<SettingsContent> {
             const SizedBox(height: 16),
             _buildTextField(
               label: LocalizationHelper.get('settings.rf_bandwidth'),
+              tooltip: LocalizationHelper.get('settings.tooltips.rf_bandwidth'),
               controller: _bwController,
               onChanged: (val) {
                 final double? bw = double.tryParse(val);
@@ -301,6 +312,7 @@ class _SettingsContentState extends State<SettingsContent> {
             const SizedBox(height: 16),
             _buildTextField(
               label: LocalizationHelper.get('settings.ppm_correction'),
+              tooltip: LocalizationHelper.get('settings.tooltips.ppm_correction'),
               controller: _ppmController,
               onChanged: (val) {
                 final double? ppm = double.tryParse(val);
@@ -314,12 +326,14 @@ class _SettingsContentState extends State<SettingsContent> {
           const SizedBox(height: 16),
           _buildSwitch(
             label: LocalizationHelper.get('settings.peak_hold'),
+            tooltip: LocalizationHelper.get('settings.tooltips.peak_hold'),
             value: widget.settings.peakHoldEnabled,
             onChanged: (val) => _updateSettings(widget.settings.copyWith(peakHoldEnabled: val)),
           ),
           const SizedBox(height: 16),
           _buildDropdown<FftAveragingMode>(
             label: LocalizationHelper.get('settings.averaging_mode'),
+            tooltip: LocalizationHelper.get('settings.tooltips.averaging_mode'),
             value: widget.settings.fftAveragingMode,
             items: FftAveragingMode.values,
             itemLabel: (type) => LocalizationHelper.get('settings.averaging_modes.${type.name}'),
@@ -330,6 +344,7 @@ class _SettingsContentState extends State<SettingsContent> {
           const SizedBox(height: 16),
           _buildSlider(
             label: LocalizationHelper.get('settings.averaging_count'),
+            tooltip: LocalizationHelper.get('settings.tooltips.averaging_count'),
             value: widget.settings.fftAveragingCount.toDouble(),
             min: 2,
             max: 50,
@@ -338,12 +353,14 @@ class _SettingsContentState extends State<SettingsContent> {
           const SizedBox(height: 16),
           _buildSwitch(
             label: LocalizationHelper.get('settings.show_harmonics'),
+            tooltip: LocalizationHelper.get('settings.tooltips.show_harmonics'),
             value: widget.settings.showHarmonics,
             onChanged: (val) => _updateSettings(widget.settings.copyWith(showHarmonics: val)),
           ),
           const SizedBox(height: 16),
           _buildSwitch(
             label: LocalizationHelper.get('settings.show_snr'),
+            tooltip: LocalizationHelper.get('settings.tooltips.show_snr'),
             value: widget.settings.showSnr,
             onChanged: (val) => _updateSettings(widget.settings.copyWith(showSnr: val)),
           ),
@@ -353,6 +370,7 @@ class _SettingsContentState extends State<SettingsContent> {
           const SizedBox(height: 16),
           _buildDropdown<int>(
             label: LocalizationHelper.get('settings.fft_window_size'),
+            tooltip: LocalizationHelper.get('settings.tooltips.fft_window_size'),
             value: widget.settings.fftWindowSize,
             items: [512, 1024, 2048, 4096],
             onChanged: (val) {
@@ -362,6 +380,7 @@ class _SettingsContentState extends State<SettingsContent> {
           const SizedBox(height: 16),
           _buildDropdown<FftWindowType>(
             label: LocalizationHelper.get('settings.fft_window_type'),
+            tooltip: LocalizationHelper.get('settings.tooltips.fft_window_type'),
             value: widget.settings.fftWindowType,
             items: FftWindowType.values,
             itemLabel: (type) => LocalizationHelper.get('settings.window_types.${type.name}'),
@@ -372,6 +391,7 @@ class _SettingsContentState extends State<SettingsContent> {
           const SizedBox(height: 16),
           _buildSlider(
             label: LocalizationHelper.get('settings.frequency_skew'),
+            tooltip: LocalizationHelper.get('settings.tooltips.frequency_skew'),
             value: widget.settings.frequencySkew,
             min: 0.2,
             max: 3.0,
@@ -418,16 +438,8 @@ class _SettingsContentState extends State<SettingsContent> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: const TextStyle(
-        color: Colors.white24,
-        fontSize: 10,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.5,
-      ),
-    );
+  Widget _buildSectionTitle(String title, {String? tooltip}) {
+    return _buildLabelWithTooltip(title.toUpperCase(), tooltip, isTitle: true);
   }
 
   Widget _buildThemeSelector() {
@@ -500,17 +512,73 @@ class _SettingsContentState extends State<SettingsContent> {
     );
   }
 
+  Widget _buildLabelWithTooltip(String label, String? tooltip, {bool isTitle = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            label,
+            style: isTitle
+                ? const TextStyle(
+                    color: Colors.white24,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  )
+                : const TextStyle(color: Colors.white54, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (tooltip != null) ...[
+          const SizedBox(width: 6),
+          Tooltip(
+            message: tooltip,
+            triggerMode: TooltipTriggerMode.tap,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            showDuration: const Duration(seconds: 3),
+            preferBelow: false,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2C2C2E).withOpacity(0.95),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                )
+              ],
+            ),
+            textStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              height: 1.4,
+            ),
+            child: Icon(
+              Icons.info_outline_rounded,
+              size: 14,
+              color: Colors.white.withOpacity(0.3),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildDropdown<T>({
     required String label,
     required T value,
     required List<T> items,
     String Function(T)? itemLabel,
     required ValueChanged<T?> onChanged,
+    String? tooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        _buildLabelWithTooltip(label, tooltip),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -546,11 +614,12 @@ class _SettingsContentState extends State<SettingsContent> {
     required String label,
     required TextEditingController controller,
     required ValueChanged<String> onChanged,
+    String? tooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        _buildLabelWithTooltip(label, tooltip),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -577,6 +646,7 @@ class _SettingsContentState extends State<SettingsContent> {
     required double min,
     required double max,
     required ValueChanged<double> onChanged,
+    String? tooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,7 +654,7 @@ class _SettingsContentState extends State<SettingsContent> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12))),
+            Expanded(child: _buildLabelWithTooltip(label, tooltip)),
             Text(value.toStringAsFixed(2), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -609,11 +679,12 @@ class _SettingsContentState extends State<SettingsContent> {
     required String label,
     required bool value,
     required ValueChanged<bool> onChanged,
+    String? tooltip,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12))),
+        Expanded(child: _buildLabelWithTooltip(label, tooltip)),
         Switch(
           value: value,
           onChanged: onChanged,

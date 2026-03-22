@@ -70,7 +70,28 @@
     "demodulation_mode": "Modalità Demodulazione",
     "audio_output": "Uscita Audio",
     "rtl_tcp_host": "Host RTL-TCP",
-    "rtl_tcp_port": "Porta RTL-TCP"
+    "rtl_tcp_port": "Porta RTL-TCP",
+    "tooltips": {
+      "signal_source": "Passa dal microfono interno all'ingresso Radio Definita via Software (SDR).",
+      "language": "Cambia la lingua di visualizzazione dell'applicazione.",
+      "theme": "Seleziona il tema visivo per lo spettro e l'interfaccia utente.",
+      "rf_source": "Scegli l'hardware SDR o la sorgente di simulazione.",
+      "demodulation_mode": "Seleziona il metodo per estrarre l'audio dal segnale RF.",
+      "audio_output": "Abilita la riproduzione audio del segnale demodulato.",
+      "rtl_tcp_host": "Indirizzo IP o hostname del server rtl_tcp.",
+      "rtl_tcp_port": "Porta di rete del server rtl_tcp.",
+      "center_frequency": "Frequenza di base per il sintonizzatore SDR in MHz.",
+      "rf_bandwidth": "Larghezza di banda di acquisizione per l'SDR in MHz.",
+      "ppm_correction": "Regola la deriva di frequenza nell'hardware (parti per milione).",
+      "peak_hold": "Visualizza la magnitudo massima raggiunta per ogni frequenza.",
+      "averaging_mode": "Metodo utilizzato per livellare i dati spettrali nel tempo.",
+      "averaging_count": "Numero di fotogrammi da includere nella media di livellamento.",
+      "show_harmonics": "Mostra indicatori ai multipli della frequenza di picco rilevata.",
+      "show_snr": "Stima e visualizza il rapporto segnale-rumore per il picco.",
+      "fft_window_size": "Risoluzione dell'analisi spettrale (campioni per fotogramma).",
+      "fft_window_type": "Funzione matematica applicata per ridurre la perdita spettrale.",
+      "frequency_skew": "Stiramento o compressione visiva dell'asse delle frequenze."
+    }
   },
   "common": {
     "save": "Salva",

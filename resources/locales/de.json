@@ -70,7 +70,28 @@
     "demodulation_mode": "Demodulationsmodus",
     "audio_output": "Audioausgang",
     "rtl_tcp_host": "RTL-TCP Host",
-    "rtl_tcp_port": "RTL-TCP Port"
+    "rtl_tcp_port": "RTL-TCP Port",
+    "tooltips": {
+      "signal_source": "Zwischen internem Mikrofon und Software Defined Radio (SDR) Eingang umschalten.",
+      "language": "Ändern Sie die Anzeigesprache der Anwendung.",
+      "theme": "Wählen Sie das visuelle Thema für das Spektrum und die Benutzeroberfläche.",
+      "rf_source": "Wählen Sie die SDR-Hardware- oder Simulationsquelle.",
+      "demodulation_mode": "Wählen Sie die Methode zur Extraktion von Audio aus dem HF-Signal.",
+      "audio_output": "Aktivieren Sie die Audiowiedergabe des demodulierten Signals.",
+      "rtl_tcp_host": "IP-Adresse oder Hostname des rtl_tcp-Servers.",
+      "rtl_tcp_port": "Netzwerkport des rtl_tcp-Servers.",
+      "center_frequency": "Basisfrequenz für den SDR-Tuner in MHz.",
+      "rf_bandwidth": "Erfassungsbandbreite für das SDR in MHz.",
+      "ppm_correction": "Anpassung der Frequenzdrift in der Hardware (Parts Per Million).",
+      "peak_hold": "Anzeige der maximalen Magnitude pro Frequenz.",
+      "averaging_mode": "Methode zur Glättung der Spektraldaten über die Zeit.",
+      "averaging_count": "Anzahl der Frames, die in den Durchschnitt einfließen.",
+      "show_harmonics": "Anzeige von Indikatoren bei Vielfachen der erkannten Spitzenfrequenz.",
+      "show_snr": "Schätzung und Anzeige des Signal-Rausch-Verhältnisses für den Peak.",
+      "fft_window_size": "Auflösung der Spektralanalyse (Samples pro Frame).",
+      "fft_window_type": "Mathematische Funktion zur Reduzierung von Spektrallecks.",
+      "frequency_skew": "Visuelle Streckung oder Stauchung der Frequenzachse."
+    }
   },
   "common": {
     "save": "Speichern",

@@ -70,7 +70,28 @@
     "demodulation_mode": "Demodulazio Modua",
     "audio_output": "Audio Irteera",
     "rtl_tcp_host": "RTL-TCP Host",
-    "rtl_tcp_port": "RTL-TCP Portua"
+    "rtl_tcp_port": "RTL-TCP Portua",
+    "tooltips": {
+      "signal_source": "Aldatu barneko mikrofonoaren eta Software bidez definitutako irrati (SDR) sarreraren artean.",
+      "language": "Aldatu aplikazioaren bistaratze-hizkuntza.",
+      "theme": "Hautatu espektroaren eta erabiltzaile-interfazearen gai bisuala.",
+      "rf_source": "Aukeratu SDR hardwarea edo simulazio iturria.",
+      "demodulation_mode": "Hautatu audioa RF seinaletik ateratzeko metodoa.",
+      "audio_output": "Gaitu demodulatutako seinalearen audio erreprodukzioa.",
+      "rtl_tcp_host": "rtl_tcp zerbitzariaren IP helbidea edo ostalari-izena.",
+      "rtl_tcp_port": "rtl_tcp zerbitzariaren sare-atakatik.",
+      "center_frequency": "SDR sintonizadorearen oinarrizko maiztasuna MHz-tan.",
+      "rf_bandwidth": "SDR-rako harrapatze-banda zabalera MHz-tan.",
+      "ppm_correction": "Egokitu hardwarearen maiztasun-jiria (milioiko zatiak).",
+      "peak_hold": "Erakutsi maiztasun bakoitzerako lortutako magnitude maximoa.",
+      "averaging_mode": "Datu espektralak denboran zehar leuntzeko erabiltzen den metodoa.",
+      "averaging_count": "Leuntze-batezbestekoan sartu beharreko fotograma kopurua.",
+      "show_harmonics": "Erakutsi adierazleak detektatutako gailur-maiztasunaren multiploetan.",
+      "show_snr": "Estimatu eta erakutsi gailurraren seinale-zarata erlazioa.",
+      "fft_window_size": "Analisi espektralaren bereizmena (laginak fotograma bakoitzeko).",
+      "fft_window_type": "Ihes espektrala murrizteko aplikatutako funtzio matematikoa.",
+      "frequency_skew": "Maiztasun-ardatzaren luzatze edo konpresio bisuala."
+    }
   },
   "common": {
     "save": "Gorde",

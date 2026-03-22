@@ -70,7 +70,28 @@
     "demodulation_mode": "解调模式",
     "audio_output": "音频输出",
     "rtl_tcp_host": "RTL-TCP 主机",
-    "rtl_tcp_port": "RTL-TCP 端口"
+    "rtl_tcp_port": "RTL-TCP 端口",
+    "tooltips": {
+      "signal_source": "在内部麦克风和软件定义无线电 (SDR) 输入之间切换。",
+      "language": "更改应用程序显示语言。",
+      "theme": "为频谱和 UI 选择视觉主题。",
+      "rf_source": "选择 SDR 硬件或模拟源。",
+      "demodulation_mode": "选择从射频信号中提取音频的方法。",
+      "audio_output": "启用解调信号的音频播放。",
+      "rtl_tcp_host": "rtl_tcp 服务器的 IP 地址或主机名。",
+      "rtl_tcp_port": "rtl_tcp 服务器的网络端口。",
+      "center_frequency": "SDR 调谐器的基准频率 (MHz)。",
+      "rf_bandwidth": "SDR 的捕获带宽 (MHz)。",
+      "ppm_correction": "调整硬件中的频率偏移 (百万分之一)。",
+      "peak_hold": "显示每个频率达到的最大幅度。",
+      "averaging_mode": "用于随时间平滑频谱数据的方法。",
+      "averaging_count": "平滑平均值中包含的帧数。",
+      "show_harmonics": "在检测到的峰值频率的倍数处显示指示器。",
+      "show_snr": "估计并显示峰值的信噪比。",
+      "fft_window_size": "频谱分析的分辨率 (每帧样本数)。",
+      "fft_window_type": "用于减少频谱泄漏的数学函数。",
+      "frequency_skew": "频率轴的视觉拉伸或压缩。"
+    }
   },
   "common": {
     "save": "保存",

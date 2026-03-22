@@ -70,7 +70,28 @@
     "demodulation_mode": "復調モード",
     "audio_output": "オーディオ出力",
     "rtl_tcp_host": "RTL-TCP ホスト",
-    "rtl_tcp_port": "RTL-TCP ポート"
+    "rtl_tcp_port": "RTL-TCP ポート",
+    "tooltips": {
+      "signal_source": "内蔵マイクとソフトウェア定義無線 (SDR) 入力を切り替えます。",
+      "language": "アプリケーションの表示言語を変更します。",
+      "theme": "スペクトルとUIの視覚テーマを選択します。",
+      "rf_source": "SDRハードウェアまたはシミュレーションソースを選択します。",
+      "demodulation_mode": "RF信号からオーディオを抽出する方法を選択します。",
+      "audio_output": "復調された信号のオーディオ再生を有効にします。",
+      "rtl_tcp_host": "rtl_tcpサーバーのIPアドレスまたはホスト名。",
+      "rtl_tcp_port": "rtl_tcpサーバーのネットワークポート。",
+      "center_frequency": "SDRチューナーの基本周波数 (MHz)。",
+      "rf_bandwidth": "SDRのキャプチャ帯域幅 (MHz)。",
+      "ppm_correction": "ハードウェアの周波数ドリフトを調整します (100万分率)。",
+      "peak_hold": "各周波数で到達した最大振幅を表示します。",
+      "averaging_mode": "スペクトルデータを時間経過とともに平滑化するために使用される方法。",
+      "averaging_count": "平滑化平均に含めるフレーム数。",
+      "show_harmonics": "検出されたピーク周波数の倍数にインジケーターを表示します。",
+      "show_snr": "ピークの信号対雑音比を推定して表示します。",
+      "fft_window_size": "スペクトル分析の解像度 (フレームあたりのサンプル数)。",
+      "fft_window_type": "スペクトル漏れを減らすために適用される数学関数。",
+      "frequency_skew": "周波数軸の視覚的な引き伸ばしまたは圧縮。"
+    }
   },
   "common": {
     "save": "保存",
