@@ -22,6 +22,7 @@ To maintain the quality and performance of this visualization tool:
 -   **Localization:** Account for internationalization from the start. All strings should be externalized.
 -   **Minimize Blast Radius:** Touch only the files and functions required for your specific task.
 -   **Verify Everything:** Use `list_files`, `read_file`, and relevant verification tools to confirm every modification.
+-   **Versioning:** Always sync the version from the root `VERSION` file using `scripts/sync_version.sh` before any distribution.
 
 ## Working Workflow
 1.  **Plan:** Propose a detailed plan before making changes.

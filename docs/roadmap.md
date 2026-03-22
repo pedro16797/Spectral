@@ -26,3 +26,4 @@ This document outlines the strategic plan for Spectral, from MVP to future itera
 - **Sprint 4.1: RF Foundation:** Established signal abstraction layer and integrated SDR support via libusb and rtl_tcp.
 - **Sprint 4.2: Advanced Spectral Analysis:** Implemented Peak Hold, FFT Averaging, SNR estimation, Spectral Markers, Harmonic Overlays, and AM/FM Demodulation with Audio Output.
 - **Sprint 4.3: Mobile Expansion & Multi-Language Support:** Achieved iOS parity, tablet-optimized multi-pane layouts, and added support for 10 new global and regional languages.
+- **Sprint 4.4: Distribution Readiness:** Established automated versioning, custom icon generation, and a complete distribution packaging pipeline for app store readiness.
