@@ -13,9 +13,11 @@ VERSION=$(cat VERSION | tr -d '[:space:]')
 
 # Define distribution folder
 DIST_DIR="distribution/v${VERSION}"
-mkdir -p "$DIST_DIR/android"
+mkdir -p "$DIST_DIR/android/phone"
+mkdir -p "$DIST_DIR/android/tablet"
+mkdir -p "$DIST_DIR/ios/phone"
+mkdir -p "$DIST_DIR/ios/tablet"
 mkdir -p "$DIST_DIR/web"
-mkdir -p "$DIST_DIR/screenshots"
 mkdir -p "$DIST_DIR/metadata"
 
 # 2. Run Android Build
@@ -34,12 +36,18 @@ zip -r "../../$DIST_DIR/web/spectral-web.zip" .
 cd ../..
 
 # 4. Generate Screenshots
-# Note: Screenshots require a debug web build as per memory
 echo "📸 Generating screenshots..."
-# We need to make sure the debug web build exists
+# Build debug web for screenshots
 flutter build web --debug
-python3 scripts/generate_screenshots.py
-cp resources/screenshots/*.png "$DIST_DIR/screenshots/"
+# Generate screenshots and organize them into platform subdirectories
+python3 scripts/generate_screenshots.py "$DIST_DIR/screenshots_tmp"
+
+# Distribute screenshots into platform folders
+cp "$DIST_DIR/screenshots_tmp/phone/"*.png "$DIST_DIR/android/phone/"
+cp "$DIST_DIR/screenshots_tmp/phone_modern/"*.png "$DIST_DIR/ios/phone/"
+cp "$DIST_DIR/screenshots_tmp/tablet_landscape/"*.png "$DIST_DIR/android/tablet/"
+cp "$DIST_DIR/screenshots_tmp/tablet_portrait/"*.png "$DIST_DIR/ios/tablet/"
+rm -rf "$DIST_DIR/screenshots_tmp"
 
 # 5. Collect Metadata
 echo "📝 Collecting metadata..."
@@ -49,14 +57,13 @@ cat <<EOF > "$DIST_DIR/metadata/info.json"
   "version": "$VERSION",
   "build_date": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
   "description": "Spectral observation application for audio and RF data.",
-  "platforms": ["Android", "Web", "iOS (Source Only)"]
+  "platforms": ["Android", "Web", "iOS (Source Only)"],
+  "store_links": {
+    "playstore": "TBD",
+    "appstore": "TBD"
+  }
 }
 EOF
-
-# Copy changelog if it exists
-if [ -f "CHANGELOG.md" ]; then
-  cp CHANGELOG.md "$DIST_DIR/metadata/"
-fi
 
 echo "✅ Distribution bundle created successfully!"
 echo "📁 Bundle location: $DIST_DIR"
