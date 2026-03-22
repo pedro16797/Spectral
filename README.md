@@ -71,6 +71,20 @@ Spectral is currently in the **early development phase**. We have initialized th
   flutter test
   ```
 
+## 🏷️ Versioning & Distribution
+
+### Versioning
+The app version is centrally managed in the `VERSION` file at the root of the project. To update the version:
+1. Edit the `VERSION` file (e.g., `1.1.0+2`).
+2. Run `./scripts/sync_version.sh` to synchronize it with `pubspec.yaml`.
+
+### Distribution
+To prepare a full distribution bundle (Android APKs, Web zip, and Screenshots):
+```bash
+./scripts/package_distribution.sh
+```
+The resulting bundle will be located in the `distribution/v<VERSION>/` directory.
+
 ## 📂 Project Structure
 
 - `lib/src/`: Core application source code.
