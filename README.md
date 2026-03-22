@@ -85,6 +85,8 @@ To prepare a full distribution bundle (Android APKs, Web zip, and Screenshots):
 ```
 The resulting bundle will be located in the `distribution/v<VERSION>/` directory.
 
+For more details on publishing, see [docs/distribution_guide.md](docs/distribution_guide.md) and [docs/app_store_listing.md](docs/app_store_listing.md).
+
 ## 📂 Project Structure
 
 - `lib/src/`: Core application source code.
