@@ -862,70 +862,73 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       top: padding.top + (availableHeight - dialSize) / 2,
       left: isLeft ? -dialSize * _kLargeDialOffsetScale + padding.left : null,
       right: isLeft ? null : -dialSize * _kLargeDialOffsetScale + padding.right,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onVerticalDragUpdate: (details) {
-          double delta = -details.delta.dy * 0.01;
-          double newValue = (value + delta).clamp(0.1, 5.0);
-          if ((value * 10).floor() != (newValue * 10).floor()) {
-            HapticFeedback.selectionClick();
-          }
-          if (isLeft) {
-            setState(() => _gain = newValue);
-          } else {
-            setState(() => _sensitivity = newValue);
-          }
-        },
-        child: Container(
-          key: Key('large_dial_${isLeft ? "left" : "right"}'),
-          width: dialSize,
-          height: dialSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.black.withOpacity(0.8),
-            border: Border.all(color: color.withOpacity(0.3), width: 4),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.2),
-                blurRadius: 30,
-                spreadRadius: 10,
-              )
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: isLeft
-                    ? const Alignment(0.85, 0.0)
-                    : const Alignment(-0.88, 0.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      value.toStringAsFixed(2),
-                      style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w100,
-                          color: Colors.white),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          color: Colors.white24,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
+      child: Semantics(
+        label: isLeft ? "Gain Dial" : "Sensitivity Dial",
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onVerticalDragUpdate: (details) {
+            double delta = -details.delta.dy * 0.01;
+            double newValue = (value + delta).clamp(0.1, 5.0);
+            if ((value * 10).floor() != (newValue * 10).floor()) {
+              HapticFeedback.selectionClick();
+            }
+            if (isLeft) {
+              setState(() => _gain = newValue);
+            } else {
+              setState(() => _sensitivity = newValue);
+            }
+          },
+          child: Container(
+            key: Key('large_dial_${isLeft ? "left" : "right"}'),
+            width: dialSize,
+            height: dialSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.black.withOpacity(0.8),
+              border: Border.all(color: color.withOpacity(0.3), width: 4),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.2),
+                  blurRadius: 30,
+                  spreadRadius: 10,
+                )
+              ],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Align(
+                  alignment: isLeft
+                      ? const Alignment(0.85, 0.0)
+                      : const Alignment(-0.88, 0.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        value.toStringAsFixed(2),
+                        style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w100,
+                            color: Colors.white),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 2,
+                            color: Colors.white24,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              CustomPaint(
-                size: Size(dialSize, dialSize),
-                painter: DialArcPainter(value: value, isLeft: isLeft, color: color),
-              ),
-            ],
+                CustomPaint(
+                  size: Size(dialSize, dialSize),
+                  painter: DialArcPainter(value: value, isLeft: isLeft, color: color),
+                ),
+              ],
+            ),
           ),
         ),
       ),

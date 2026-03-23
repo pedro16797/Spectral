@@ -120,38 +120,42 @@ class _RadioDialFocusSliderState extends State<RadioDialFocusSlider>
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragStart: (details) => _handleDragStart(details, constraints),
-          onHorizontalDragUpdate: (details) => _handleDragUpdate(details, constraints),
-          onHorizontalDragEnd: _handleDragEnd,
-          onHorizontalDragCancel: () {
-            _interactionType = _InteractionType.none;
-            _activeController.reverse();
-          },
-          child: AnimatedBuilder(
-            animation: _activeController,
-            builder: (context, child) {
-              final double heightScale = 1.0 + (0.5 * _activeController.value);
-              return SizedBox(
-                height: 60 * heightScale,
-                width: double.infinity,
-                child: CustomPaint(
-                  painter: RadioDialPainter(
-                    values: widget.values,
-                    min: widget.min,
-                    max: widget.max,
-                    activeFactor: _activeController.value,
-                    accentColor: widget.accentColor,
-                  ),
-                ),
-              );
+    return Semantics(
+      label: "Frequency Focus Slider",
+      container: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: (details) => _handleDragStart(details, constraints),
+            onHorizontalDragUpdate: (details) => _handleDragUpdate(details, constraints),
+            onHorizontalDragEnd: _handleDragEnd,
+            onHorizontalDragCancel: () {
+              _interactionType = _InteractionType.none;
+              _activeController.reverse();
             },
-          ),
-        );
-      },
+            child: AnimatedBuilder(
+              animation: _activeController,
+              builder: (context, child) {
+                final double heightScale = 1.0 + (0.5 * _activeController.value);
+                return SizedBox(
+                  height: 60 * heightScale,
+                  width: double.infinity,
+                  child: CustomPaint(
+                    painter: RadioDialPainter(
+                      values: widget.values,
+                      min: widget.min,
+                      max: widget.max,
+                      activeFactor: _activeController.value,
+                      accentColor: widget.accentColor,
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }

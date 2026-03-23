@@ -49,7 +49,18 @@ cp "$DIST_DIR/screenshots_tmp/tablet_landscape/"*.png "$DIST_DIR/android/tablet/
 cp "$DIST_DIR/screenshots_tmp/tablet_portrait/"*.png "$DIST_DIR/ios/tablet/"
 rm -rf "$DIST_DIR/screenshots_tmp"
 
-# 5. Collect Metadata
+# 5. Generate App Store Videos
+echo "🎥 Generating app store videos..."
+python3 scripts/generate_video.py "$DIST_DIR/videos_tmp"
+
+# Distribute videos into platform folders
+cp "$DIST_DIR/videos_tmp/phone/app_preview.webm" "$DIST_DIR/android/phone/"
+cp "$DIST_DIR/videos_tmp/phone/app_preview.webm" "$DIST_DIR/ios/phone/"
+cp "$DIST_DIR/videos_tmp/tablet/app_preview.webm" "$DIST_DIR/android/tablet/"
+cp "$DIST_DIR/videos_tmp/tablet/app_preview.webm" "$DIST_DIR/ios/tablet/"
+rm -rf "$DIST_DIR/videos_tmp"
+
+# 6. Collect Metadata
 echo "📝 Collecting metadata..."
 cat <<EOF > "$DIST_DIR/metadata/info.json"
 {
