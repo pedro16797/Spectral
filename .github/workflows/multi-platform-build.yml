@@ -55,7 +55,7 @@ jobs:
 
       - name: Strip sample assets from pubspec.yaml
         run: |
-          sed -i '/- resources\/samples\//d' pubspec.yaml
+          grep -v "\- resources/samples/" pubspec.yaml > pubspec.yaml.tmp && mv pubspec.yaml.tmp pubspec.yaml
           rm -rf resources/samples/
 
       - name: Build APK (Release)
@@ -102,7 +102,7 @@ jobs:
 
       - name: Strip sample assets from pubspec.yaml
         run: |
-          sed -i '/- resources\/samples\//d' pubspec.yaml
+          grep -v "\- resources/samples/" pubspec.yaml > pubspec.yaml.tmp && mv pubspec.yaml.tmp pubspec.yaml
           rm -rf resources/samples/
 
       - name: Build Web (Release)
@@ -177,7 +177,7 @@ jobs:
 
       - name: Strip sample assets from pubspec.yaml
         run: |
-          sed -i '/- resources\/samples\//d' pubspec.yaml
+          grep -v "\- resources/samples/" pubspec.yaml > pubspec.yaml.tmp && mv pubspec.yaml.tmp pubspec.yaml
           rm -rf resources/samples/
 
       - name: Build iOS (No-Codesign)
