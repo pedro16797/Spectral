@@ -54,10 +54,25 @@ echo "🎥 Generating app store videos..."
 python3 scripts/generate_video.py "$DIST_DIR/videos_tmp"
 
 # Distribute videos into platform folders
+# Android supports WebM
 cp "$DIST_DIR/videos_tmp/phone/app_preview.webm" "$DIST_DIR/android/phone/"
-cp "$DIST_DIR/videos_tmp/phone/app_preview.webm" "$DIST_DIR/ios/phone/"
 cp "$DIST_DIR/videos_tmp/tablet/app_preview.webm" "$DIST_DIR/android/tablet/"
-cp "$DIST_DIR/videos_tmp/tablet/app_preview.webm" "$DIST_DIR/ios/tablet/"
+
+# iOS REQUIRES MP4 (H.264)
+if [ -f "$DIST_DIR/videos_tmp/phone/app_preview.mp4" ]; then
+  cp "$DIST_DIR/videos_tmp/phone/app_preview.mp4" "$DIST_DIR/ios/phone/"
+else
+  echo "⚠️ MP4 not found for phone, falling back to WebM (not App Store compliant)"
+  cp "$DIST_DIR/videos_tmp/phone/app_preview.webm" "$DIST_DIR/ios/phone/"
+fi
+
+if [ -f "$DIST_DIR/videos_tmp/tablet/app_preview.mp4" ]; then
+  cp "$DIST_DIR/videos_tmp/tablet/app_preview.mp4" "$DIST_DIR/ios/tablet/"
+else
+  echo "⚠️ MP4 not found for tablet, falling back to WebM (not App Store compliant)"
+  cp "$DIST_DIR/videos_tmp/tablet/app_preview.webm" "$DIST_DIR/ios/tablet/"
+fi
+
 rm -rf "$DIST_DIR/videos_tmp"
 
 # 6. Collect Metadata

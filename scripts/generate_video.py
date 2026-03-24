@@ -90,13 +90,14 @@ def generate_videos(output_base_dir="resources/videos"):
                 # 1. Start Capture
                 print("  Starting capture...")
                 capture_toggle = page.get_by_label("Capture Toggle", exact=True).first
-                capture_toggle.wait_for(state="visible")
+                capture_toggle.wait_for(state="visible", timeout=30000)
                 capture_toggle.click()
                 page.wait_for_timeout(3000)
 
                 # 2. Adjust Gain
                 print("  Adjusting Gain...")
                 gain_trigger = page.get_by_label("GAIN", exact=True)
+                gain_trigger.wait_for(state="visible", timeout=10000)
                 gain_trigger.click()
                 page.wait_for_timeout(1000)
                 # Drag the Gain Dial (left side)
@@ -131,6 +132,7 @@ def generate_videos(output_base_dir="resources/videos"):
                 # 4. Toggle Waterfall Focus
                 print("  Toggling Waterfall Focus...")
                 focus_toggle = page.get_by_label("Toggle Focus", exact=True)
+                focus_toggle.wait_for(state="visible", timeout=10000)
                 focus_toggle.click()
                 page.wait_for_timeout(3000)
 
@@ -138,6 +140,7 @@ def generate_videos(output_base_dir="resources/videos"):
                 print("  Tweaking Frequency Range...")
                 # Click and drag the frequency slider
                 slider = page.get_by_label("Frequency Focus Slider", exact=True)
+                slider.wait_for(state="visible", timeout=10000)
                 slider_box = slider.bounding_box()
                 if slider_box:
                     center_x = slider_box["x"] + slider_box["width"] / 2
@@ -155,7 +158,24 @@ def generate_videos(output_base_dir="resources/videos"):
                 video_path = page.video.path()
                 final_dir = os.path.join(output_base_dir, res_name)
                 os.makedirs(final_dir, exist_ok=True)
-                shutil.move(video_path, os.path.join(final_dir, "app_preview.webm"))
+
+                # Convert webm to mp4 if ffmpeg is available
+                final_webm = os.path.join(final_dir, "app_preview.webm")
+                final_mp4 = os.path.join(final_dir, "app_preview.mp4")
+                shutil.move(video_path, final_webm)
+
+                try:
+                    print(f"  Converting {res_name} video to MP4...")
+                    subprocess.run([
+                        'ffmpeg', '-y', '-i', final_webm,
+                        '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+                        '-crf', '23', '-preset', 'fast',
+                        final_mp4
+                    ], check=True, capture_output=True)
+                    print(f"  Successfully created {final_mp4}")
+                except Exception as e:
+                    print(f"  Could not convert to MP4 (ffmpeg may be missing): {e}")
+
                 shutil.rmtree(temp_video_dir)
 
             browser.close()
