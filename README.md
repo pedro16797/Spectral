@@ -53,7 +53,19 @@ Spectral is currently in the **early development phase**. We have initialized th
      powershell -ExecutionPolicy Bypass -File .\scripts\setup_env.ps1
      ```
 
-   This will install Flutter dependencies, create a `.venv`, and generate signal samples.
+   This will install Flutter dependencies, create a `.venv`, generate signal samples, and optionally set up a project-local Android SDK.
+
+### SDK Requirements
+
+#### Android
+- **Automated**: The setup scripts will offer to download a minimal Android SDK into the `sdks/android` directory and configure Flutter to use it.
+- **Manual**: If you prefer to use an existing SDK, ensure `ANDROID_HOME` or `ANDROID_SDK_ROOT` is set, or run `flutter config --android-sdk <path>`.
+
+#### iOS (macOS Only)
+- **Xcode**: Install from the Mac App Store.
+- **Command Line Tools**: `xcode-select --install`
+- **CocoaPods**: `sudo gem install cocoapods` or `brew install cocoapods`
+- **Setup**: After installing CocoaPods, run `cd ios && pod install && cd ..`.
 
 ### Running the App
 - **Run on a specific device:**

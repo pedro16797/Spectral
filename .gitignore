@@ -1,5 +1,6 @@
 # Miscellaneous
 .venv/
+/sdks/
 *.class
 *.log
 *.pyc

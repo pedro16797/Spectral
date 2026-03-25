@@ -65,7 +65,55 @@ else
     $VENV_PYTHON -m playwright install --with-deps chromium
 fi
 
-# 3. Sample Generation
+# 3. Android SDK Setup
+echo "🤖 Checking Android SDK..."
+ANDROID_SDK_PATH=$(flutter config | grep "android-sdk" | cut -d ":" -f 2 | xargs)
+
+if [ -z "$ANDROID_SDK_PATH" ] || [ ! -d "$ANDROID_SDK_PATH" ]; then
+    echo "⚠️ Android SDK not configured in Flutter."
+    LOCAL_SDK_DIR="$(pwd)/sdks/android"
+
+    if [ -d "$LOCAL_SDK_DIR" ]; then
+        echo "✅ Local Android SDK found at $LOCAL_SDK_DIR. Configuring Flutter..."
+        flutter config --android-sdk "$LOCAL_SDK_DIR"
+    else
+        echo "Would you like to automatically download a minimal Android SDK into '$LOCAL_SDK_DIR'? (y/n)"
+        read -r response
+        if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+            mkdir -p "$LOCAL_SDK_DIR/cmdline-tools"
+
+            # Detect OS for command line tools download
+            OS_TYPE="linux"
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                OS_TYPE="mac"
+            fi
+
+            echo "📥 Downloading Android Command Line Tools..."
+            # Note: Hardcoded version for stability, can be updated as needed
+            CMDLINE_VERSION="11076708"
+            URL="https://dl.google.com/android/repository/commandlinetools-${OS_TYPE}-${CMDLINE_VERSION}_latest.zip"
+
+            curl -L "$URL" -o "cmdline-tools.zip"
+            unzip -q "cmdline-tools.zip" -d "$LOCAL_SDK_DIR/cmdline-tools"
+            mv "$LOCAL_SDK_DIR/cmdline-tools/cmdline-tools" "$LOCAL_SDK_DIR/cmdline-tools/latest"
+            rm "cmdline-tools.zip"
+
+            echo "⚙️ Installing essential SDK packages (Platforms, Build Tools)..."
+            export JAVA_HOME=$JAVA_HOME # Ensure JAVA_HOME is passed if set
+            yes | "$LOCAL_SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$LOCAL_SDK_DIR" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+            echo "✅ Android SDK installed. Configuring Flutter..."
+            flutter config --android-sdk "$LOCAL_SDK_DIR"
+            yes | flutter doctor --android-licenses || true
+        else
+            echo "ℹ️ Skipping automated Android SDK setup."
+        fi
+    fi
+else
+    echo "✅ Android SDK detected at $ANDROID_SDK_PATH"
+fi
+
+# 4. Sample Generation
 echo "🎵 Generating signal samples..."
 mkdir -p resources/samples/audio resources/samples/rf
 $VENV_PYTHON generate_samples.py
