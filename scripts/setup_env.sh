@@ -73,4 +73,12 @@ $VENV_PYTHON generate_samples.py
 echo "✅ Environment setup complete!"
 echo ""
 echo "To start working, activate the Python environment:"
-echo "source $ACTIVATE_PATH"
+if [[ "$ACTIVATE_PATH" == *Scripts/activate ]]; then
+    echo "For Bash/Git Bash: source $ACTIVATE_PATH"
+    echo "For PowerShell: .\\${ACTIVATE_PATH//\//\\}.ps1"
+    echo ""
+    echo "NOTE: If PowerShell fails due to execution policy, run as Administrator:"
+    echo "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine"
+else
+    echo "source $ACTIVATE_PATH"
+fi
