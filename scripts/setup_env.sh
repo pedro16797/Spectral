@@ -17,40 +17,60 @@ flutter pub get
 
 # 2. Python Setup (Isolated Environment)
 echo "🐍 Setting up isolated Python environment..."
-if ! command -v python3 &> /dev/null
-then
-    echo "❌ Error: 'python3' command not found."
+
+# Find Python executable
+if command -v python3 &> /dev/null; then
+    PYTHON_EXE="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_EXE="python"
+else
+    echo "❌ Error: Python not found. Please install Python 3."
     exit 1
 fi
 
 # Create virtual environment if it doesn't exist
 if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
+    $PYTHON_EXE -m venv .venv
     echo "✅ Virtual environment created in .venv"
 fi
 
+# Determine activation script path
+if [ -f ".venv/Scripts/activate" ]; then
+    ACTIVATE_PATH=".venv/Scripts/activate"
+    VENV_PYTHON=".venv/Scripts/python"
+else
+    ACTIVATE_PATH=".venv/bin/activate"
+    VENV_PYTHON=".venv/bin/python"
+fi
+
 # Activate virtual environment
-source .venv/bin/activate
+source "$ACTIVATE_PATH"
 
 # Install requirements
 echo "📦 Installing Python dependencies..."
-pip install --upgrade pip
+$VENV_PYTHON -m pip install --upgrade pip
 if [ -f "scripts/requirements.txt" ]; then
-    pip install -r scripts/requirements.txt
+    $VENV_PYTHON -m pip install -r scripts/requirements.txt
 else
     echo "⚠️ scripts/requirements.txt not found. Installing playwright directly..."
-    pip install playwright==1.49.1
+    $VENV_PYTHON -m pip install playwright==1.49.1
 fi
 
 # Install Playwright browsers
 echo "🌐 Installing Playwright browsers..."
-playwright install --with-deps chromium
+# Use playwright command if available in path, or call via python module
+if command -v playwright &> /dev/null; then
+    playwright install --with-deps chromium
+else
+    $VENV_PYTHON -m playwright install --with-deps chromium
+fi
 
 # 3. Sample Generation
 echo "🎵 Generating signal samples..."
-python3 generate_samples.py
+mkdir -p resources/samples/audio resources/samples/rf
+$VENV_PYTHON generate_samples.py
 
 echo "✅ Environment setup complete!"
 echo ""
 echo "To start working, activate the Python environment:"
-echo "source .venv/bin/activate"
+echo "source $ACTIVATE_PATH"

@@ -60,9 +60,23 @@ rm -rf "$DIST_DIR/screenshots_tmp"
 # 5. Generate App Store Videos
 echo "🎥 Generating app store videos..."
 if [ -d ".venv" ]; then
-  source .venv/bin/activate
+  if [ -f ".venv/Scripts/activate" ]; then
+    source ".venv/Scripts/activate"
+  else
+    source ".venv/bin/activate"
+  fi
 fi
-python3 scripts/generate_video.py "$DIST_DIR/videos_tmp"
+
+# Detect Python in venv for the command
+if [ -f ".venv/Scripts/python" ]; then
+    VENV_PYTHON=".venv/Scripts/python"
+elif [ -f ".venv/bin/python" ]; then
+    VENV_PYTHON=".venv/bin/python"
+else
+    VENV_PYTHON="python3"
+fi
+
+$VENV_PYTHON scripts/generate_video.py "$DIST_DIR/videos_tmp"
 
 # Distribute videos into platform folders
 # Android supports WebM
