@@ -59,6 +59,9 @@ rm -rf "$DIST_DIR/screenshots_tmp"
 
 # 5. Generate App Store Videos
 echo "🎥 Generating app store videos..."
+if [ -d ".venv" ]; then
+  source .venv/bin/activate
+fi
 python3 scripts/generate_video.py "$DIST_DIR/videos_tmp"
 
 # Distribute videos into platform folders
