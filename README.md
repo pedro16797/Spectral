@@ -40,10 +40,20 @@ Spectral is currently in the **early development phase**. We have initialized th
    git clone https://github.com/your-repo/spectral.git
    cd spectral
    ```
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
+2. **Automated Environment Setup**:
+   We provide scripts to set up a fully isolated development environment (including Python virtual environments for marketing automation).
+
+   - **On macOS / Linux / Git Bash**:
+     ```bash
+     chmod +x scripts/setup_env.sh
+     ./scripts/setup_env.sh
+     ```
+   - **On Windows (PowerShell)**:
+     ```powershell
+     powershell -ExecutionPolicy Bypass -File .\scripts\setup_env.ps1
+     ```
+
+   This will install Flutter dependencies, create a `.venv`, and generate signal samples.
 
 ### Running the App
 - **Run on a specific device:**

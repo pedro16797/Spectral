@@ -65,5 +65,7 @@ Write-Host ""
 Write-Host "To start working, activate the Python environment:"
 Write-Host ".\$ACTIVATE_PATH" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "NOTE: If you get an error about script execution being disabled, run this command once as Administrator:"
+Write-Host "NOTE: If you get an error about script execution being disabled, you can run this script with:"
+Write-Host "powershell -ExecutionPolicy Bypass -File .\scripts\setup_env.ps1" -ForegroundColor Yellow
+Write-Host "Or permanently enable scripts (Administrator):"
 Write-Host "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine" -ForegroundColor Yellow

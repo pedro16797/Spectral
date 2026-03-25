@@ -77,7 +77,9 @@ if [[ "$ACTIVATE_PATH" == *Scripts/activate ]]; then
     echo "For Bash/Git Bash: source $ACTIVATE_PATH"
     echo "For PowerShell: .\\${ACTIVATE_PATH//\//\\}.ps1"
     echo ""
-    echo "NOTE: If PowerShell fails due to execution policy, run as Administrator:"
+    echo "NOTE: If PowerShell fails due to execution policy, run with bypass:"
+    echo "powershell -ExecutionPolicy Bypass -File .\\scripts\\setup_env.ps1"
+    echo "Or permanently enable scripts (Administrator):"
     echo "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine"
 else
     echo "source $ACTIVATE_PATH"
