@@ -3,6 +3,14 @@
 # Exit on error
 set -e
 
+# Check if flutter is in PATH
+if ! command -v flutter &> /dev/null
+then
+    echo "❌ Error: 'flutter' command not found."
+    echo "Please ensure Flutter SDK is installed and added to your PATH."
+    exit 1
+fi
+
 echo "📦 Starting Spectral Distribution Packaging..."
 
 # 1. Sync Version
