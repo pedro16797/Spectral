@@ -97,14 +97,23 @@ if ([string]::IsNullOrWhiteSpace($SDK_PATH) -or !(Test-Path $SDK_PATH)) {
 
             Write-Host '✅ Android SDK installed. Configuring Flutter...' -ForegroundColor Green
             flutter config --android-sdk "$LOCAL_SDK_DIR"
+
+            # Accept licenses via flutter doctor
+            $FLUTTER_PATH = (Get-Command flutter).Source
             $licenseProcess = New-Object System.Diagnostics.ProcessStartInfo
-            $licenseProcess.FileName = "flutter"
-            $licenseProcess.Arguments = "doctor --android-licenses"
+            $licenseProcess.FileName = "cmd.exe"
+            $licenseProcess.Arguments = "/c `"$FLUTTER_PATH`" doctor --android-licenses"
             $licenseProcess.RedirectStandardInput = $true
             $licenseProcess.UseShellExecute = $false
             $p = [System.Diagnostics.Process]::Start($licenseProcess)
-            for ($i=0; $i -lt 10; $i++) { $p.StandardInput.WriteLine("y") }
-            $p.WaitForExit()
+            if ($p) {
+                # Give it a moment to start
+                Start-Sleep -Seconds 2
+                for ($i=0; $i -lt 10; $i++) {
+                    try { $p.StandardInput.WriteLine("y") } catch {}
+                }
+                $p.WaitForExit()
+            }
         } else {
             Write-Host 'ℹ️ Skipping automated Android SDK setup.' -ForegroundColor Gray
         }
