@@ -1,20 +1,20 @@
 # Spectral Distribution Packaging (PowerShell)
 
-Write-Host "📦 Starting Spectral Distribution Packaging..." -ForegroundColor Green
+Write-Host 'Starting Spectral Distribution Packaging...' -ForegroundColor Green
 
 # Detect project-local Android SDK
-$LOCAL_SDK_DIR = "$PSScriptRoot\..\sdks\android"
-if (!(Test-Path $LOCAL_SDK_DIR)) { $LOCAL_SDK_DIR = "$pwd\sdks\android" }
+$LOCAL_SDK_DIR = Join-Path $PSScriptRoot '..\sdks\android'
+if (!(Test-Path $LOCAL_SDK_DIR)) { $LOCAL_SDK_DIR = Join-Path $pwd 'sdks\android' }
 
 if (Test-Path $LOCAL_SDK_DIR) {
-    Write-Host "🤖 Using local Android SDK at $LOCAL_SDK_DIR" -ForegroundColor Cyan
+    Write-Host "Using local Android SDK at $LOCAL_SDK_DIR" -ForegroundColor Cyan
     $env:ANDROID_HOME = $LOCAL_SDK_DIR
     $env:ANDROID_SDK_ROOT = $LOCAL_SDK_DIR
     $env:PATH = "$($env:PATH);$LOCAL_SDK_DIR\cmdline-tools\latest\bin;$LOCAL_SDK_DIR\platform-tools"
 }
 
 # 1. Sync Version
-Write-Host "🏷️ Syncing version..." -ForegroundColor Gray
+Write-Host 'Syncing version...' -ForegroundColor Gray
 & powershell -ExecutionPolicy Bypass -File .\scripts\sync_version.ps1
 $VERSION = (Get-Content VERSION).Trim()
 
@@ -28,20 +28,20 @@ New-Item -ItemType Directory -Force -Path "$DIST_DIR\web" | Out-Null
 New-Item -ItemType Directory -Force -Path "$DIST_DIR\metadata" | Out-Null
 
 # 2. Run Android Build
-Write-Host "🤖 Building Android APKs..." -ForegroundColor Gray
+Write-Host 'Building Android APKs...' -ForegroundColor Gray
 & powershell -ExecutionPolicy Bypass -File .\scripts\build_android.ps1
-Copy-Item "build\app\outputs\flutter-apk\app-*-release.apk" "$DIST_DIR\android\"
+Copy-Item 'build\app\outputs\flutter-apk\app-*-release.apk' "$DIST_DIR\android\"
 
 # 3. Run Web Build
-Write-Host "🌐 Building Web App..." -ForegroundColor Gray
+Write-Host 'Building Web App...' -ForegroundColor Gray
 & powershell -ExecutionPolicy Bypass -File .\scripts\build_web.ps1
 # Create a zip of the web build
-Compress-Archive -Path "build\web\*" -DestinationPath "$DIST_DIR\web\spectral-web.zip" -Force
+Compress-Archive -Path 'build\web\*' -DestinationPath "$DIST_DIR\web\spectral-web.zip" -Force
 
 # 4. Generate Screenshots
-Write-Host "📸 Generating screenshots..." -ForegroundColor Gray
+Write-Host 'Generating screenshots...' -ForegroundColor Gray
 flutter build web --debug
-if (Test-Path ".venv\Scripts\python.exe") {
+if (Test-Path '.venv\Scripts\python.exe') {
     & .venv\Scripts\python.exe scripts\generate_screenshots.py "$DIST_DIR\screenshots_tmp"
 } else {
     python scripts\generate_screenshots.py "$DIST_DIR\screenshots_tmp"
@@ -55,11 +55,11 @@ Copy-Item "$DIST_DIR\screenshots_tmp\tablet_portrait\*.png" "$DIST_DIR\ios\table
 Remove-Item -Recurse -Force "$DIST_DIR\screenshots_tmp"
 
 # 5. Generate App Store Videos
-Write-Host "🎥 Generating app store videos..." -ForegroundColor Gray
-if (Test-Path ".venv\Scripts\python.exe") {
-    $VENV_PYTHON = ".venv\Scripts\python.exe"
+Write-Host 'Generating app store videos...' -ForegroundColor Gray
+if (Test-Path '.venv\Scripts\python.exe') {
+    $VENV_PYTHON = '.venv\Scripts\python.exe'
 } else {
-    $VENV_PYTHON = "python"
+    $VENV_PYTHON = 'python'
 }
 & $VENV_PYTHON scripts\generate_video.py "$DIST_DIR\videos_tmp"
 
@@ -76,8 +76,8 @@ if (Test-Path "$DIST_DIR\videos_tmp\tablet\app_preview.mp4") {
 Remove-Item -Recurse -Force "$DIST_DIR\videos_tmp"
 
 # 6. Collect Metadata
-Write-Host "📝 Collecting metadata..." -ForegroundColor Gray
-$DATE = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
+Write-Host 'Collecting metadata...' -ForegroundColor Gray
+$DATE = Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'
 $INFO = @"
 {
   "name": "Spectral",
@@ -93,5 +93,5 @@ $INFO = @"
 "@
 $INFO | Out-File -FilePath "$DIST_DIR\metadata\info.json"
 
-Write-Host "✅ Distribution bundle created successfully!" -ForegroundColor Green
-Write-Host "📁 Bundle location: $DIST_DIR" -ForegroundColor Cyan
+Write-Host 'Distribution bundle created successfully!' -ForegroundColor Green
+Write-Host "Bundle location: $DIST_DIR" -ForegroundColor Cyan
