@@ -30,7 +30,11 @@ New-Item -ItemType Directory -Force -Path "$DIST_DIR\metadata" | Out-Null
 # 2. Run Android Build
 Write-Host 'Building Android APKs...' -ForegroundColor Gray
 & powershell -ExecutionPolicy Bypass -File .\scripts\build_android.ps1
-Copy-Item 'build\app\outputs\flutter-apk\app-*-release.apk' "$DIST_DIR\android\"
+if (Test-Path 'build\app\outputs\flutter-apk') {
+    Copy-Item 'build\app\outputs\flutter-apk\app-*-release.apk' "$DIST_DIR\android\"
+} else {
+    Write-Host '⚠️ Warning: Android APKs not found. Skipping copy.' -ForegroundColor Yellow
+}
 
 # 3. Run Web Build
 Write-Host 'Building Web App...' -ForegroundColor Gray
@@ -41,39 +45,47 @@ Compress-Archive -Path 'build\web\*' -DestinationPath "$DIST_DIR\web\spectral-we
 # 4. Generate Screenshots
 Write-Host 'Generating screenshots...' -ForegroundColor Gray
 flutter build web --debug
-if (Test-Path '.venv\Scripts\python.exe') {
-    & .venv\Scripts\python.exe scripts\generate_screenshots.py "$DIST_DIR\screenshots_tmp"
-} else {
-    python scripts\generate_screenshots.py "$DIST_DIR\screenshots_tmp"
-}
 
-# Distribute screenshots
-Copy-Item "$DIST_DIR\screenshots_tmp\phone\*.png" "$DIST_DIR\android\phone\"
-Copy-Item "$DIST_DIR\screenshots_tmp\phone_modern\*.png" "$DIST_DIR\ios\phone\"
-Copy-Item "$DIST_DIR\screenshots_tmp\tablet_landscape\*.png" "$DIST_DIR\android\tablet\"
-Copy-Item "$DIST_DIR\screenshots_tmp\tablet_portrait\*.png" "$DIST_DIR\ios\tablet\"
-Remove-Item -Recurse -Force "$DIST_DIR\screenshots_tmp"
-
-# 5. Generate App Store Videos
-Write-Host 'Generating app store videos...' -ForegroundColor Gray
 if (Test-Path '.venv\Scripts\python.exe') {
     $VENV_PYTHON = '.venv\Scripts\python.exe'
+} elseif (Test-Path '.venv\bin\python') {
+    $VENV_PYTHON = '.venv\bin\python'
 } else {
     $VENV_PYTHON = 'python'
 }
+
+& $VENV_PYTHON scripts\generate_screenshots.py "$DIST_DIR\screenshots_tmp"
+
+# Distribute screenshots
+if (Test-Path "$DIST_DIR\screenshots_tmp") {
+    if (Test-Path "$DIST_DIR\screenshots_tmp\phone") { Copy-Item "$DIST_DIR\screenshots_tmp\phone\*.png" "$DIST_DIR\android\phone\" }
+    if (Test-Path "$DIST_DIR\screenshots_tmp\phone_modern") { Copy-Item "$DIST_DIR\screenshots_tmp\phone_modern\*.png" "$DIST_DIR\ios\phone\" }
+    if (Test-Path "$DIST_DIR\screenshots_tmp\tablet_landscape") { Copy-Item "$DIST_DIR\screenshots_tmp\tablet_landscape\*.png" "$DIST_DIR\android\tablet\" }
+    if (Test-Path "$DIST_DIR\screenshots_tmp\tablet_portrait") { Copy-Item "$DIST_DIR\screenshots_tmp\tablet_portrait\*.png" "$DIST_DIR\ios\tablet\" }
+    Remove-Item -Recurse -Force "$DIST_DIR\screenshots_tmp"
+} else {
+    Write-Host '⚠️ Warning: Screenshots directory not found. Skipping copy.' -ForegroundColor Yellow
+}
+
+# 5. Generate App Store Videos
+Write-Host 'Generating app store videos...' -ForegroundColor Gray
 & $VENV_PYTHON scripts\generate_video.py "$DIST_DIR\videos_tmp"
 
 # Distribute videos
-Copy-Item "$DIST_DIR\videos_tmp\phone\app_preview.webm" "$DIST_DIR\android\phone\"
-Copy-Item "$DIST_DIR\videos_tmp\tablet\app_preview.webm" "$DIST_DIR\android\tablet\"
+if (Test-Path "$DIST_DIR\videos_tmp") {
+    if (Test-Path "$DIST_DIR\videos_tmp\phone\app_preview.webm") { Copy-Item "$DIST_DIR\videos_tmp\phone\app_preview.webm" "$DIST_DIR\android\phone\" }
+    if (Test-Path "$DIST_DIR\videos_tmp\tablet\app_preview.webm") { Copy-Item "$DIST_DIR\videos_tmp\tablet\app_preview.webm" "$DIST_DIR\android\tablet\" }
 
-if (Test-Path "$DIST_DIR\videos_tmp\phone\app_preview.mp4") {
-    Copy-Item "$DIST_DIR\videos_tmp\phone\app_preview.mp4" "$DIST_DIR\ios\phone\"
+    if (Test-Path "$DIST_DIR\videos_tmp\phone\app_preview.mp4") {
+        Copy-Item "$DIST_DIR\videos_tmp\phone\app_preview.mp4" "$DIST_DIR\ios\phone\"
+    }
+    if (Test-Path "$DIST_DIR\videos_tmp\tablet\app_preview.mp4") {
+        Copy-Item "$DIST_DIR\videos_tmp\tablet\app_preview.mp4" "$DIST_DIR\ios\tablet\"
+    }
+    Remove-Item -Recurse -Force "$DIST_DIR\videos_tmp"
+} else {
+    Write-Host '⚠️ Warning: Videos directory not found. Skipping copy.' -ForegroundColor Yellow
 }
-if (Test-Path "$DIST_DIR\videos_tmp\tablet\app_preview.mp4") {
-    Copy-Item "$DIST_DIR\videos_tmp\tablet\app_preview.mp4" "$DIST_DIR\ios\tablet\"
-}
-Remove-Item -Recurse -Force "$DIST_DIR\videos_tmp"
 
 # 6. Collect Metadata
 Write-Host 'Collecting metadata...' -ForegroundColor Gray

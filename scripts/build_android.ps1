@@ -32,5 +32,10 @@ Write-Host 'Build complete!' -ForegroundColor Green
 Write-Host 'APKs are located in: build/app/outputs/flutter-apk/' -ForegroundColor Cyan
 
 # Display sizes
-Write-Host 'APK Sizes:' -ForegroundColor Yellow
-Get-ChildItem build/app/outputs/flutter-apk/app-*-release.apk | Select-Object Name, @{Name='Size(MB)';Expression={'{0:N2}' -f ($_.Length / 1MB)}}
+$APK_DIR = 'build/app/outputs/flutter-apk'
+if (Test-Path $APK_DIR) {
+    Write-Host '📊 APK Sizes:' -ForegroundColor Yellow
+    Get-ChildItem "$APK_DIR/app-*-release.apk" | Select-Object Name, @{Name='Size(MB)';Expression={'{0:N2}' -f ($_.Length / 1MB)}}
+} else {
+    Write-Host "⚠️ Warning: APK output directory not found at $APK_DIR" -ForegroundColor Yellow
+}
