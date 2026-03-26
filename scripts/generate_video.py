@@ -84,13 +84,13 @@ def generate_videos(output_base_dir="resources/videos"):
                 settings_b64 = base64.b64encode(settings_json.encode()).decode()
                 full_url = f"http://localhost:{PORT}/?play_file={SDR_SAMPLE}&settings_b64={settings_b64}"
 
-                page.goto(full_url)
-                page.wait_for_timeout(10000) # Wait for app to load
+                page.goto(full_url, timeout=60000)
+                page.wait_for_timeout(15000) # Wait for app to load
 
                 # 1. Start Capture
                 print("  Starting capture...")
                 capture_toggle = page.get_by_label("Capture Toggle", exact=True).first
-                capture_toggle.wait_for(state="visible", timeout=30000)
+                capture_toggle.wait_for(state="visible", timeout=60000)
                 capture_toggle.click()
                 page.wait_for_timeout(3000)
 

@@ -91,8 +91,8 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                     separator = "&" if "?" in full_url else "?"
                     full_url += f"{separator}settings_b64={settings_b64}"
 
-                    page.goto(full_url)
-                    page.wait_for_timeout(5000)
+                    page.goto(full_url, timeout=60000)
+                    page.wait_for_timeout(10000)
 
                     for cx, cy in clicks:
                         # Scale clicks based on resolution (relative to 450x800 for mobile, or landscape equivalent)

@@ -43,7 +43,6 @@ if (!(Test-Path $ACTIVATE_PATH)) {
 # Install requirements
 Write-Host 'Installing Python dependencies...' -ForegroundColor Blue
 & $VENV_PYTHON -m pip install --upgrade pip
-& $VENV_PYTHON -m pip install --upgrade greenlet # Ensure greenlet is updated for Playwright on Windows
 if (Test-Path 'scripts\requirements.txt') {
     & $VENV_PYTHON -m pip install -r scripts\requirements.txt
 } else {
