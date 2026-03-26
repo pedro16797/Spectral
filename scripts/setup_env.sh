@@ -103,8 +103,18 @@ if [ -z "$ANDROID_SDK_PATH" ] || [ ! -d "$ANDROID_SDK_PATH" ]; then
             yes | "$LOCAL_SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$LOCAL_SDK_DIR" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
             echo "✅ Android SDK installed. Configuring Flutter..."
-            export ANDROID_HOME="$LOCAL_SDK_DIR"
-            export ANDROID_SDK_ROOT="$LOCAL_SDK_DIR"
+            if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || command -v cygpath &> /dev/null; then
+                WINDOWS_SDK_PATH=$(cygpath -w "$LOCAL_SDK_DIR")
+                export ANDROID_HOME="$WINDOWS_SDK_PATH"
+                export ANDROID_SDK_ROOT="$WINDOWS_SDK_PATH"
+            elif [[ "$OS" == "Windows_NT" ]]; then
+                WINDOWS_SDK_PATH=$(pwd -W 2>/dev/null || echo "$LOCAL_SDK_DIR")
+                export ANDROID_HOME="$WINDOWS_SDK_PATH"
+                export ANDROID_SDK_ROOT="$WINDOWS_SDK_PATH"
+            else
+                export ANDROID_HOME="$LOCAL_SDK_DIR"
+                export ANDROID_SDK_ROOT="$LOCAL_SDK_DIR"
+            fi
             flutter config --android-sdk "$LOCAL_SDK_DIR"
             yes | flutter doctor --android-licenses || true
         else

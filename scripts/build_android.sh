@@ -6,9 +6,23 @@ set -e
 # Detect project-local Android SDK
 LOCAL_SDK_DIR="$(pwd)/sdks/android"
 if [ -d "$LOCAL_SDK_DIR" ]; then
-    echo "🤖 Using local Android SDK at $LOCAL_SDK_DIR"
-    export ANDROID_HOME="$LOCAL_SDK_DIR"
-    export ANDROID_SDK_ROOT="$LOCAL_SDK_DIR"
+    # Convert path to Windows format if on Windows (Git Bash, WSL, etc.)
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || command -v cygpath &> /dev/null; then
+        WINDOWS_SDK_PATH=$(cygpath -w "$LOCAL_SDK_DIR")
+        echo "🤖 Using local Android SDK at $WINDOWS_SDK_PATH"
+        export ANDROID_HOME="$WINDOWS_SDK_PATH"
+        export ANDROID_SDK_ROOT="$WINDOWS_SDK_PATH"
+    elif [[ "$OS" == "Windows_NT" ]]; then
+        # Fallback for some shells that set OS but not OSTYPE correctly
+        WINDOWS_SDK_PATH=$(pwd -W 2>/dev/null || echo "$LOCAL_SDK_DIR")
+        echo "🤖 Using local Android SDK at $WINDOWS_SDK_PATH"
+        export ANDROID_HOME="$WINDOWS_SDK_PATH"
+        export ANDROID_SDK_ROOT="$WINDOWS_SDK_PATH"
+    else
+        echo "🤖 Using local Android SDK at $LOCAL_SDK_DIR"
+        export ANDROID_HOME="$LOCAL_SDK_DIR"
+        export ANDROID_SDK_ROOT="$LOCAL_SDK_DIR"
+    fi
     export PATH="$PATH:$LOCAL_SDK_DIR/cmdline-tools/latest/bin:$LOCAL_SDK_DIR/platform-tools"
 fi
 
