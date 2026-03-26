@@ -96,6 +96,8 @@ if ([string]::IsNullOrWhiteSpace($SDK_PATH) -or !(Test-Path $SDK_PATH)) {
             $process.WaitForExit()
 
             Write-Host '✅ Android SDK installed. Configuring Flutter...' -ForegroundColor Green
+            $env:ANDROID_HOME = $LOCAL_SDK_DIR
+            $env:ANDROID_SDK_ROOT = $LOCAL_SDK_DIR
             flutter config --android-sdk "$LOCAL_SDK_DIR"
 
             # Accept licenses via flutter doctor

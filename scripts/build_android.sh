@@ -3,6 +3,15 @@
 # Exit on error
 set -e
 
+# Detect project-local Android SDK
+LOCAL_SDK_DIR="$(pwd)/sdks/android"
+if [ -d "$LOCAL_SDK_DIR" ]; then
+    echo "🤖 Using local Android SDK at $LOCAL_SDK_DIR"
+    export ANDROID_HOME="$LOCAL_SDK_DIR"
+    export ANDROID_SDK_ROOT="$LOCAL_SDK_DIR"
+    export PATH="$PATH:$LOCAL_SDK_DIR/cmdline-tools/latest/bin:$LOCAL_SDK_DIR/platform-tools"
+fi
+
 echo "🚀 Starting optimized Android build for Spectral..."
 
 # Clean previous builds
