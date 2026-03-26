@@ -93,18 +93,36 @@ Spectral is currently in the **early development phase**. We have initialized th
   flutter test
   ```
 
+### Platform-Specific Builds
+For optimized builds without running the full distribution pipeline:
+
+- **Android (APK)**:
+  - **Bash**: `./scripts/build_android.sh`
+  - **PowerShell**: `.\scripts\build_android.ps1`
+- **Web**:
+  - **Bash**: `./scripts/build_web.sh`
+  - **PowerShell**: `.\scripts\build_web.ps1`
+
 ## 🏷️ Versioning & Distribution
 
 ### Versioning
 The app version is centrally managed in the `VERSION` file at the root of the project. To update the version:
 1. Edit the `VERSION` file (e.g., `1.1.0+2`).
-2. Run `./scripts/sync_version.sh` to synchronize it with `pubspec.yaml`.
+2. Synchronize it with `pubspec.yaml`:
+   - **Bash**: `./scripts/sync_version.sh`
+   - **PowerShell**: `powershell -ExecutionPolicy Bypass -File .\scripts\sync_version.ps1`
 
 ### Distribution
-To prepare a full distribution bundle (Android APKs, Web zip, and Screenshots):
-```bash
-./scripts/package_distribution.sh
-```
+To prepare a full distribution bundle (Android APKs, Web zip, Screenshots, and Videos):
+
+- **Bash**:
+  ```bash
+  ./scripts/package_distribution.sh
+  ```
+- **PowerShell**:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\scripts\package_distribution.ps1
+  ```
 The resulting bundle will be located in the `distribution/v<VERSION>/` directory.
 
 For more details on publishing, see [docs/distribution_guide.md](docs/distribution_guide.md) and [docs/app_store_listing.md](docs/app_store_listing.md).
