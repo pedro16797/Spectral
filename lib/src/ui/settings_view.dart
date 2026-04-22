@@ -288,6 +288,20 @@ class _SettingsContentState extends State<SettingsContent> {
                   if (port != null) _updateSettings(widget.settings.copyWith(rtlTcpPort: port));
                 },
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () {
+                      _rtlPortController.text = "14423";
+                      _updateSettings(widget.settings.copyWith(rtlTcpPort: 14423));
+                    },
+                    icon: const Icon(Icons.flash_on_rounded, size: 14),
+                    label: const Text("Use 14423 (SDR Driver App)", style: TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
             ],
             const SizedBox(height: 16),
             _buildTextField(
@@ -482,32 +496,60 @@ class _SettingsContentState extends State<SettingsContent> {
 
   Widget _buildDriverStatus() {
     final bool isReady = NativeSdrDriver().isInitialized;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isReady ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isReady ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isReady ? Icons.check_circle_outline : Icons.info_outline,
-            size: 16,
-            color: isReady ? Colors.greenAccent : Colors.orangeAccent,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isReady ? "Driver Ready" : "Driver Setup Required",
-              style: TextStyle(
-                color: isReady ? Colors.greenAccent : Colors.orangeAccent,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: isReady
+          ? null
+          : () async {
+              HapticFeedback.mediumImpact();
+              final success = await NativeSdrDriver().initialize();
+              if (success) {
+                if (mounted) setState(() {});
+                // Trigger a refresh in the parent to re-init source
+                widget.onSettingsChanged(widget.settings);
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Failed to initialize SDR driver. Ensure no other app is using the module."),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isReady ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isReady ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isReady ? Icons.check_circle_outline : Icons.info_outline,
+              size: 16,
+              color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isReady ? "Driver Ready" : "Driver Setup Required",
+                style: TextStyle(
+                  color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-        ],
+            if (!isReady)
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: Colors.orangeAccent,
+              ),
+          ],
+        ),
       ),
     );
   }
