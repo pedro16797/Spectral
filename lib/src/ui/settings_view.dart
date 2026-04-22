@@ -489,9 +489,18 @@ class _SettingsContentState extends State<SettingsContent> {
               HapticFeedback.mediumImpact();
               final success = await NativeSdrDriver().initialize();
               if (success) {
-                setState(() {});
+                if (mounted) setState(() {});
                 // Trigger a refresh in the parent to re-init source
                 widget.onSettingsChanged(widget.settings);
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Failed to initialize SDR driver. Ensure module is connected."),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
               }
             },
       child: Container(
