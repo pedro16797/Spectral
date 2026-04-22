@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- RTL-SDR -->
+    <usb-device vendor-id="3034" product-id="10290" /> <!-- 0x0BDA, 0x2832 -->
+    <usb-device vendor-id="3034" product-id="10300" /> <!-- 0x0BDA, 0x2838 -->
+    <!-- HackRF -->
+    <usb-device vendor-id="7504" product-id="24713" /> <!-- 0x1D50, 0x6089 -->
+    <!-- Airspy -->
+    <usb-device vendor-id="7504" product-id="24737" /> <!-- 0x1D50, 0x60A1 -->
+</resources>
