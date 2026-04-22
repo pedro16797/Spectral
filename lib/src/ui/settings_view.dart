@@ -482,32 +482,51 @@ class _SettingsContentState extends State<SettingsContent> {
 
   Widget _buildDriverStatus() {
     final bool isReady = NativeSdrDriver().isInitialized;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isReady ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isReady ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isReady ? Icons.check_circle_outline : Icons.info_outline,
-            size: 16,
-            color: isReady ? Colors.greenAccent : Colors.orangeAccent,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isReady ? "Driver Ready" : "Driver Setup Required",
-              style: TextStyle(
-                color: isReady ? Colors.greenAccent : Colors.orangeAccent,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: isReady
+          ? null
+          : () async {
+              HapticFeedback.mediumImpact();
+              final success = await NativeSdrDriver().initialize();
+              if (success) {
+                setState(() {});
+                // Trigger a refresh in the parent to re-init source
+                widget.onSettingsChanged(widget.settings);
+              }
+            },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isReady ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isReady ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isReady ? Icons.check_circle_outline : Icons.info_outline,
+              size: 16,
+              color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isReady ? "Driver Ready" : "Driver Setup Required",
+                style: TextStyle(
+                  color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-        ],
+            if (!isReady)
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: Colors.orangeAccent,
+              ),
+          ],
+        ),
       ),
     );
   }
