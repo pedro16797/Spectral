@@ -288,6 +288,20 @@ class _SettingsContentState extends State<SettingsContent> {
                   if (port != null) _updateSettings(widget.settings.copyWith(rtlTcpPort: port));
                 },
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () {
+                      _rtlPortController.text = "14423";
+                      _updateSettings(widget.settings.copyWith(rtlTcpPort: 14423));
+                    },
+                    icon: const Icon(Icons.flash_on_rounded, size: 14),
+                    label: const Text("Use 14423 (SDR Driver App)", style: TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
             ],
             const SizedBox(height: 16),
             _buildTextField(
@@ -496,7 +510,7 @@ class _SettingsContentState extends State<SettingsContent> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text("Failed to initialize SDR driver. Ensure module is connected."),
+                      content: Text("Failed to initialize SDR driver. Ensure no other app is using the module."),
                       backgroundColor: Colors.redAccent,
                     ),
                   );

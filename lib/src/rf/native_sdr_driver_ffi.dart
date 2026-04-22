@@ -34,7 +34,7 @@ class NativeSdrDriverDelegate implements NativeSdrDriverInterface {
       }
 
       if (devices == null || devices.isEmpty) {
-        debugPrint("No USB devices found.");
+        debugPrint("No USB devices found. Ensure no other app (like 'Rtl-sdr driver') is using the module.");
         return false;
       }
 
