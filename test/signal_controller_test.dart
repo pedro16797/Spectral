@@ -21,6 +21,10 @@ class FakeSignalSource implements SignalSource {
   bool disposed = false;
   bool permission = true;
 
+  /// When set, [checkPermission] awaits this gate, letting tests suspend a
+  /// capture toggle and dispose the controller mid-flight.
+  Completer<bool>? permissionGate;
+
   void emit(Float64List data) {
     if (!_controller.isClosed) _controller.add(data);
   }
@@ -29,7 +33,10 @@ class FakeSignalSource implements SignalSource {
   Stream<Float64List> get dataStream => _controller.stream;
 
   @override
-  Future<bool> checkPermission() async => permission;
+  Future<bool> checkPermission() async {
+    if (permissionGate != null) return permissionGate!.future;
+    return permission;
+  }
 
   @override
   Future<void> startCapture() async => started = true;
@@ -168,6 +175,27 @@ void main() {
     expect(c.isCapturing, false);
     expect(src.started, false);
     c.dispose();
+  });
+
+  test('does not mutate state when disposed mid-capture-toggle', () async {
+    late FakeSignalSource src;
+    final gate = Completer<bool>();
+    final c = makeController(const AppSettings(), (s) {
+      s.permissionGate = gate;
+      src = s;
+    });
+    await settle();
+
+    // Begin a toggle; it suspends awaiting the permission gate.
+    final pending = c.toggleCapture();
+    // Dispose while the toggle is in flight, then let permission resolve.
+    c.dispose();
+    gate.complete(true);
+    await pending;
+
+    // The disposed controller must not have started capturing.
+    expect(c.isCapturing, false);
+    expect(src.started, false);
   });
 
   test('notifies listeners when capture state changes', () async {

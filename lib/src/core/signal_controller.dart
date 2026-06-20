@@ -77,7 +77,8 @@ class SignalController extends ChangeNotifier {
     SignalSourceFactory? sourceFactory,
   })  : _settings = settings,
         _sourceFactory = sourceFactory ?? defaultSignalSourceFactory {
-    _signalSource = _sourceFactory(_settings, playFile);
+    // The source is created once, inside reconfigure(), which runs synchronously
+    // up to installing the stream subscription on this first (non-capturing) call.
     _audioOutputService.init();
     reconfigure();
   }
@@ -94,10 +95,12 @@ class SignalController extends ChangeNotifier {
 
   AppSettings _settings;
   late SignalSource _signalSource;
+  bool _hasSource = false;
   StreamSubscription<Float64List>? _signalSubscription;
   bool _disposed = false;
 
   static const int _maxHistory = 40;
+  static const int _maxAudioHistory = 5;
 
   // ---- Visualization state (read by painters via [frame]) ----
   Float64List currentAudioData = Float64List(0);
@@ -142,6 +145,10 @@ class SignalController extends ChangeNotifier {
   /// serialized: if a reconfiguration is already running, the latest requested
   /// settings are queued and applied once the in-flight one completes.
   Future<void> reconfigure({AppSettings? newSettings}) async {
+    // Always reflect the latest requested settings in `_settings` immediately.
+    // The queue below relies on this: when a queued reconfigure carries no new
+    // settings, falling back to the current `_settings` is correct because the
+    // most recent non-null settings were already stored here.
     if (newSettings != null) _settings = newSettings;
 
     if (_isReconfiguring) {
@@ -176,7 +183,7 @@ class SignalController extends ChangeNotifier {
       }
       if (_disposed) return;
       _signalSubscription?.cancel();
-      _signalSource.dispose();
+      if (_hasSource) _signalSource.dispose();
 
       _fftService.reset();
       _lastI = null;
@@ -192,6 +199,7 @@ class SignalController extends ChangeNotifier {
       }
 
       _signalSource = _sourceFactory(currentSettings, playFile);
+      _hasSource = true;
 
       // Reusable buffer for decimation.
       Float64List? decimationBuffer;
@@ -289,7 +297,7 @@ class SignalController extends ChangeNotifier {
 
     if (currentAudioData.isNotEmpty) {
       audioHistory.insert(0, currentAudioData);
-      if (audioHistory.length > 5) audioHistory.removeLast();
+      if (audioHistory.length > _maxAudioHistory) audioHistory.removeLast();
     }
     currentAudioData = processedAudio;
     return processedAudio;
@@ -364,11 +372,13 @@ class SignalController extends ChangeNotifier {
         } else {
           await _signalSource.stopCapture();
         }
+        if (_disposed) return;
         _isCapturing = false;
         currentAudioData = Float64List(0);
         audioHistory.clear();
         currentFftData = [];
         fftHistory.clear();
+        detectedTone = null;
         snr = null;
         _lastI = null;
         _lastQ = null;
@@ -384,8 +394,10 @@ class SignalController extends ChangeNotifier {
           notifyListeners();
         } else {
           final hasPermission = await _signalSource.checkPermission();
+          if (_disposed) return;
           if (hasPermission) {
             await _signalSource.startCapture();
+            if (_disposed) return;
             _audioOutputService.resume();
             _isCapturing = true;
             notifyListeners();
