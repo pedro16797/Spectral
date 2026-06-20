@@ -51,9 +51,18 @@ class WaterfallPainter extends CustomPainter {
 
     const double logScale = 1.0 / 4.0;
 
+    // Reuse a single Paint across all cells; only the color changes per cell.
+    // Allocating a Paint per cell would churn thousands of objects per frame.
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = false;
+
     for (var i = 0; i < historyCount; i++) {
       final fftData = fftHistory[i];
       if (fftData.isEmpty) continue;
+
+      final ageFade = 1.0 - (i / historyCount);
+      final y = i * rowHeight;
 
       for (var j = 0; j < binCount; j++) {
         final int dataIndex = (skewedIndices[j] * fftData.length ~/ 1e6).clamp(0, fftData.length - 1);
@@ -64,15 +73,9 @@ class WaterfallPainter extends CustomPainter {
 
         if (normalized < 0.05) continue;
 
-        final ageFade = 1.0 - (i / historyCount);
-
-        final paint = Paint()
-          ..color = _getThemeColor(normalized, theme).withOpacity(ageFade * 0.4)
-          ..style = PaintingStyle.fill
-          ..isAntiAlias = false;
+        paint.color = _getThemeColor(normalized, theme).withOpacity(ageFade * 0.4);
 
         final x = j * barWidth;
-        final y = i * rowHeight;
 
         canvas.drawRect(
           Rect.fromLTWH(x, y, barWidth + 0.6, rowHeight + 0.6),

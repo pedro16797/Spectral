@@ -163,6 +163,13 @@ class SpectralHomePage extends StatefulWidget {
   State<SpectralHomePage> createState() => _SpectralHomePageState();
 }
 
+/// Lightweight [Listenable] used to repaint only the live visualization layers
+/// on each incoming signal frame, without rebuilding the surrounding (and
+/// expensive) `BackdropFilter` glass chrome via `setState`.
+class _FrameTicker extends ChangeNotifier {
+  void tick() => notifyListeners();
+}
+
 class DialArcPainter extends CustomPainter {
   final double value;
   final bool isLeft;
@@ -239,6 +246,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   late SignalSource _signalSource;
   final FftService _fftService = FftService();
   final AudioOutputService _audioOutputService = AudioOutputService();
+  final _FrameTicker _frameTicker = _FrameTicker();
   StreamSubscription<Float64List>? _signalSubscription;
   Float64List _currentAudioData = Float64List(0);
   final List<Float64List> _audioHistory = [];
@@ -385,33 +393,36 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         if (!mounted) return;
 
         try {
-          setState(() {
-            final audio = _updateAudioData(data);
-            final bool useDemod =
-                _signalSource.isComplex && widget.settings.demodulationMode != DemodulationMode.none;
+          // Hot path: mutate the visualization state directly and repaint only
+          // the live layers via the ticker. Using `setState` here would rebuild
+          // the entire page (including the expensive BackdropFilter chrome) on
+          // every incoming frame.
+          final audio = _updateAudioData(data);
+          final bool useDemod =
+              _signalSource.isComplex && widget.settings.demodulationMode != DemodulationMode.none;
 
-            if (useDemod && widget.settings.audioOutputEnabled) {
-              // Decimation: Downsampling of SDR stream to ~44.1 kHz for audio output.
-              final int decimationFactor = (_signalSource.sampleRate / 44100).round().clamp(1, 100);
-              if (decimationFactor > 1) {
-                decimationBuffer = AudioUtils.decimate(audio, decimationFactor, target: decimationBuffer);
-                _audioOutputService.push(decimationBuffer!);
-              } else {
-                _audioOutputService.push(audio);
-              }
+          if (useDemod && widget.settings.audioOutputEnabled) {
+            // Decimation: Downsampling of SDR stream to ~44.1 kHz for audio output.
+            final int decimationFactor = (_signalSource.sampleRate / 44100).round().clamp(1, 100);
+            if (decimationFactor > 1) {
+              decimationBuffer = AudioUtils.decimate(audio, decimationFactor, target: decimationBuffer);
+              _audioOutputService.push(decimationBuffer!);
+            } else {
+              _audioOutputService.push(audio);
             }
+          }
 
-            final fft = _fftService.processSignalData(
-              useDemod ? audio : data,
-              windowSize: widget.settings.fftWindowSize,
-              windowType: widget.settings.fftWindowType,
-              isComplex: useDemod ? false : _signalSource.isComplex,
-              peakHoldEnabled: widget.settings.peakHoldEnabled,
-              averagingMode: widget.settings.fftAveragingMode,
-              averagingCount: widget.settings.fftAveragingCount,
-            );
-            _processFftFrame(fft, isComplex: useDemod ? false : _signalSource.isComplex);
-          });
+          final fft = _fftService.processSignalData(
+            useDemod ? audio : data,
+            windowSize: widget.settings.fftWindowSize,
+            windowType: widget.settings.fftWindowType,
+            isComplex: useDemod ? false : _signalSource.isComplex,
+            peakHoldEnabled: widget.settings.peakHoldEnabled,
+            averagingMode: widget.settings.fftAveragingMode,
+            averagingCount: widget.settings.fftAveragingCount,
+          );
+          _processFftFrame(fft, isComplex: useDemod ? false : _signalSource.isComplex);
+          _frameTicker.tick();
         } catch (e) {
           debugPrint("Signal processing error: $e");
         }
@@ -528,20 +539,19 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         if (_demoPhase > 2 * math.pi) _demoPhase -= 2 * math.pi;
       }
       if (mounted) {
-        setState(() {
-          _updateAudioData(samples);
+        _updateAudioData(samples);
 
-          final fft = _fftService.processSignalData(
-            samples,
-            windowSize: widget.settings.fftWindowSize,
-            windowType: widget.settings.fftWindowType,
-            isComplex: false,
-            peakHoldEnabled: widget.settings.peakHoldEnabled,
-            averagingMode: widget.settings.fftAveragingMode,
-            averagingCount: widget.settings.fftAveragingCount,
-          );
-          _processFftFrame(fft, isComplex: false);
-        });
+        final fft = _fftService.processSignalData(
+          samples,
+          windowSize: widget.settings.fftWindowSize,
+          windowType: widget.settings.fftWindowType,
+          isComplex: false,
+          peakHoldEnabled: widget.settings.peakHoldEnabled,
+          averagingMode: widget.settings.fftAveragingMode,
+          averagingCount: widget.settings.fftAveragingCount,
+        );
+        _processFftFrame(fft, isComplex: false);
+        _frameTicker.tick();
       }
     });
   }
@@ -673,6 +683,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     _signalSubscription?.cancel();
     _demoTimer?.cancel();
     _pulseController.dispose();
+    _frameTicker.dispose();
     _signalSource.dispose();
     _audioOutputService.dispose();
     super.dispose();
@@ -705,15 +716,20 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           Positioned.fill(
             child: Opacity(
               opacity: _waterfallFocusMode ? 1.0 : 0.4,
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: WaterfallPainter(
-                  fftHistory: _fftHistory,
-                  minFreq: _freqRange.start,
-                  maxFreq: _freqRange.end,
-                  sampleRate: _signalSource.sampleRate,
-                  theme: widget.settings.theme,
-                  frequencySkew: widget.settings.frequencySkew,
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _frameTicker,
+                  builder: (context, _) => CustomPaint(
+                    size: Size.infinite,
+                    painter: WaterfallPainter(
+                      fftHistory: _fftHistory,
+                      minFreq: _freqRange.start,
+                      maxFreq: _freqRange.end,
+                      sampleRate: _signalSource.sampleRate,
+                      theme: widget.settings.theme,
+                      frequencySkew: widget.settings.frequencySkew,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -769,12 +785,17 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                           Expanded(
                                             child: _buildGlassCard(
                                               child: SizedBox.expand(
-                                                child: CustomPaint(
-                                                  size: Size.infinite,
-                                                  painter: WaveformPainter(
-                                                    audioData: _currentAudioData,
-                                                    history: _audioHistory,
-                                                    color: Colors.white.withOpacity(0.8),
+                                                child: RepaintBoundary(
+                                                  child: AnimatedBuilder(
+                                                    animation: _frameTicker,
+                                                    builder: (context, _) => CustomPaint(
+                                                      size: Size.infinite,
+                                                      painter: WaveformPainter(
+                                                        audioData: _currentAudioData,
+                                                        history: _audioHistory,
+                                                        color: Colors.white.withOpacity(0.8),
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -793,12 +814,17 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                             flex: 2,
                                             child: _buildGlassCard(
                                               child: SizedBox.expand(
-                                                child: CustomPaint(
-                                                  size: Size.infinite,
-                                                  painter: WaveformPainter(
-                                                    audioData: _currentAudioData,
-                                                    history: _audioHistory,
-                                                    color: Colors.white.withOpacity(0.8),
+                                                child: RepaintBoundary(
+                                                  child: AnimatedBuilder(
+                                                    animation: _frameTicker,
+                                                    builder: (context, _) => CustomPaint(
+                                                      size: Size.infinite,
+                                                      painter: WaveformPainter(
+                                                        audioData: _currentAudioData,
+                                                        history: _audioHistory,
+                                                        color: Colors.white.withOpacity(0.8),
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -867,20 +893,25 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         onTapDown: (details) => _handleFftTap(details.localPosition, constraints.biggest),
         child: _buildGlassCard(
           child: SizedBox.expand(
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: FftBarChartPainter(
-                fftData: _currentFftData,
-                peakHoldData: widget.settings.peakHoldEnabled ? _fftService.peakHoldBuffer : null,
-                markers: _markers,
-                showHarmonics: widget.settings.showHarmonics,
-                fundamentalFreq: _detectedTone?.frequency,
-                snrValue: widget.settings.showSnr ? _snr : null,
-                color: accentColor,
-                minFreq: _freqRange.start,
-                maxFreq: _freqRange.end,
-                sampleRate: _signalSource.sampleRate,
-                frequencySkew: widget.settings.frequencySkew,
+            child: RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _frameTicker,
+                builder: (context, _) => CustomPaint(
+                  size: Size.infinite,
+                  painter: FftBarChartPainter(
+                    fftData: _currentFftData,
+                    peakHoldData: widget.settings.peakHoldEnabled ? _fftService.peakHoldBuffer : null,
+                    markers: _markers,
+                    showHarmonics: widget.settings.showHarmonics,
+                    fundamentalFreq: _detectedTone?.frequency,
+                    snrValue: widget.settings.showSnr ? _snr : null,
+                    color: accentColor,
+                    minFreq: _freqRange.start,
+                    maxFreq: _freqRange.end,
+                    sampleRate: _signalSource.sampleRate,
+                    frequencySkew: widget.settings.frequencySkew,
+                  ),
+                ),
               ),
             ),
           ),
@@ -1064,22 +1095,26 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  Widget _buildFrequencyFocusSlider() {
-    final accentColor = Theme.of(context).colorScheme.secondary;
-    final List<Widget> labelWidgets = [];
+  /// Builds the detected-tone label widgets shown above the focus slider.
+  /// Recomputed per frame (via the ticker) so it tracks the live signal.
+  List<Widget> _buildToneLabelWidgets() {
     if (_detectedTone == null) {
-      labelWidgets.add(const Text(
-        "FOCUS",
-        style: TextStyle(
-            fontSize: 10,
-            letterSpacing: 2,
-            color: Colors.white24,
-            fontWeight: FontWeight.bold),
-      ));
-    } else {
-      final t = _detectedTone!;
-      final freqStr = FrequencyFormatter.format(t.frequency, shortUnit: true);
-      labelWidgets.add(SizedBox(
+      return const [
+        Text(
+          "FOCUS",
+          style: TextStyle(
+              fontSize: 10,
+              letterSpacing: 2,
+              color: Colors.white24,
+              fontWeight: FontWeight.bold),
+        ),
+      ];
+    }
+
+    final t = _detectedTone!;
+    final freqStr = FrequencyFormatter.format(t.frequency, shortUnit: true);
+    return [
+      SizedBox(
         width: 52,
         child: Text(
           freqStr,
@@ -1091,10 +1126,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               fontWeight: FontWeight.bold,
               fontFeatures: [FontFeature.tabularFigures()]),
         ),
-      ));
-      labelWidgets.add(const Text(" • ",
-          style: TextStyle(fontSize: 10, color: Colors.white10)));
-      labelWidgets.add(SizedBox(
+      ),
+      const Text(" • ", style: TextStyle(fontSize: 10, color: Colors.white10)),
+      SizedBox(
         width: 28,
         child: Text(
           t.note,
@@ -1105,20 +1139,23 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               color: Colors.white24,
               fontWeight: FontWeight.bold),
         ),
-      ));
-      if (t.harmonics.isNotEmpty) {
-        labelWidgets.add(const Text(" • ",
-            style: TextStyle(fontSize: 10, color: Colors.white10)));
-        labelWidgets.add(Text(
+      ),
+      if (t.harmonics.isNotEmpty) ...[
+        const Text(" • ", style: TextStyle(fontSize: 10, color: Colors.white10)),
+        Text(
           "H: ${t.harmonics.join(', ')}",
           style: const TextStyle(
               fontSize: 10,
               letterSpacing: 2,
               color: Colors.white24,
               fontWeight: FontWeight.bold),
-        ));
-      }
-    }
+        ),
+      ],
+    ];
+  }
+
+  Widget _buildFrequencyFocusSlider() {
+    final accentColor = Theme.of(context).colorScheme.secondary;
 
     String rangeText;
     if (widget.settings.signalSource == SignalSourceType.rf) {
@@ -1137,8 +1174,11 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: labelWidgets,
+                child: AnimatedBuilder(
+                  animation: _frameTicker,
+                  builder: (context, _) => Row(
+                    children: _buildToneLabelWidgets(),
+                  ),
                 ),
               ),
             ),
