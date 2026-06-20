@@ -36,19 +36,6 @@ class AudioOutputService {
     }
   }
 
-  /// Pauses audio playback.
-  void pause() {
-    if (!_isInitialized) return;
-    try {
-      // mp_audio_stream doesn't have a direct pause, but we can stop pushing data
-      // or check if there's a state management we need.
-      // It seems it just plays what's in the buffer.
-      // We can call resume() again if it was suspended.
-    } catch (e) {
-      debugPrint("AudioOutputService: Error pausing: $e");
-    }
-  }
-
   /// Pushes double precision samples to the audio stream.
   /// Samples are expected to be in the range [-1.0, 1.0].
   void push(Float64List samples) {
@@ -61,19 +48,14 @@ class AudioOutputService {
     }
   }
 
-  /// Clears the internal audio buffer.
-  void clearBuffer() {
-    if (!_isInitialized) return;
-    // mp_audio_stream does not explicitly provide a clearBuffer,
-    // but some implementations might.
-  }
-
   /// Disposes of the audio stream.
+  ///
+  /// `mp_audio_stream` does not expose an explicit native teardown in this
+  /// version, so we mark the service uninitialized to ensure any further
+  /// [push]/[resume] calls become no-ops (guards against use-after-dispose).
   void dispose() {
-    if (_isInitialized) {
-      // mp_audio_stream usually doesn't need explicit dispose if it follows typical plugin patterns,
-      // but let's check if it has one. It doesn't seem to have a public dispose() in the snippet.
-      debugPrint("AudioOutputService: Disposed.");
-    }
+    _isInitialized = false;
+    _isResumed = false;
+    debugPrint("AudioOutputService: Disposed.");
   }
 }

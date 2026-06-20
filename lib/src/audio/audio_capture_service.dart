@@ -13,9 +13,6 @@ class AudioCaptureService implements SignalSource {
   @override
   Stream<Float64List> get dataStream => _audioDataController.stream;
 
-  // Added for backward compatibility (optional, but good practice if other files use it)
-  Stream<Float64List> get audioDataStream => dataStream;
-
   @override
   int get sampleRate => 44100;
 
