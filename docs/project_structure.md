@@ -1,26 +1,74 @@
 # Project Structure
 
-This document outlines the directory structure and the purpose of each component in the Spectral repository.
+This document outlines the directory structure and the purpose of each component
+in the Spectral repository. Spectral is a Flutter application.
+
+## Architecture at a glance
+
+The real-time signal pipeline is owned by **`SignalController`**
+(`lib/src/core/signal_controller.dart`), a `ChangeNotifier` that manages source
+lifecycle, demodulation, FFT, and the rolling visualization history. `main.dart`
+is a thin **view** that observes the controller:
+
+- **Per-frame repaints** are driven by `controller.frame` (a `FrameTicker`),
+  which only repaints the live `CustomPaint` layers (waveform, FFT, waterfall)
+  via `AnimatedBuilder` + `RepaintBoundary` — the surrounding glass/blur chrome
+  is *not* rebuilt every frame.
+- **Discrete state** (e.g. capture on/off) is delivered through the controller's
+  `ChangeNotifier` listeners.
+- Signal sources are created by an injectable `SignalSourceFactory`, which keeps
+  source selection in one place and makes the pipeline unit-testable with a fake
+  source.
 
 ## Directory Overview
 
-- **`lib/src/`**: Contains the core application logic and source code.
-    - **`audio/`**: Components for audio capturing and processing.
-    - **`rf/`**: Components for RF data acquisition and processing (Future).
-    - **`core/`**: Shared signal processing logic (FFT, windowing, filters).
-    - **`ui/`**: User interface components and visualization rendering logic.
-    - **`services/`**: General background services and system integrations.
-    - **`utils/`**: General helper functions and shared utilities.
-- **`docs/`**: Project documentation, including roadmaps, architecture guides, and sprint plans.
-- **`config/`**: Configuration files and default settings for the application.
+- **`lib/main.dart`**: App entry point and the top-level view (`SpectralApp`,
+  `SpectralHomePage`).
+- **`lib/src/`**: Application source code.
+    - **`core/`**: Pipeline and shared domain logic.
+        - `signal_controller.dart`: Owns the real-time pipeline (see above).
+        - `signal_source.dart`: `SignalSource` interface implemented by every
+          capture backend.
+        - `fft_service.dart`: FFT, windowing, peak-hold, averaging, tone/SNR
+          detection.
+        - `settings_model.dart`: `AppSettings` immutable model + serialization.
+        - `spectral_theme.dart`: Per-theme accent/background colors and the
+          waterfall magnitude→color ramp.
+    - **`audio/`**: `audio_capture_service.dart` (mic capture via `record`) and
+      `audio_output_service.dart` (PCM playback via `mp_audio_stream`).
+    - **`rf/`**: RF acquisition backends.
+        - `rtl_tcp_capture_service.dart`: `rtl_tcp` client (uses `dart:io`); has
+          a web stub (`rtl_tcp_capture_service_stub.dart`) selected via
+          conditional import so the web build does not pull in `dart:io`.
+        - `rf_capture_service.dart` / `integrated_rf_capture_service.dart`:
+          currently *simulated* RF sources.
+        - `native_sdr_driver.dart` + `native_sdr_driver_ffi.dart` /
+          `native_sdr_driver_web.dart`: platform driver delegate (FFI on
+          Android, mocked on web).
+    - **`ui/`**: Rendering and interaction.
+        - `waveform_painter.dart`, `fft_bar_chart_painter.dart`,
+          `waterfall_painter.dart`: `CustomPainter` visualizations.
+        - `radio_dial_focus_slider.dart`: frequency zoom/pan control.
+        - `settings_view.dart`: settings dialog and inline tablet panel.
+    - **`services/`**: `settings_service.dart` (persistence via
+      `shared_preferences`).
+    - **`utils/`**: Shared helpers — `audio_utils.dart` (PCM/decimation),
+      `frequency_formatter.dart`, `frequency_scale.dart` (skew transforms),
+      `localization_helper.dart`, `mock_file_signal_source.dart`.
+- **`test/`**: Unit and widget tests.
+- **`docs/`**: Project documentation, roadmaps, and guides.
 - **`resources/`**: Static assets.
     - **`locales/`**: JSON files for internationalization.
-    - **`themes/`**: Theme definitions and style constants.
-- **`tests/`**: Unit, integration, and end-to-end tests.
+    - **`screenshots/`**: Marketing/store screenshots.
+- **`scripts/`**: Build, packaging, version-sync, and screenshot scripts.
+- **`android/` `ios/` `web/` `linux/` `macos/` `windows/`**: Flutter platform
+  runners.
 
 ## Root Files
 
-- **`AGENTS.md`**: Guidance and roadmap for AI agents working on the project.
+- **`AGENTS.md`**: Guidance for AI agents working on the project.
 - **`CONTRIBUTING.md`**: Guidelines for contributing to the project.
 - **`README.md`**: General project overview and setup instructions.
+- **`VERSION`**: Single source of truth for the app version (synced into
+  `pubspec.yaml` via `scripts/sync_version.sh`).
 - **`LICENSE`**: The project's MIT license terms.
