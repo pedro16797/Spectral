@@ -1,0 +1,185 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:spectral/src/core/settings_model.dart';
+import 'package:spectral/src/core/signal_controller.dart';
+import 'package:spectral/src/core/signal_source.dart';
+
+/// A controllable signal source for driving the controller in tests, without
+/// touching real audio/RF plugins.
+class FakeSignalSource implements SignalSource {
+  FakeSignalSource({this.isComplex = false, this.sampleRate = 44100});
+
+  final _controller = StreamController<Float64List>.broadcast();
+
+  @override
+  final bool isComplex;
+  @override
+  final int sampleRate;
+
+  bool started = false;
+  bool disposed = false;
+  bool permission = true;
+
+  void emit(Float64List data) {
+    if (!_controller.isClosed) _controller.add(data);
+  }
+
+  @override
+  Stream<Float64List> get dataStream => _controller.stream;
+
+  @override
+  Future<bool> checkPermission() async => permission;
+
+  @override
+  Future<void> startCapture() async => started = true;
+
+  @override
+  Future<void> stopCapture() async => started = false;
+
+  @override
+  void dispose() {
+    disposed = true;
+    _controller.close();
+  }
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // Yields long enough for the controller's async reconfigure and the
+  // broadcast stream delivery to complete.
+  Future<void> settle() => Future<void>.delayed(Duration.zero);
+
+  SignalController makeController(
+    AppSettings settings,
+    void Function(FakeSignalSource) capture, {
+    bool isComplex = false,
+    int sampleRate = 44100,
+  }) {
+    return SignalController(
+      settings: settings,
+      sourceFactory: (s, playFile) {
+        final src = FakeSignalSource(isComplex: isComplex, sampleRate: sampleRate);
+        capture(src);
+        return src;
+      },
+    );
+  }
+
+  test('applies gain to real audio samples', () async {
+    late FakeSignalSource src;
+    final c = makeController(const AppSettings(), (s) => src = s);
+    c.gain = 2.0;
+    await settle();
+
+    src.emit(Float64List.fromList([0.1, -0.2, 0.3]));
+    await settle();
+
+    expect(c.currentAudioData, [
+      closeTo(0.2, 1e-9),
+      closeTo(-0.4, 1e-9),
+      closeTo(0.6, 1e-9),
+    ]);
+    c.dispose();
+  });
+
+  test('AM demodulation outputs envelope magnitude', () async {
+    late FakeSignalSource src;
+    final c = makeController(
+      const AppSettings(
+        signalSource: SignalSourceType.rf,
+        rfSource: RfSourceType.mock,
+        demodulationMode: DemodulationMode.am,
+      ),
+      (s) => src = s,
+      isComplex: true,
+      sampleRate: 1000,
+    );
+    await settle();
+
+    // Interleaved I/Q: (3,4) -> magnitude 5; (0,0) -> 0.
+    src.emit(Float64List.fromList([3, 4, 0, 0]));
+    await settle();
+
+    expect(c.currentAudioData, [closeTo(5, 1e-9), closeTo(0, 1e-9)]);
+    c.dispose();
+  });
+
+  test('exposes the active source sampleRate and isComplex', () async {
+    late FakeSignalSource src;
+    final c = makeController(
+      const AppSettings(signalSource: SignalSourceType.rf, rfSource: RfSourceType.mock),
+      (s) => src = s,
+      isComplex: true,
+      sampleRate: 2048000,
+    );
+    await settle();
+
+    expect(c.sampleRate, 2048000);
+    expect(c.isComplex, true);
+    expect(src.disposed, false);
+    c.dispose();
+  });
+
+  test('audio history is capped', () async {
+    late FakeSignalSource src;
+    final c = makeController(const AppSettings(), (s) => src = s);
+    await settle();
+
+    for (int i = 0; i < 12; i++) {
+      src.emit(Float64List.fromList([i.toDouble()]));
+      await settle();
+    }
+
+    expect(c.audioHistory.length, lessThanOrEqualTo(5));
+    c.dispose();
+  });
+
+  test('toggleCapture starts capture, then stops and clears state', () async {
+    late FakeSignalSource src;
+    final c = makeController(const AppSettings(), (s) => src = s);
+    await settle();
+    expect(c.isCapturing, false);
+
+    await c.toggleCapture();
+    expect(c.isCapturing, true);
+    expect(src.started, true);
+
+    src.emit(Float64List.fromList([0.5, 0.6]));
+    await settle();
+    expect(c.currentAudioData.isNotEmpty, true);
+
+    await c.toggleCapture();
+    expect(c.isCapturing, false);
+    expect(src.started, false);
+    expect(c.currentAudioData.isEmpty, true);
+    expect(c.audioHistory.isEmpty, true);
+    c.dispose();
+  });
+
+  test('does not start capture when permission is denied', () async {
+    late FakeSignalSource src;
+    final c = makeController(const AppSettings(), (s) => src = s);
+    await settle();
+    src.permission = false;
+
+    await c.toggleCapture();
+    expect(c.isCapturing, false);
+    expect(src.started, false);
+    c.dispose();
+  });
+
+  test('notifies listeners when capture state changes', () async {
+    late FakeSignalSource src;
+    final c = makeController(const AppSettings(), (s) => src = s);
+    await settle();
+
+    int notifications = 0;
+    c.addListener(() => notifications++);
+
+    await c.toggleCapture();
+    expect(notifications, greaterThan(0));
+    c.dispose();
+  });
+}

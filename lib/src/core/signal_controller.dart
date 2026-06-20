@@ -21,6 +21,47 @@ class FrameTicker extends ChangeNotifier {
   void tick() => notifyListeners();
 }
 
+/// Builds a [SignalSource] for the given settings. Injectable so tests can
+/// supply a controllable fake without touching audio/RF plugins.
+typedef SignalSourceFactory = SignalSource Function(AppSettings settings, String? playFile);
+
+/// The production source selection: a file playback mock, an RF source
+/// (rtl_tcp / integrated / simulated), or live audio capture.
+SignalSource defaultSignalSourceFactory(AppSettings settings, String? playFile) {
+  if (playFile != null) {
+    return MockFileSignalSource(
+      assetPath: playFile,
+      isComplex: settings.signalSource == SignalSourceType.rf,
+      sampleRate: settings.signalSource == SignalSourceType.rf
+          ? (settings.rfBandwidth * 1e6).toInt()
+          : 44100,
+    );
+  }
+  if (settings.signalSource == SignalSourceType.rf) {
+    switch (settings.rfSource) {
+      case RfSourceType.rtlTcp:
+        return RtlTcpCaptureService(
+          host: settings.rtlTcpHost,
+          port: settings.rtlTcpPort,
+          sampleRate: (settings.rfBandwidth * 1e6).toInt(),
+          frequency: (settings.centerFrequency * 1e6).toInt(),
+        );
+      case RfSourceType.integrated:
+        return IntegratedRfCaptureService(
+          centerFrequency: settings.centerFrequency * 1e6,
+          bandwidth: settings.rfBandwidth * 1e6,
+          ppmCorrection: settings.ppmCorrection,
+        );
+      case RfSourceType.mock:
+        return RfCaptureService(
+          centerFrequency: settings.centerFrequency * 1e6,
+          bandwidth: settings.rfBandwidth * 1e6,
+        );
+    }
+  }
+  return AudioCaptureService();
+}
+
 /// Owns the real-time signal pipeline: source lifecycle, demodulation, FFT,
 /// and the rolling visualization history. The UI observes [frame] for
 /// per-frame repaints and listens to this [ChangeNotifier] for discrete state
@@ -33,14 +74,17 @@ class SignalController extends ChangeNotifier {
     required AppSettings settings,
     this.isDemoMode = false,
     this.playFile,
-  }) : _settings = settings {
-    _signalSource = AudioCaptureService();
+    SignalSourceFactory? sourceFactory,
+  })  : _settings = settings,
+        _sourceFactory = sourceFactory ?? defaultSignalSourceFactory {
+    _signalSource = _sourceFactory(_settings, playFile);
     _audioOutputService.init();
     reconfigure();
   }
 
   final bool isDemoMode;
   final String? playFile;
+  final SignalSourceFactory _sourceFactory;
 
   final FftService _fftService = FftService();
   final AudioOutputService _audioOutputService = AudioOutputService();
@@ -138,41 +182,16 @@ class SignalController extends ChangeNotifier {
       _lastI = null;
       _lastQ = null;
 
-      if (playFile != null) {
-        _signalSource = MockFileSignalSource(
-          assetPath: playFile!,
-          isComplex: currentSettings.signalSource == SignalSourceType.rf,
-          sampleRate: currentSettings.signalSource == SignalSourceType.rf
-              ? (currentSettings.rfBandwidth * 1e6).toInt()
-              : 44100,
-        );
-      } else if (currentSettings.signalSource == SignalSourceType.rf) {
-        if (currentSettings.rfSource == RfSourceType.rtlTcp) {
-          _signalSource = RtlTcpCaptureService(
-            host: currentSettings.rtlTcpHost,
-            port: currentSettings.rtlTcpPort,
-            sampleRate: (currentSettings.rfBandwidth * 1e6).toInt(),
-            frequency: (currentSettings.centerFrequency * 1e6).toInt(),
-          );
-        } else if (currentSettings.rfSource == RfSourceType.integrated) {
-          // Trigger driver setup if needed.
-          if (!NativeSdrDriver().isInitialized) {
-            _setupIntegratedDriver();
-          }
-          _signalSource = IntegratedRfCaptureService(
-            centerFrequency: currentSettings.centerFrequency * 1e6,
-            bandwidth: currentSettings.rfBandwidth * 1e6,
-            ppmCorrection: currentSettings.ppmCorrection,
-          );
-        } else {
-          _signalSource = RfCaptureService(
-            centerFrequency: currentSettings.centerFrequency * 1e6,
-            bandwidth: currentSettings.rfBandwidth * 1e6,
-          );
-        }
-      } else {
-        _signalSource = AudioCaptureService();
+      // Ensure the native driver is initialized before using the integrated
+      // RF source. This is a side effect of selecting that source.
+      if (playFile == null &&
+          currentSettings.signalSource == SignalSourceType.rf &&
+          currentSettings.rfSource == RfSourceType.integrated &&
+          !NativeSdrDriver().isInitialized) {
+        _setupIntegratedDriver();
       }
+
+      _signalSource = _sourceFactory(currentSettings, playFile);
 
       // Reusable buffer for decimation.
       Float64List? decimationBuffer;
