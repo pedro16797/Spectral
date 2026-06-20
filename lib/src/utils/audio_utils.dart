@@ -3,9 +3,14 @@ import 'dart:typed_data';
 class AudioUtils {
   /// Converts 16-bit PCM (Little Endian) bytes to normalized double samples [-1.0, 1.0].
   /// [target] can be provided to reuse an existing buffer and reduce allocations.
+  ///
+  /// The returned list always has length exactly equal to the number of samples
+  /// decoded. [target] is only reused when its length matches exactly; otherwise a
+  /// new buffer is allocated. This prevents stale trailing samples from leaking
+  /// through when an oversized buffer is reused for a smaller chunk.
   static Float64List convertPcmToDouble(Uint8List audioData, {Float64List? target}) {
     final int count = audioData.length ~/ 2;
-    final samples = (target != null && target.length >= count) ? target : Float64List(count);
+    final samples = (target != null && target.length == count) ? target : Float64List(count);
 
     // If the offset is not a multiple of 2, asInt16List will throw.
     // In such cases, we use ByteData to read the samples safely.
@@ -25,10 +30,15 @@ class AudioUtils {
   }
 
   /// Decimates (downsamples) audio data by an integer factor.
+  ///
+  /// The returned list always has length exactly [input.length ~/ factor].
+  /// [target] is only reused when its length matches exactly; otherwise a new
+  /// buffer is allocated. This avoids pushing stale trailing samples when an
+  /// oversized buffer is reused for a smaller chunk.
   static Float64List decimate(Float64List input, int factor, {Float64List? target}) {
     if (factor <= 1) return input;
     final int targetLength = input.length ~/ factor;
-    final output = (target != null && target.length >= targetLength) ? target : Float64List(targetLength);
+    final output = (target != null && target.length == targetLength) ? target : Float64List(targetLength);
 
     for (int i = 0; i < targetLength; i++) {
       output[i] = input[i * factor];

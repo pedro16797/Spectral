@@ -12,6 +12,7 @@ class IntegratedRfCaptureService implements SignalSource {
   final double bandwidth; // Hz
   final double ppmCorrection; // PPM
   final _dataController = StreamController<Float64List>.broadcast();
+  final math.Random _rng = math.Random();
   Timer? _timer;
   bool _isCapturing = false;
 
@@ -76,8 +77,8 @@ class IntegratedRfCaptureService implements SignalSource {
         }
 
         // Low noise floor
-        double ni = (math.Random().nextDouble() - 0.5) * 0.01;
-        double nq = (math.Random().nextDouble() - 0.5) * 0.01;
+        double ni = (_rng.nextDouble() - 0.5) * 0.01;
+        double nq = (_rng.nextDouble() - 0.5) * 0.01;
 
         samples[i * 2] = realSum + ni;
         samples[i * 2 + 1] = imagSum + nq;

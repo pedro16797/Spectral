@@ -8,7 +8,8 @@ import 'package:flutter/services.dart';
 import 'src/audio/audio_capture_service.dart';
 import 'src/audio/audio_output_service.dart';
 import 'src/rf/rf_capture_service.dart';
-import 'src/rf/rtl_tcp_capture_service.dart';
+import 'src/rf/rtl_tcp_capture_service.dart'
+    if (dart.library.html) 'src/rf/rtl_tcp_capture_service_stub.dart';
 import 'src/rf/integrated_rf_capture_service.dart';
 import 'src/rf/native_sdr_driver.dart';
 import 'src/rf/native_sdr_driver_ffi.dart' if (dart.library.html) 'src/rf/native_sdr_driver_web.dart';
@@ -253,6 +254,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   bool _isDemoMode = false;
   String? _playFile;
   Timer? _demoTimer;
+  double _demoPhase = 0.0;
+
+  // Guards against overlapping signal-source reconfigurations. Reconfiguration
+  // is asynchronous, so concurrent calls (e.g. rapid settings changes) could
+  // otherwise interleave and double-dispose the source or its subscription.
+  bool _isReconfiguring = false;
+  bool _reconfigureQueued = false;
+  AppSettings? _queuedSettings;
   bool _waterfallFocusMode = false;
 
   double _gain = 1.0;
@@ -283,7 +292,31 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
+  /// Reconfigures the active signal source. Concurrent invocations are
+  /// serialized: if a reconfiguration is already running, the latest requested
+  /// settings are queued and applied once the in-flight one completes.
   Future<void> _initializeSignalSource({AppSettings? newSettings}) async {
+    if (_isReconfiguring) {
+      _reconfigureQueued = true;
+      _queuedSettings = newSettings;
+      return;
+    }
+
+    _isReconfiguring = true;
+    try {
+      await _performInitialization(newSettings: newSettings);
+      while (_reconfigureQueued) {
+        _reconfigureQueued = false;
+        final queued = _queuedSettings;
+        _queuedSettings = null;
+        await _performInitialization(newSettings: queued);
+      }
+    } finally {
+      _isReconfiguring = false;
+    }
+  }
+
+  Future<void> _performInitialization({AppSettings? newSettings}) async {
     try {
       final currentSettings = newSettings ?? widget.settings;
       final bool wasCapturing = _isCapturing;
@@ -292,6 +325,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       if (wasCapturing) {
         await _signalSource.stopCapture();
       }
+      if (!mounted) return;
       _signalSubscription?.cancel();
       _signalSource.dispose();
 
@@ -386,6 +420,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       if (wasCapturing) {
         // Re-start capture if it was active
         final hasPermission = await _signalSource.checkPermission();
+        if (!mounted) return;
         if (hasPermission) {
           await _signalSource.startCapture();
         } else {
@@ -474,20 +509,23 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   void _startDemoData() {
     _demoTimer?.cancel();
+    _demoPhase = 0.0;
+    // 440Hz Fundamental (A4) at a 44.1 kHz sample rate.
+    const fundamental = 440.0;
+    const sampleRate = 44100.0;
+    const phaseStep = 2 * math.pi * fundamental / sampleRate;
     _demoTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       final samples = Float64List(512);
-      final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
-      // 440Hz Fundamental (A4)
-      const fundamental = 440.0;
-      final phase = now * 2 * math.pi * fundamental;
 
+      // Accumulate phase continuously across frames (kept bounded to preserve
+      // floating-point precision) instead of deriving it from the absolute
+      // wall-clock time, which loses precision and jumps between frames.
       for (var i = 0; i < 512; i++) {
-        final t = i / 44100.0;
-        samples[i] = (
-          0.6 * math.sin(phase + t * 2 * math.pi * fundamental) + // Fundamental
-          0.3 * math.sin(2 * (phase + t * 2 * math.pi * fundamental)) + // 2nd Harmonic
-          0.1 * math.sin(3 * (phase + t * 2 * math.pi * fundamental))    // 3rd Harmonic
-        );
+        samples[i] = 0.6 * math.sin(_demoPhase) + // Fundamental
+            0.3 * math.sin(2 * _demoPhase) + // 2nd Harmonic
+            0.1 * math.sin(3 * _demoPhase); // 3rd Harmonic
+        _demoPhase += phaseStep;
+        if (_demoPhase > 2 * math.pi) _demoPhase -= 2 * math.pi;
       }
       if (mounted) {
         setState(() {
@@ -555,10 +593,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   Future<void> _setupIntegratedDriver() async {
     final success = await NativeSdrDriver().initialize();
     if (success && mounted) {
-      setState(() {
-        // Re-initialize source now that driver is ready
-        _initializeSignalSource();
-      });
+      // Re-initialize source now that driver is ready, then refresh the UI to
+      // reflect the driver-ready state.
+      _initializeSignalSource();
+      setState(() {});
     }
   }
 

@@ -6,6 +6,7 @@ import '../core/signal_source.dart';
 
 class RfCaptureService implements SignalSource {
   final _dataController = StreamController<Float64List>.broadcast();
+  final math.Random _rng = math.Random();
   Timer? _timer;
   bool _isCapturing = false;
 
@@ -58,8 +59,8 @@ class RfCaptureService implements SignalSource {
         double q2 = 0.2 * math.sin(phase2);
 
         // Noise
-        double ni = (math.Random().nextDouble() - 0.5) * 0.05;
-        double nq = (math.Random().nextDouble() - 0.5) * 0.05;
+        double ni = (_rng.nextDouble() - 0.5) * 0.05;
+        double nq = (_rng.nextDouble() - 0.5) * 0.05;
 
         samples[i * 2] = i1 + i2 + ni;
         samples[i * 2 + 1] = q1 + q2 + nq;
