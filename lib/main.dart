@@ -16,6 +16,8 @@ import 'src/rf/native_sdr_driver_ffi.dart' if (dart.library.html) 'src/rf/native
 import 'src/core/signal_source.dart';
 import 'src/core/fft_service.dart';
 import 'src/core/settings_model.dart';
+import 'src/core/spectral_theme.dart';
+import 'src/utils/frequency_scale.dart';
 import 'src/ui/waveform_painter.dart';
 import 'src/ui/fft_bar_chart_painter.dart';
 import 'src/ui/waterfall_painter.dart';
@@ -90,40 +92,10 @@ class _SpectralAppState extends State<SpectralApp> {
     SettingsService.saveSettings(newSettings);
   }
 
-  Color _getAccentColor() {
-    switch (_settings.theme) {
-      case AppTheme.frost:
-        return const Color(0xFF007AFF);
-      case AppTheme.magma:
-        return Colors.orangeAccent;
-      case AppTheme.gray:
-        return Colors.white;
-      case AppTheme.emerald:
-        return const Color(0xFF00C853);
-      case AppTheme.rainbow:
-        return Colors.purpleAccent;
-    }
-  }
-
-  Color _getBackgroundColor() {
-    switch (_settings.theme) {
-      case AppTheme.frost:
-        return const Color(0xFF001A33);
-      case AppTheme.magma:
-        return const Color(0xFF330D00);
-      case AppTheme.gray:
-        return const Color(0xFF1A1A1A);
-      case AppTheme.emerald:
-        return const Color(0xFF001A00);
-      case AppTheme.rainbow:
-        return const Color(0xFF100010);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final accentColor = _getAccentColor();
-    final backgroundColor = _getBackgroundColor();
+    final accentColor = SpectralTheme.accent(_settings.theme);
+    final backgroundColor = SpectralTheme.background(_settings.theme);
 
     return MaterialApp(
       title: LocalizationHelper.get('app.name'),
@@ -671,10 +643,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   double _screenOffsetToFreq(double x, double width) {
-    double t = x / width;
-    if (widget.settings.frequencySkew != 1.0) {
-      t = math.pow(t, widget.settings.frequencySkew).toDouble();
-    }
+    final double t = FrequencyScale.toData(x / width, widget.settings.frequencySkew);
     return _freqRange.start + (_freqRange.end - _freqRange.start) * t;
   }
 
