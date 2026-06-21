@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import '../core/signal_source.dart';

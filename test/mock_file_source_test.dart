@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spectral/src/utils/mock_file_signal_source.dart';
 

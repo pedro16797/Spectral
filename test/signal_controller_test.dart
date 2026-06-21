@@ -199,8 +199,7 @@ void main() {
   });
 
   test('notifies listeners when capture state changes', () async {
-    late FakeSignalSource src;
-    final c = makeController(const AppSettings(), (s) => src = s);
+    final c = makeController(const AppSettings(), (_) {});
     await settle();
 
     int notifications = 0;
