@@ -11,6 +11,7 @@ import '../rf/integrated_rf_capture_service.dart';
 import '../rf/native_sdr_driver.dart';
 import '../utils/audio_utils.dart';
 import '../utils/mock_file_signal_source.dart';
+import 'audio_filters.dart';
 import 'signal_source.dart';
 import 'fft_service.dart';
 import 'settings_model.dart';
@@ -114,6 +115,11 @@ class SignalController extends ChangeNotifier {
   double? _lastI;
   double? _lastQ;
 
+  // Audio-output conditioning (applied to the playback path only, not the
+  // visualization): DC removal + FM de-emphasis before decimation.
+  final DcBlocker _dcBlocker = DcBlocker();
+  final Deemphasis _deemphasis = Deemphasis(sampleRate: 44100);
+
   // ---- Processing inputs set directly by the UI (no notification needed) ----
   double gain = 1.0;
   double sensitivity = 1.0;
@@ -202,6 +208,12 @@ class SignalController extends ChangeNotifier {
       _signalSource = _sourceFactory(currentSettings, playFile);
       _hasSource = true;
 
+      // Reset audio-output filters for the new stream and match the FM
+      // de-emphasis time constant to the source's sample rate.
+      _dcBlocker.reset();
+      _deemphasis.configure(sampleRate: _signalSource.sampleRate.toDouble());
+      _deemphasis.reset();
+
       // Reusable buffer for decimation.
       Float64List? decimationBuffer;
 
@@ -215,13 +227,22 @@ class SignalController extends ChangeNotifier {
               _signalSource.isComplex && _settings.demodulationMode != DemodulationMode.none;
 
           if (useDemod && _settings.audioOutputEnabled) {
-            // Decimate the SDR stream to ~44.1 kHz for audio output.
+            // Condition the playback signal (on a copy, so the visualization
+            // keeps the raw demod output): remove DC, de-emphasize FM, then
+            // anti-alias decimate to ~44.1 kHz.
+            final audioForOutput = Float64List.fromList(audio);
+            _dcBlocker.processInPlace(audioForOutput);
+            if (_settings.demodulationMode == DemodulationMode.fm) {
+              _deemphasis.processInPlace(audioForOutput);
+            }
+
             final int decimationFactor = (_signalSource.sampleRate / 44100).round().clamp(1, 100);
             if (decimationFactor > 1) {
-              decimationBuffer = AudioUtils.decimate(audio, decimationFactor, target: decimationBuffer);
+              decimationBuffer =
+                  AudioUtils.decimateAveraged(audioForOutput, decimationFactor, target: decimationBuffer);
               _audioOutputService.push(decimationBuffer!);
             } else {
-              _audioOutputService.push(audio);
+              _audioOutputService.push(audioForOutput);
             }
           }
 

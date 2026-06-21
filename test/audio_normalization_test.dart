@@ -65,5 +65,25 @@ void main() {
       expect(output.length, 2);
       expect(output, [1, 3]); // no stale 9.0 values in the tail
     });
+
+    test('decimateAveraged averages each group of factor samples', () {
+      final input = Float64List.fromList([1, 1, 1, 1, 5, 5, 5, 5]);
+      expect(AudioUtils.decimateAveraged(input, 4), [1.0, 5.0]);
+      expect(AudioUtils.decimateAveraged(Float64List.fromList([0, 2, 4, 6]), 2), [1.0, 5.0]);
+    });
+
+    test('decimateAveraged returns input unchanged for factor <= 1', () {
+      final input = Float64List.fromList([1, 2, 3]);
+      expect(identical(AudioUtils.decimateAveraged(input, 1), input), true);
+    });
+
+    test('decimateAveraged reuses an exact-length target', () {
+      final out = AudioUtils.decimateAveraged(
+        Float64List.fromList([2, 4, 6, 8]),
+        2,
+        target: Float64List(2),
+      );
+      expect(out, [3.0, 7.0]);
+    });
   });
 }

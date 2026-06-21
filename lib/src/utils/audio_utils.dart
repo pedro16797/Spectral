@@ -45,4 +45,28 @@ class AudioUtils {
     }
     return output;
   }
+
+  /// Decimates by averaging each group of [factor] input samples — a simple
+  /// boxcar (moving-average) anti-alias low-pass before downsampling. This
+  /// reduces the aliasing that plain sample-dropping ([decimate]) folds back
+  /// into the audible band when the input is wideband (e.g. an SDR stream).
+  ///
+  /// The returned list has length exactly [input.length ~/ factor]; [target]
+  /// is reused only on an exact length match.
+  static Float64List decimateAveraged(Float64List input, int factor, {Float64List? target}) {
+    if (factor <= 1) return input;
+    final int targetLength = input.length ~/ factor;
+    final output = (target != null && target.length == targetLength) ? target : Float64List(targetLength);
+
+    final double inv = 1.0 / factor;
+    for (int i = 0; i < targetLength; i++) {
+      final int base = i * factor;
+      double sum = 0.0;
+      for (int j = 0; j < factor; j++) {
+        sum += input[base + j];
+      }
+      output[i] = sum * inv;
+    }
+    return output;
+  }
 }
