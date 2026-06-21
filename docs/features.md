@@ -83,9 +83,9 @@ Spectral supports real-world RF spectral analysis using external SDR (Software D
 
 ![SDR Settings](../resources/screenshots/sdr_settings.png)
 
-- **External Hardware:** Connect standard RTL-SDR dongles via USB OTG.
+- **Real Hardware via rtl_tcp:** Drive a standard RTL-SDR dongle through an `rtl_tcp` bridge (an Android driver app, or the desktop/Pi `rtl_tcp` binary), with frequency, sample-rate, PPM-correction, and automatic-gain control.
+- **Native USB driver (experimental):** A direct libusb path is in progress; until it lands, the "Integrated" source emits simulated data.
 - **PPM Correction:** Calibrate for hardware oscillator offsets to ensure frequency accuracy.
-- **RF Gain Mapping:** Optimize signal strength for varying RF environments.
 - **Complex FFT Engine:** Specifically designed for RF I/Q signals with centered DC components.
 
 For setup and hardware requirements, see the [SDR Usage Guide](sdr_usage_guide.md).
