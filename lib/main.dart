@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +13,7 @@ import 'src/ui/waveform_painter.dart';
 import 'src/ui/fft_bar_chart_painter.dart';
 import 'src/ui/waterfall_painter.dart';
 import 'src/ui/radio_dial_focus_slider.dart';
+import 'src/ui/edge_dial.dart';
 import 'src/ui/settings_view.dart';
 import 'src/utils/localization_helper.dart';
 import 'src/services/settings_service.dart';
@@ -125,79 +125,7 @@ class SpectralHomePage extends StatefulWidget {
   State<SpectralHomePage> createState() => _SpectralHomePageState();
 }
 
-class DialArcPainter extends CustomPainter {
-  final double value;
-  final bool isLeft;
-  final Color color;
-  DialArcPainter({required this.value, required this.isLeft, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width / 2) - 12; // Avoid clipping at widget bounds
-
-    const totalVisibleSweep = 1.2;
-    final progressSweep = (value / 5.0) * totalVisibleSweep;
-
-    final basePaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4;
-
-    final progressPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 10;
-
-    if (isLeft) {
-      // Left dial: Visible is the right side of the circle.
-      // Fill bottom to top (counter-clockwise)
-      const startAngle = totalVisibleSweep / 2;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        -totalVisibleSweep,
-        false,
-        basePaint,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        -progressSweep,
-        false,
-        progressPaint,
-      );
-    } else {
-      // Right dial: Visible is the left side of the circle.
-      // Fill bottom to top (clockwise)
-      const startAngle = math.pi - (totalVisibleSweep / 2);
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        totalVisibleSweep,
-        false,
-        basePaint,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        progressSweep,
-        false,
-        progressPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant DialArcPainter oldDelegate) =>
-      oldDelegate.value != value || oldDelegate.color != color;
-}
-
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
-  static const double _kLargeDialSizeScale = 0.7;
-  static const double _kLargeDialOffsetScale = 0.8;
-
   late final SignalController _controller;
 
   final List<double> _markers = [];
@@ -524,8 +452,22 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ),
 
           // Large Edge Dials
-          if (_gainPersistent || _isDraggingGain) _buildLargeEdgeDial(isLeft: true, value: _controller.gain, label: "GAIN", color: accentColor),
-          if (_sensPersistent || _isDraggingSens) _buildLargeEdgeDial(isLeft: false, value: _controller.sensitivity, label: "SENSITIVITY", color: accentColor),
+          if (_gainPersistent || _isDraggingGain)
+            EdgeDial(
+              isLeft: true,
+              value: _controller.gain,
+              label: "GAIN",
+              color: accentColor,
+              onChanged: (v) => setState(() => _controller.gain = v),
+            ),
+          if (_sensPersistent || _isDraggingSens)
+            EdgeDial(
+              isLeft: false,
+              value: _controller.sensitivity,
+              label: "SENSITIVITY",
+              color: accentColor,
+              onChanged: (v) => setState(() => _controller.sensitivity = v),
+            ),
         ],
       ),
     );
@@ -562,87 +504,6 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         ),
       );
     });
-  }
-
-  Widget _buildLargeEdgeDial(
-      {required bool isLeft, required double value, required String label, required Color color}) {
-    final size = MediaQuery.of(context).size;
-    final padding = MediaQuery.of(context).padding;
-    final dialSize = size.height * _kLargeDialSizeScale;
-
-    final availableHeight = size.height - padding.top - padding.bottom;
-    return Positioned(
-      top: padding.top + (availableHeight - dialSize) / 2,
-      left: isLeft ? -dialSize * _kLargeDialOffsetScale + padding.left : null,
-      right: isLeft ? null : -dialSize * _kLargeDialOffsetScale + padding.right,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onVerticalDragUpdate: (details) {
-          double delta = -details.delta.dy * 0.01;
-          double newValue = (value + delta).clamp(0.1, 5.0);
-          if ((value * 10).floor() != (newValue * 10).floor()) {
-            HapticFeedback.selectionClick();
-          }
-          if (isLeft) {
-            setState(() => _controller.gain = newValue);
-          } else {
-            setState(() => _controller.sensitivity = newValue);
-          }
-        },
-        child: Container(
-          key: Key('large_dial_${isLeft ? "left" : "right"}'),
-          width: dialSize,
-          height: dialSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.black.withOpacity(0.8),
-            border: Border.all(color: color.withOpacity(0.3), width: 4),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.2),
-                blurRadius: 30,
-                spreadRadius: 10,
-              )
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: isLeft
-                    ? const Alignment(0.85, 0.0)
-                    : const Alignment(-0.88, 0.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      value.toStringAsFixed(2),
-                      style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w100,
-                          color: Colors.white),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          color: Colors.white24,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              CustomPaint(
-                size: Size(dialSize, dialSize),
-                painter: DialArcPainter(value: value, isLeft: isLeft, color: color),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildMinimalHeader(bool isLandscape) {
@@ -864,15 +725,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return Semantics(
       label: "GAIN",
       button: true,
-      child: _buildDialTrigger(
-        "GAIN",
-        _controller.gain,
-        (v) => setState(() => _controller.gain = v),
-        (active) => setState(() {
+      child: DialTrigger(
+        label: "GAIN",
+        value: _controller.gain,
+        onChanged: (v) => setState(() => _controller.gain = v),
+        onActive: (active) => setState(() {
           _isDraggingGain = active;
           if (active) _sensPersistent = false;
         }),
-        () => setState(() {
+        onTap: () => setState(() {
           _gainPersistent = !_gainPersistent;
           if (_gainPersistent) _sensPersistent = false;
         }),
@@ -884,15 +745,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return Semantics(
       label: "SENS",
       button: true,
-      child: _buildDialTrigger(
-        "SENS",
-        _controller.sensitivity,
-        (v) => setState(() => _controller.sensitivity = v),
-        (active) => setState(() {
+      child: DialTrigger(
+        label: "SENS",
+        value: _controller.sensitivity,
+        onChanged: (v) => setState(() => _controller.sensitivity = v),
+        onActive: (active) => setState(() {
           _isDraggingSens = active;
           if (active) _gainPersistent = false;
         }),
-        () => setState(() {
+        onTap: () => setState(() {
           _sensPersistent = !_sensPersistent;
           if (_sensPersistent) _gainPersistent = false;
         }),
@@ -933,50 +794,4 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  Widget _buildDialTrigger(
-    String label,
-    double value,
-    ValueChanged<double> onChanged,
-    ValueChanged<bool> onActive,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      key: Key('trigger_$label'),
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      onVerticalDragStart: (_) => onActive(true),
-      onVerticalDragEnd: (_) => onActive(false),
-      onVerticalDragCancel: () => onActive(false),
-      onVerticalDragUpdate: (details) {
-        // Simple vertical drag for adjustment
-        double delta = -details.delta.dy * 0.01;
-        double newValue = (value + delta).clamp(0.1, 5.0);
-        if ((value * 10).floor() != (newValue * 10).floor()) {
-          HapticFeedback.selectionClick();
-        }
-        onChanged(newValue);
-      },
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: Text(
-              value.toStringAsFixed(2),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24)),
-        ],
-      ),
-    );
-  }
 }
