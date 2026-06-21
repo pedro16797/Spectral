@@ -124,6 +124,12 @@ class SignalController extends ChangeNotifier {
   double gain = 1.0;
   double sensitivity = 1.0;
 
+  /// Waterfall fall speed (0.1 = slow … 5.0 = fast). Controls how often a new
+  /// FFT row is committed to [fftHistory]; the live FFT bar chart still updates
+  /// every frame.
+  double waterfallSpeed = 1.0;
+  int _waterfallFrameCounter = 0;
+
   bool _isCapturing = false;
   bool get isCapturing => _isCapturing;
 
@@ -341,9 +347,16 @@ class SignalController extends ChangeNotifier {
     snr = _fftService.calculateSNR(adjustedFft);
 
     if (adjustedFft.isNotEmpty) {
-      fftHistory.insert(0, adjustedFft);
-      if (fftHistory.length > _maxHistory) {
-        fftHistory.removeLast();
+      // Commit a waterfall row only every Nth frame, where N is set by the
+      // waterfall speed dial (higher speed -> more rows -> faster fall).
+      _waterfallFrameCounter++;
+      final int interval = (4.0 / waterfallSpeed).round().clamp(1, 50);
+      if (_waterfallFrameCounter >= interval) {
+        _waterfallFrameCounter = 0;
+        fftHistory.insert(0, adjustedFft);
+        if (fftHistory.length > _maxHistory) {
+          fftHistory.removeLast();
+        }
       }
     }
   }

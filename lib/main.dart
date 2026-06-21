@@ -125,6 +125,28 @@ class SpectralHomePage extends StatefulWidget {
   State<SpectralHomePage> createState() => _SpectralHomePageState();
 }
 
+/// The four edge dials. Gain/Speed live on the left edge; Sensitivity/Squish on
+/// the right.
+enum _DialKind { gain, speed, sensitivity, squish }
+
+extension _DialKindX on _DialKind {
+  bool get isLeft => this == _DialKind.gain || this == _DialKind.speed;
+  String get shortLabel {
+    switch (this) {
+      case _DialKind.gain:
+        return 'GAIN';
+      case _DialKind.speed:
+        return 'SPEED';
+      case _DialKind.sensitivity:
+        return 'SENS';
+      case _DialKind.squish:
+        return 'SQUISH';
+    }
+  }
+
+  String get longLabel => this == _DialKind.sensitivity ? 'SENSITIVITY' : shortLabel;
+}
+
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
   late final SignalController _controller;
 
@@ -132,10 +154,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   bool _waterfallFocusMode = false;
   RangeValues _freqRange = const RangeValues(0, 22050);
 
-  bool _gainPersistent = false;
-  bool _sensPersistent = false;
-  bool _isDraggingGain = false;
-  bool _isDraggingSens = false;
+  // The dial currently shown as a large edge dial: the one being dragged, or
+  // failing that the one pinned by a tap.
+  _DialKind? _pinnedDial;
+  _DialKind? _draggingDial;
+  _DialKind? get _activeDial => _draggingDial ?? _pinnedDial;
+
+  // Logarithmic frequency distribution ("squish"), live-adjustable via its dial.
+  // Initialized from the persisted frequency-skew setting.
+  double _squish = 1.0;
 
   late AnimationController _pulseController;
 
@@ -149,6 +176,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
     _controller.addListener(_onControllerChanged);
     _freqRange = _freqRangeForSettings(widget.settings);
+    _squish = widget.settings.frequencySkew;
 
     _pulseController = AnimationController(
       vsync: this,
@@ -199,9 +227,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             final oldFreq = widget.settings.centerFrequency;
             final oldBw = widget.settings.rfBandwidth;
             final oldPpm = widget.settings.ppmCorrection;
+            final oldSkew = widget.settings.frequencySkew;
 
             widget.onSettingsChanged(newSettings);
             _controller.updateSettings(newSettings);
+
+            // Keep the live "squish" dial in sync if the skew setting changed.
+            if (oldSkew != newSettings.frequencySkew) {
+              setState(() => _squish = newSettings.frequencySkew);
+            }
 
             if (oldSource != newSettings.signalSource ||
                 oldFreq != newSettings.centerFrequency ||
@@ -249,7 +283,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   double _screenOffsetToFreq(double x, double width) {
-    final double t = FrequencyScale.toData(x / width, widget.settings.frequencySkew);
+    final double t = FrequencyScale.toData(x / width, _squish);
     return _freqRange.start + (_freqRange.end - _freqRange.start) * t;
   }
 
@@ -299,7 +333,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                       maxFreq: _freqRange.end,
                       sampleRate: _controller.sampleRate,
                       theme: widget.settings.theme,
-                      frequencySkew: widget.settings.frequencySkew,
+                      frequencySkew: _squish,
                     ),
                   ),
                 ),
@@ -416,11 +450,27 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                             if (isLandscape && !_waterfallFocusMode)
                               Row(
                                 children: [
-                                  _buildGainTrigger(),
+                                  // Gain/Speed stacked (left edge style).
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildDialTriggerFor(_DialKind.gain),
+                                      const SizedBox(height: 10),
+                                      _buildDialTriggerFor(_DialKind.speed),
+                                    ],
+                                  ),
                                   const SizedBox(width: 16),
                                   Expanded(child: _buildGlassCard(child: _buildFrequencyFocusSlider())),
                                   const SizedBox(width: 16),
-                                  _buildSensTrigger(),
+                                  // Squish/Sensitivity stacked (right edge style).
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildDialTriggerFor(_DialKind.squish),
+                                      const SizedBox(height: 10),
+                                      _buildDialTriggerFor(_DialKind.sensitivity),
+                                    ],
+                                  ),
                                 ],
                               )
                             else ...[
@@ -451,22 +501,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             ),
           ),
 
-          // Large Edge Dials
-          if (_gainPersistent || _isDraggingGain)
+          // Large Edge Dial (one at a time): the active dial slides in from its
+          // edge — Gain/Speed on the left, Sensitivity/Squish on the right.
+          if (_activeDial != null)
             EdgeDial(
-              isLeft: true,
-              value: _controller.gain,
-              label: "GAIN",
+              isLeft: _activeDial!.isLeft,
+              value: _dialValue(_activeDial!),
+              label: _activeDial!.longLabel,
               color: accentColor,
-              onChanged: (v) => setState(() => _controller.gain = v),
-            ),
-          if (_sensPersistent || _isDraggingSens)
-            EdgeDial(
-              isLeft: false,
-              value: _controller.sensitivity,
-              label: "SENSITIVITY",
-              color: accentColor,
-              onChanged: (v) => setState(() => _controller.sensitivity = v),
+              onChanged: (v) => _setDialValue(_activeDial!, v),
             ),
         ],
       ),
@@ -495,7 +538,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                     minFreq: _freqRange.start,
                     maxFreq: _freqRange.end,
                     sampleRate: _controller.sampleRate,
-                    frequencySkew: widget.settings.frequencySkew,
+                    frequencySkew: _squish,
                   ),
                 ),
               ),
@@ -687,9 +730,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                 ),
               ),
             ),
-            Text(
+            Flexible(
+              child: Text(
                 rangeText,
-                style: const TextStyle(fontSize: 10, color: Colors.white38)),
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, color: Colors.white38),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -711,52 +759,61 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   Widget _buildInteractionBar() {
+    // Speed sits next to Gain (left), Squish next to Sensitivity (right).
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildGainTrigger(),
+        _buildDialTriggerFor(_DialKind.gain),
+        _buildDialTriggerFor(_DialKind.speed),
         _buildCaptureButton(),
-        _buildSensTrigger(),
+        _buildDialTriggerFor(_DialKind.squish),
+        _buildDialTriggerFor(_DialKind.sensitivity),
       ],
     );
   }
 
-  Widget _buildGainTrigger() {
-    return Semantics(
-      label: "GAIN",
-      button: true,
-      child: DialTrigger(
-        label: "GAIN",
-        value: _controller.gain,
-        onChanged: (v) => setState(() => _controller.gain = v),
-        onActive: (active) => setState(() {
-          _isDraggingGain = active;
-          if (active) _sensPersistent = false;
-        }),
-        onTap: () => setState(() {
-          _gainPersistent = !_gainPersistent;
-          if (_gainPersistent) _sensPersistent = false;
-        }),
-      ),
-    );
+  double _dialValue(_DialKind d) {
+    switch (d) {
+      case _DialKind.gain:
+        return _controller.gain;
+      case _DialKind.speed:
+        return _controller.waterfallSpeed;
+      case _DialKind.sensitivity:
+        return _controller.sensitivity;
+      case _DialKind.squish:
+        return _squish;
+    }
   }
 
-  Widget _buildSensTrigger() {
+  void _setDialValue(_DialKind d, double v) {
+    setState(() {
+      switch (d) {
+        case _DialKind.gain:
+          _controller.gain = v;
+          break;
+        case _DialKind.speed:
+          _controller.waterfallSpeed = v;
+          break;
+        case _DialKind.sensitivity:
+          _controller.sensitivity = v;
+          break;
+        case _DialKind.squish:
+          _squish = v;
+          break;
+      }
+    });
+  }
+
+  Widget _buildDialTriggerFor(_DialKind d) {
     return Semantics(
-      label: "SENS",
+      label: d.shortLabel,
       button: true,
       child: DialTrigger(
-        label: "SENS",
-        value: _controller.sensitivity,
-        onChanged: (v) => setState(() => _controller.sensitivity = v),
-        onActive: (active) => setState(() {
-          _isDraggingSens = active;
-          if (active) _gainPersistent = false;
-        }),
-        onTap: () => setState(() {
-          _sensPersistent = !_sensPersistent;
-          if (_sensPersistent) _gainPersistent = false;
-        }),
+        label: d.shortLabel,
+        value: _dialValue(d),
+        onChanged: (v) => _setDialValue(d, v),
+        onActive: (active) => setState(() => _draggingDial = active ? d : null),
+        onTap: () => setState(() => _pinnedDial = _pinnedDial == d ? null : d),
       ),
     );
   }

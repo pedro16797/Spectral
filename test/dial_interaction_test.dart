@@ -58,8 +58,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(leftDialFinder, findsOneWidget);
 
-    // Initial value is 1.00
-    expect(find.text('1.00'), findsNWidgets(3));
+    // Initial value is 1.00: the four dial triggers (gain, speed, squish,
+    // sens) plus the large gain dial.
+    expect(find.text('1.00'), findsNWidgets(5));
 
     // Drag from x=5
     final dragGesture = await tester.startGesture(const Offset(5, 800));

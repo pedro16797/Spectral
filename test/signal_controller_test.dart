@@ -209,4 +209,27 @@ void main() {
     expect(notifications, greaterThan(0));
     c.dispose();
   });
+
+  test('waterfall speed gates how fast fftHistory accumulates', () async {
+    Future<int> rowsAfterFrames(double speed) async {
+      late FakeSignalSource src;
+      final c = makeController(const AppSettings(), (s) => src = s);
+      c.waterfallSpeed = speed;
+      await settle();
+      // A chunk large enough to yield one FFT frame per emit (windowSize 1024).
+      final chunk = Float64List(2048)..fillRange(0, 2048, 0.5);
+      for (int f = 0; f < 6; f++) {
+        src.emit(chunk);
+        await settle();
+      }
+      final rows = c.fftHistory.length;
+      c.dispose();
+      return rows;
+    }
+
+    final fast = await rowsAfterFrames(5.0); // a row every frame
+    final slow = await rowsAfterFrames(0.1); // a row only every ~40 frames
+    expect(fast, greaterThan(slow));
+    expect(slow, 0);
+  });
 }
