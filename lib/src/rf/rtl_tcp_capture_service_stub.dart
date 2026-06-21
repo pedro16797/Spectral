@@ -21,6 +21,8 @@ class RtlTcpCaptureService implements SignalSource {
     this.port = 1234,
     int sampleRate = 2048000,
     int frequency = 100000000,
+    int ppmCorrection = 0,
+    int? tunerGainTenthsDb,
   }) : _requestedSampleRate = sampleRate;
 
   @override

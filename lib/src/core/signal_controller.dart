@@ -45,6 +45,7 @@ SignalSource defaultSignalSourceFactory(AppSettings settings, String? playFile) 
           port: settings.rtlTcpPort,
           sampleRate: (settings.rfBandwidth * 1e6).toInt(),
           frequency: (settings.centerFrequency * 1e6).toInt(),
+          ppmCorrection: settings.ppmCorrection.round(),
         );
       case RfSourceType.integrated:
         return IntegratedRfCaptureService(
