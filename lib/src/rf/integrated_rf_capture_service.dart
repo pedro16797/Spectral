@@ -15,6 +15,7 @@ class IntegratedRfCaptureService implements SignalSource {
   final math.Random _rng = math.Random();
   Timer? _timer;
   bool _isCapturing = false;
+  int _sampleIndex = 0;
 
   IntegratedRfCaptureService({
     required this.centerFrequency,
@@ -50,9 +51,9 @@ class IntegratedRfCaptureService implements SignalSource {
     await NativeSdrDriver().setPpm(ppmCorrection.toInt());
 
     _isCapturing = true;
+    _sampleIndex = 0;
     _timer = Timer.periodic(const Duration(milliseconds: 40), (timer) {
       final samples = Float64List(1024 * 2);
-      final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
 
       // Simulate frequency offset due to PPM correction (simulating hardware error)
       final double actualOffsetHz = centerFrequency * (ppmCorrection / 1e6);
@@ -66,12 +67,14 @@ class IntegratedRfCaptureService implements SignalSource {
       final amps = [0.6, 0.4, 0.2];
 
       for (int i = 0; i < 1024; i++) {
-        final t = i / sampleRate;
+        // Continuous time across frames from a running sample counter, avoiding
+        // the float-precision loss of multiplying by absolute wall-clock time.
+        final t = (_sampleIndex + i) / sampleRate;
         double realSum = 0;
         double imagSum = 0;
 
         for (int f = 0; f < freqs.length; f++) {
-          final phase = 2 * math.pi * freqs[f] * (now + t);
+          final phase = 2 * math.pi * freqs[f] * t;
           realSum += amps[f] * math.cos(phase);
           imagSum += amps[f] * math.sin(phase);
         }
@@ -83,6 +86,7 @@ class IntegratedRfCaptureService implements SignalSource {
         samples[i * 2] = realSum + ni;
         samples[i * 2 + 1] = imagSum + nq;
       }
+      _sampleIndex += 1024;
       _dataController.add(samples);
     });
   }
