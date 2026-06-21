@@ -131,7 +131,10 @@ enum _DialKind { gain, speed, sensitivity, squish }
 
 extension _DialKindX on _DialKind {
   bool get isLeft => this == _DialKind.gain || this == _DialKind.speed;
-  String get shortLabel {
+
+  /// Stable identifier used for widget keys and semantics, independent of the
+  /// localized display label.
+  String get keyId {
     switch (this) {
       case _DialKind.gain:
         return 'GAIN';
@@ -144,7 +147,31 @@ extension _DialKindX on _DialKind {
     }
   }
 
-  String get longLabel => this == _DialKind.sensitivity ? 'SENSITIVITY' : shortLabel;
+  String get shortLabel {
+    switch (this) {
+      case _DialKind.gain:
+        return LocalizationHelper.get('dials.gain');
+      case _DialKind.speed:
+        return LocalizationHelper.get('dials.speed');
+      case _DialKind.sensitivity:
+        return LocalizationHelper.get('dials.sensitivity');
+      case _DialKind.squish:
+        return LocalizationHelper.get('dials.squish');
+    }
+  }
+
+  String get longLabel {
+    switch (this) {
+      case _DialKind.gain:
+        return LocalizationHelper.get('dials.gain_long');
+      case _DialKind.speed:
+        return LocalizationHelper.get('dials.speed_long');
+      case _DialKind.sensitivity:
+        return LocalizationHelper.get('dials.sensitivity_long');
+      case _DialKind.squish:
+        return LocalizationHelper.get('dials.squish_long');
+    }
+  }
 }
 
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
@@ -647,10 +674,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   /// Recomputed per frame (via the ticker) so it tracks the live signal.
   List<Widget> _buildToneLabelWidgets() {
     if (_controller.detectedTone == null) {
-      return const [
+      return [
         Text(
-          "FOCUS",
-          style: TextStyle(
+          LocalizationHelper.get('dials.focus'),
+          style: const TextStyle(
               fontSize: 10,
               letterSpacing: 2,
               color: Colors.white24,
@@ -809,6 +836,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       label: d.shortLabel,
       button: true,
       child: DialTrigger(
+        id: d.keyId,
         label: d.shortLabel,
         value: _dialValue(d),
         onChanged: (v) => _setDialValue(d, v),

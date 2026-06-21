@@ -25,9 +25,12 @@ double dialValueFromDrag(double current, double dyDelta) {
 
 /// A small tappable chip showing a dial value, with vertical-drag adjustment.
 ///
-/// [onTap] toggles persistence, [onActive] reports drag start/end, and
-/// [onChanged] reports value changes.
+/// [id] is a stable identifier used for the widget key (decoupled from the
+/// localized [label] so keys stay constant across languages). [onTap] toggles
+/// persistence, [onActive] reports drag start/end, and [onChanged] reports
+/// value changes.
 class DialTrigger extends StatelessWidget {
+  final String id;
   final String label;
   final double value;
   final ValueChanged<double> onChanged;
@@ -36,6 +39,7 @@ class DialTrigger extends StatelessWidget {
 
   const DialTrigger({
     super.key,
+    required this.id,
     required this.label,
     required this.value,
     required this.onChanged,
@@ -46,7 +50,7 @@ class DialTrigger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      key: Key('trigger_$label'),
+      key: Key('trigger_$id'),
       behavior: HitTestBehavior.opaque,
       onTap: () {
         HapticFeedback.lightImpact();

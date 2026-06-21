@@ -93,6 +93,17 @@
       "frequency_skew": "Estirament o compressió visual de l'eix de freqüència."
     }
   },
+  "dials": {
+    "gain": "GUANY",
+    "gain_long": "GUANY",
+    "speed": "VELOC.",
+    "speed_long": "VELOCITAT",
+    "sensitivity": "SENS",
+    "sensitivity_long": "SENSIBILITAT",
+    "squish": "COMPR.",
+    "squish_long": "COMPRESSIÓ",
+    "focus": "FOCUS"
+  },
   "common": {
     "save": "Desar",
     "cancel": "Cancel·lar",

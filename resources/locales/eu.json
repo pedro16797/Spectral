@@ -93,6 +93,17 @@
       "frequency_skew": "Maiztasun-ardatzaren luzatze edo konpresio bisuala."
     }
   },
+  "dials": {
+    "gain": "IRAB.",
+    "gain_long": "IRABAZIA",
+    "speed": "ABIAD.",
+    "speed_long": "ABIADURA",
+    "sensitivity": "SENT.",
+    "sensitivity_long": "SENTIKORTASUNA",
+    "squish": "KONPR.",
+    "squish_long": "KONPRESIOA",
+    "focus": "FOKUA"
+  },
   "common": {
     "save": "Gorde",
     "cancel": "Utzi",

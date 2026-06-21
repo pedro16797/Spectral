@@ -93,6 +93,17 @@
       "frequency_skew": "Visual stretching or compression of the frequency axis."
     }
   },
+  "dials": {
+    "gain": "GAIN",
+    "gain_long": "GAIN",
+    "speed": "SPEED",
+    "speed_long": "SPEED",
+    "sensitivity": "SENS",
+    "sensitivity_long": "SENSITIVITY",
+    "squish": "SQUISH",
+    "squish_long": "SQUISH",
+    "focus": "FOCUS"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
