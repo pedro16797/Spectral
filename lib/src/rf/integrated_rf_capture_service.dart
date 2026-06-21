@@ -5,8 +5,12 @@ import 'package:flutter/foundation.dart';
 import '../core/signal_source.dart';
 import 'native_sdr_driver.dart';
 
-/// Capture service that uses the integrated native SDR driver.
-/// For this prototype, it simulates data after successful native driver initialization.
+/// Capture service for the integrated (native USB) SDR path.
+///
+/// The native RTL2832U driver is experimental and does not yet stream real
+/// samples (see `NativeSdrDriverDelegate` and `rtl2832u.dart`), so this
+/// currently emits a simulated multi-tone signal once the driver reports
+/// ready. For real hardware today, use the rtl_tcp source with a bridge.
 class IntegratedRfCaptureService implements SignalSource {
   final double centerFrequency; // Hz
   final double bandwidth; // Hz
