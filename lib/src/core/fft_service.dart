@@ -281,11 +281,6 @@ class FftService {
     return 20 * math.log(peakPower / avgNoise) / math.ln10;
   }
 
-  /// Backward compatibility for existing audio processing.
-  List<double> processAudioData(Float64List samples, {int windowSize = 1024, FftWindowType windowType = FftWindowType.hanning}) {
-    return processSignalData(samples, windowSize: windowSize, windowType: windowType, isComplex: false);
-  }
-
   /// Detects the primary tone and its harmonics.
   ToneInfo? detectPrimaryTone(List<double> magnitudes, int sampleRate) {
     if (magnitudes.isEmpty) return null;

@@ -13,6 +13,17 @@ class MockAssetBundle extends CachingAssetBundle {
     if (key == 'resources/locales/en.json') {
       return json.encode({
         "app": {"name": "Spectral"},
+        "dials": {
+          "gain": "GAIN",
+          "gain_long": "GAIN",
+          "speed": "SPEED",
+          "speed_long": "SPEED",
+          "sensitivity": "SENS",
+          "sensitivity_long": "SENSITIVITY",
+          "squish": "SQUISH",
+          "squish_long": "SQUISH",
+          "focus": "FOCUS"
+        },
         "common": {
           "start_capture": "Start Capture",
           "stop_capture": "Stop Capture"

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../utils/frequency_formatter.dart';
+import '../utils/frequency_scale.dart';
 
 class FftBarChartPainter extends CustomPainter {
   final List<double> fftData;
@@ -54,10 +55,7 @@ class FftBarChartPainter extends CustomPainter {
 
     // Draw bars
     for (var i = 0; i < actualBarCount; i++) {
-      double t = i / actualBarCount;
-      if (frequencySkew != 1.0) {
-        t = math.pow(t, frequencySkew).toDouble();
-      }
+      final double t = FrequencyScale.toData(i / actualBarCount, frequencySkew);
 
       final double freqNorm = startNormalized + t * range;
       final int dataIndex = (freqNorm * fftData.length).floor().clamp(0, fftData.length - 1);
@@ -102,10 +100,7 @@ class FftBarChartPainter extends CustomPainter {
       bool first = true;
 
       for (var i = 0; i < actualBarCount; i++) {
-        double t = i / actualBarCount;
-        if (frequencySkew != 1.0) {
-          t = math.pow(t, frequencySkew).toDouble();
-        }
+        final double t = FrequencyScale.toData(i / actualBarCount, frequencySkew);
         final double freqNorm = startNormalized + t * range;
         final int dataIndex = (freqNorm * peakHoldData!.length).floor().clamp(0, peakHoldData!.length - 1);
 
@@ -130,10 +125,7 @@ class FftBarChartPainter extends CustomPainter {
 
       final t = (markerFreq - minFreq) / (maxFreq - minFreq);
       // Map back from frequency to screen space accounting for skew
-      double screenT = t;
-      if (frequencySkew != 1.0) {
-        screenT = math.pow(t, 1.0 / frequencySkew).toDouble();
-      }
+      final double screenT = FrequencyScale.toScreen(t, frequencySkew);
       final x = screenT * width;
 
       final markerPaint = Paint()
@@ -160,10 +152,7 @@ class FftBarChartPainter extends CustomPainter {
         if (hFreq < minFreq || hFreq > maxFreq) continue;
 
         final t = (hFreq - minFreq) / (maxFreq - minFreq);
-        double screenT = t;
-        if (frequencySkew != 1.0) {
-          screenT = math.pow(t, 1.0 / frequencySkew).toDouble();
-        }
+        final double screenT = FrequencyScale.toScreen(t, frequencySkew);
         final x = screenT * width;
 
         // Dashed line simulation
@@ -212,10 +201,7 @@ class FftBarChartPainter extends CustomPainter {
 
     for (var i = 0; i < labelCount; i++) {
       final ratio = i / (labelCount - 1);
-      double t = ratio;
-      if (frequencySkew != 1.0) {
-        t = math.pow(t, frequencySkew).toDouble();
-      }
+      final double t = FrequencyScale.toData(ratio, frequencySkew);
 
       final freq = minFreq + (maxFreq - minFreq) * t;
       final x = ratio * size.width;

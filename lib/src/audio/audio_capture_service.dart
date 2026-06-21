@@ -13,9 +13,6 @@ class AudioCaptureService implements SignalSource {
   @override
   Stream<Float64List> get dataStream => _audioDataController.stream;
 
-  // Added for backward compatibility (optional, but good practice if other files use it)
-  Stream<Float64List> get audioDataStream => dataStream;
-
   @override
   int get sampleRate => 44100;
 
@@ -59,12 +56,10 @@ class AudioCaptureService implements SignalSource {
         _audioStreamSubscription = stream.listen((data) {
           if (!_audioDataController.isClosed) {
             try {
-              final int count = data.length ~/ 2;
-              if (normalizationBuffer == null || normalizationBuffer!.length < count) {
-                normalizationBuffer = Float64List(count);
-              }
-              final normalizedData = AudioUtils.convertPcmToDouble(data, target: normalizationBuffer);
-              _audioDataController.add(normalizedData);
+              // Reuse the buffer across chunks of identical size; convertPcmToDouble
+              // allocates a correctly-sized buffer whenever the chunk size changes.
+              normalizationBuffer = AudioUtils.convertPcmToDouble(data, target: normalizationBuffer);
+              _audioDataController.add(normalizationBuffer!);
             } catch (e) {
               debugPrint("AudioCaptureService: Normalization error: $e, Data length: ${data.length}, Offset: ${data.offsetInBytes}");
             }

@@ -93,6 +93,17 @@
       "frequency_skew": "Estiramiento o compresión visual del eje de frecuencia."
     }
   },
+  "dials": {
+    "gain": "GAN.",
+    "gain_long": "GANANCIA",
+    "speed": "VELOC.",
+    "speed_long": "VELOCIDAD",
+    "sensitivity": "SENS",
+    "sensitivity_long": "SENSIBILIDAD",
+    "squish": "COMPR.",
+    "squish_long": "COMPRESIÓN",
+    "focus": "FOCO"
+  },
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",

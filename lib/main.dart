@@ -1,30 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'src/audio/audio_capture_service.dart';
-import 'src/audio/audio_output_service.dart';
-import 'src/rf/rf_capture_service.dart';
-import 'src/rf/rtl_tcp_capture_service.dart';
-import 'src/rf/integrated_rf_capture_service.dart';
 import 'src/rf/native_sdr_driver.dart';
 import 'src/rf/native_sdr_driver_ffi.dart' if (dart.library.html) 'src/rf/native_sdr_driver_web.dart';
-import 'src/core/signal_source.dart';
-import 'src/core/fft_service.dart';
+import 'src/core/signal_controller.dart';
 import 'src/core/settings_model.dart';
+import 'src/core/spectral_theme.dart';
+import 'src/utils/frequency_scale.dart';
 import 'src/ui/waveform_painter.dart';
 import 'src/ui/fft_bar_chart_painter.dart';
 import 'src/ui/waterfall_painter.dart';
 import 'src/ui/radio_dial_focus_slider.dart';
+import 'src/ui/edge_dial.dart';
 import 'src/ui/settings_view.dart';
 import 'src/utils/localization_helper.dart';
 import 'src/services/settings_service.dart';
-import 'src/utils/mock_file_signal_source.dart';
 import 'src/utils/frequency_formatter.dart';
-import 'src/utils/audio_utils.dart';
 
 void main() async {
   try {
@@ -89,40 +82,10 @@ class _SpectralAppState extends State<SpectralApp> {
     SettingsService.saveSettings(newSettings);
   }
 
-  Color _getAccentColor() {
-    switch (_settings.theme) {
-      case AppTheme.frost:
-        return const Color(0xFF007AFF);
-      case AppTheme.magma:
-        return Colors.orangeAccent;
-      case AppTheme.gray:
-        return Colors.white;
-      case AppTheme.emerald:
-        return const Color(0xFF00C853);
-      case AppTheme.rainbow:
-        return Colors.purpleAccent;
-    }
-  }
-
-  Color _getBackgroundColor() {
-    switch (_settings.theme) {
-      case AppTheme.frost:
-        return const Color(0xFF001A33);
-      case AppTheme.magma:
-        return const Color(0xFF330D00);
-      case AppTheme.gray:
-        return const Color(0xFF1A1A1A);
-      case AppTheme.emerald:
-        return const Color(0xFF001A00);
-      case AppTheme.rainbow:
-        return const Color(0xFF100010);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final accentColor = _getAccentColor();
-    final backgroundColor = _getBackgroundColor();
+    final accentColor = SpectralTheme.accent(_settings.theme);
+    final backgroundColor = SpectralTheme.background(_settings.theme);
 
     return MaterialApp(
       title: LocalizationHelper.get('app.name'),
@@ -162,120 +125,85 @@ class SpectralHomePage extends StatefulWidget {
   State<SpectralHomePage> createState() => _SpectralHomePageState();
 }
 
-class DialArcPainter extends CustomPainter {
-  final double value;
-  final bool isLeft;
-  final Color color;
-  DialArcPainter({required this.value, required this.isLeft, required this.color});
+/// The four edge dials. Gain/Speed live on the left edge; Sensitivity/Squish on
+/// the right.
+enum _DialKind { gain, speed, sensitivity, squish }
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width / 2) - 12; // Avoid clipping at widget bounds
+extension _DialKindX on _DialKind {
+  bool get isLeft => this == _DialKind.gain || this == _DialKind.speed;
 
-    const totalVisibleSweep = 1.2;
-    final progressSweep = (value / 5.0) * totalVisibleSweep;
-
-    final basePaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4;
-
-    final progressPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 10;
-
-    if (isLeft) {
-      // Left dial: Visible is the right side of the circle.
-      // Fill bottom to top (counter-clockwise)
-      const startAngle = totalVisibleSweep / 2;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        -totalVisibleSweep,
-        false,
-        basePaint,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        -progressSweep,
-        false,
-        progressPaint,
-      );
-    } else {
-      // Right dial: Visible is the left side of the circle.
-      // Fill bottom to top (clockwise)
-      const startAngle = math.pi - (totalVisibleSweep / 2);
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        totalVisibleSweep,
-        false,
-        basePaint,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        progressSweep,
-        false,
-        progressPaint,
-      );
+  /// Stable identifier used for widget keys and semantics, independent of the
+  /// localized display label.
+  String get keyId {
+    switch (this) {
+      case _DialKind.gain:
+        return 'GAIN';
+      case _DialKind.speed:
+        return 'SPEED';
+      case _DialKind.sensitivity:
+        return 'SENS';
+      case _DialKind.squish:
+        return 'SQUISH';
     }
   }
 
-  @override
-  bool shouldRepaint(covariant DialArcPainter oldDelegate) =>
-      oldDelegate.value != value || oldDelegate.color != color;
+  String get shortLabel {
+    switch (this) {
+      case _DialKind.gain:
+        return LocalizationHelper.get('dials.gain');
+      case _DialKind.speed:
+        return LocalizationHelper.get('dials.speed');
+      case _DialKind.sensitivity:
+        return LocalizationHelper.get('dials.sensitivity');
+      case _DialKind.squish:
+        return LocalizationHelper.get('dials.squish');
+    }
+  }
+
+  String get longLabel {
+    switch (this) {
+      case _DialKind.gain:
+        return LocalizationHelper.get('dials.gain_long');
+      case _DialKind.speed:
+        return LocalizationHelper.get('dials.speed_long');
+      case _DialKind.sensitivity:
+        return LocalizationHelper.get('dials.sensitivity_long');
+      case _DialKind.squish:
+        return LocalizationHelper.get('dials.squish_long');
+    }
+  }
 }
 
 class _SpectralHomePageState extends State<SpectralHomePage> with TickerProviderStateMixin {
-  static const double _kLargeDialSizeScale = 0.7;
-  static const double _kLargeDialOffsetScale = 0.8;
+  late final SignalController _controller;
 
-  late SignalSource _signalSource;
-  final FftService _fftService = FftService();
-  final AudioOutputService _audioOutputService = AudioOutputService();
-  StreamSubscription<Float64List>? _signalSubscription;
-  Float64List _currentAudioData = Float64List(0);
-  final List<Float64List> _audioHistory = [];
-  List<double> _currentFftData = [];
-  final List<List<double>> _fftHistory = [];
-  static const int _maxHistory = 40;
-  ToneInfo? _detectedTone;
-  double? _snr;
-  double? _lastI;
-  double? _lastQ;
   final List<double> _markers = [];
-  bool _isCapturing = false;
-  bool _isDemoMode = false;
-  String? _playFile;
-  Timer? _demoTimer;
   bool _waterfallFocusMode = false;
-
-  double _gain = 1.0;
-  double _sensitivity = 1.0;
   RangeValues _freqRange = const RangeValues(0, 22050);
 
-  bool _gainPersistent = false;
-  bool _sensPersistent = false;
-  bool _isDraggingGain = false;
-  bool _isDraggingSens = false;
+  // The dial currently shown as a large edge dial: the one being dragged, or
+  // failing that the one pinned by a tap.
+  _DialKind? _pinnedDial;
+  _DialKind? _draggingDial;
+  _DialKind? get _activeDial => _draggingDial ?? _pinnedDial;
+
+  // Logarithmic frequency distribution ("squish"), live-adjustable via its dial.
+  // Initialized from the persisted frequency-skew setting.
+  double _squish = 1.0;
 
   late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
-    _isDemoMode = Uri.base.queryParameters['demo'] == 'true';
-    _playFile = Uri.base.queryParameters['play_file'];
-
-    // Initial dummy source to avoid late initialization error
-    _signalSource = AudioCaptureService();
-    _audioOutputService.init();
-    _initializeSignalSource();
+    _controller = SignalController(
+      settings: widget.settings,
+      isDemoMode: Uri.base.queryParameters['demo'] == 'true',
+      playFile: Uri.base.queryParameters['play_file'],
+    );
+    _controller.addListener(_onControllerChanged);
+    _freqRange = _freqRangeForSettings(widget.settings);
+    _squish = widget.settings.frequencySkew;
 
     _pulseController = AnimationController(
       vsync: this,
@@ -283,283 +211,34 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  Future<void> _initializeSignalSource({AppSettings? newSettings}) async {
-    try {
-      final currentSettings = newSettings ?? widget.settings;
-      final bool wasCapturing = _isCapturing;
-
-      // Gracefully stop and dispose of the current source
-      if (wasCapturing) {
-        await _signalSource.stopCapture();
-      }
-      _signalSubscription?.cancel();
-      _signalSource.dispose();
-
-      _fftService.reset();
-      _lastI = null;
-      _lastQ = null;
-
-      if (_playFile != null) {
-        _signalSource = MockFileSignalSource(
-          assetPath: _playFile!,
-          isComplex: currentSettings.signalSource == SignalSourceType.rf,
-          sampleRate: currentSettings.signalSource == SignalSourceType.rf
-              ? (currentSettings.rfBandwidth * 1e6).toInt()
-              : 44100,
-        );
-      } else if (currentSettings.signalSource == SignalSourceType.rf) {
-        if (currentSettings.rfSource == RfSourceType.rtlTcp) {
-          _signalSource = RtlTcpCaptureService(
-            host: currentSettings.rtlTcpHost,
-            port: currentSettings.rtlTcpPort,
-            sampleRate: (currentSettings.rfBandwidth * 1e6).toInt(),
-            frequency: (currentSettings.centerFrequency * 1e6).toInt(),
-          );
-        } else if (currentSettings.rfSource == RfSourceType.integrated) {
-          // Trigger driver setup if needed
-          if (!NativeSdrDriver().isInitialized) {
-            _setupIntegratedDriver();
-          }
-          _signalSource = IntegratedRfCaptureService(
-            centerFrequency: currentSettings.centerFrequency * 1e6,
-            bandwidth: currentSettings.rfBandwidth * 1e6,
-            ppmCorrection: currentSettings.ppmCorrection,
-          );
-        } else {
-          _signalSource = RfCaptureService(
-            centerFrequency: currentSettings.centerFrequency * 1e6,
-            bandwidth: currentSettings.rfBandwidth * 1e6,
-          );
-        }
-      } else {
-        _signalSource = AudioCaptureService();
-      }
-
-      if (currentSettings.signalSource == SignalSourceType.rf) {
-        _freqRange = RangeValues(
-          (currentSettings.centerFrequency - currentSettings.rfBandwidth / 2) * 1e6,
-          (currentSettings.centerFrequency + currentSettings.rfBandwidth / 2) * 1e6,
-        );
-      } else {
-        _freqRange = const RangeValues(0, 22050);
-      }
-
-      // Reusable buffers for decimation and processing
-      Float64List? decimationBuffer;
-
-      _signalSubscription = _signalSource.dataStream.listen((data) {
-        if (!mounted) return;
-
-        try {
-          setState(() {
-            final audio = _updateAudioData(data);
-            final bool useDemod =
-                _signalSource.isComplex && widget.settings.demodulationMode != DemodulationMode.none;
-
-            if (useDemod && widget.settings.audioOutputEnabled) {
-              // Decimation: Downsampling of SDR stream to ~44.1 kHz for audio output.
-              final int decimationFactor = (_signalSource.sampleRate / 44100).round().clamp(1, 100);
-              if (decimationFactor > 1) {
-                decimationBuffer = AudioUtils.decimate(audio, decimationFactor, target: decimationBuffer);
-                _audioOutputService.push(decimationBuffer!);
-              } else {
-                _audioOutputService.push(audio);
-              }
-            }
-
-            final fft = _fftService.processSignalData(
-              useDemod ? audio : data,
-              windowSize: widget.settings.fftWindowSize,
-              windowType: widget.settings.fftWindowType,
-              isComplex: useDemod ? false : _signalSource.isComplex,
-              peakHoldEnabled: widget.settings.peakHoldEnabled,
-              averagingMode: widget.settings.fftAveragingMode,
-              averagingCount: widget.settings.fftAveragingCount,
-            );
-            _processFftFrame(fft, isComplex: useDemod ? false : _signalSource.isComplex);
-          });
-        } catch (e) {
-          debugPrint("Signal processing error: $e");
-        }
-      });
-
-      if (wasCapturing) {
-        // Re-start capture if it was active
-        final hasPermission = await _signalSource.checkPermission();
-        if (hasPermission) {
-          await _signalSource.startCapture();
-        } else {
-          setState(() {
-            _isCapturing = false;
-            _pulseController.stop();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Failed to initialize signal source: $e");
-    }
-  }
-
-  Float64List _updateAudioData(Float64List rawData) {
-    Float64List processedAudio;
-    final gain = _gain;
-    final bool useDemod = _signalSource.isComplex && widget.settings.demodulationMode != DemodulationMode.none;
-
-    if (useDemod) {
-      final int numPairs = rawData.length ~/ 2;
-      processedAudio = Float64List(numPairs);
-
-      if (widget.settings.demodulationMode == DemodulationMode.am) {
-        // AM Demodulation: Magnitude (Envelope detection)
-        for (int i = 0; i < numPairs; i++) {
-          final I = rawData[i * 2];
-          final Q = rawData[i * 2 + 1];
-          processedAudio[i] = math.sqrt(I * I + Q * Q) * gain;
-        }
-      } else {
-        // FM Demodulation: Quadrature demodulation (phase difference)
-        for (int i = 0; i < numPairs; i++) {
-          final I = rawData[i * 2];
-          final Q = rawData[i * 2 + 1];
-
-          if (_lastI != null && _lastQ != null) {
-            // Standard FM quadrature demodulation (cross product and dot product)
-            // atan2(Qn*In-1 - In*Qn-1, In*In-1 + Qn*Qn-1)
-            processedAudio[i] = math.atan2(Q * _lastI! - I * _lastQ!, I * _lastI! + Q * _lastQ!) * gain;
-          } else {
-            processedAudio[i] = 0;
-          }
-          _lastI = I;
-          _lastQ = Q;
-        }
-      }
+  /// Keeps the capture pulse animation in sync with the controller's capture
+  /// state and rebuilds discrete UI (header text, capture button) when it
+  /// changes. Fired only on discrete changes, never per signal frame.
+  void _onControllerChanged() {
+    if (!mounted) return;
+    if (_controller.isCapturing) {
+      if (!_pulseController.isAnimating) _pulseController.repeat(reverse: true);
     } else {
-      processedAudio = Float64List(rawData.length);
-      for (int i = 0; i < rawData.length; i++) {
-        processedAudio[i] = rawData[i] * gain;
-      }
+      if (_pulseController.isAnimating) _pulseController.stop();
     }
-
-    if (_currentAudioData.isNotEmpty) {
-      _audioHistory.insert(0, _currentAudioData);
-      if (_audioHistory.length > 5) _audioHistory.removeLast();
-    }
-    _currentAudioData = processedAudio;
-    return processedAudio;
+    setState(() {});
   }
 
-  void _processFftFrame(List<double> rawFft, {required bool isComplex}) {
-    if (rawFft.isEmpty) return;
-
-    final double sensitivity = _sensitivity;
-
-    List<double> adjustedFft;
-    adjustedFft = List<double>.filled(rawFft.length, 0);
-    for (int i = 0; i < rawFft.length; i++) {
-      adjustedFft[i] = rawFft[i] * sensitivity;
+  /// The visible frequency window implied by [settings] (full audio band, or
+  /// the RF center ± half-bandwidth).
+  RangeValues _freqRangeForSettings(AppSettings settings) {
+    if (settings.signalSource == SignalSourceType.rf) {
+      return RangeValues(
+        (settings.centerFrequency - settings.rfBandwidth / 2) * 1e6,
+        (settings.centerFrequency + settings.rfBandwidth / 2) * 1e6,
+      );
     }
-
-    _currentFftData = adjustedFft;
-    // Tone detection is only meaningful for real-valued signals (audio or demodulated RF)
-    _detectedTone = isComplex ? null : _fftService.detectPrimaryTone(adjustedFft, _signalSource.sampleRate);
-    _snr = _fftService.calculateSNR(adjustedFft);
-
-    if (adjustedFft.isNotEmpty) {
-      _fftHistory.insert(0, adjustedFft);
-      if (_fftHistory.length > _maxHistory) {
-        _fftHistory.removeLast();
-      }
-    }
-  }
-
-  void _startDemoData() {
-    _demoTimer?.cancel();
-    _demoTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      final samples = Float64List(512);
-      final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
-      // 440Hz Fundamental (A4)
-      const fundamental = 440.0;
-      final phase = now * 2 * math.pi * fundamental;
-
-      for (var i = 0; i < 512; i++) {
-        final t = i / 44100.0;
-        samples[i] = (
-          0.6 * math.sin(phase + t * 2 * math.pi * fundamental) + // Fundamental
-          0.3 * math.sin(2 * (phase + t * 2 * math.pi * fundamental)) + // 2nd Harmonic
-          0.1 * math.sin(3 * (phase + t * 2 * math.pi * fundamental))    // 3rd Harmonic
-        );
-      }
-      if (mounted) {
-        setState(() {
-          _updateAudioData(samples);
-
-          final fft = _fftService.processSignalData(
-            samples,
-            windowSize: widget.settings.fftWindowSize,
-            windowType: widget.settings.fftWindowType,
-            isComplex: false,
-            peakHoldEnabled: widget.settings.peakHoldEnabled,
-            averagingMode: widget.settings.fftAveragingMode,
-            averagingCount: widget.settings.fftAveragingCount,
-          );
-          _processFftFrame(fft, isComplex: false);
-        });
-      }
-    });
+    return const RangeValues(0, 22050);
   }
 
   Future<void> _toggleCapture() async {
-    try {
-      HapticFeedback.mediumImpact();
-      if (_isCapturing) {
-        if (_isDemoMode) {
-          _demoTimer?.cancel();
-          _demoTimer = null;
-        } else {
-          await _signalSource.stopCapture();
-        }
-        _pulseController.stop();
-        setState(() {
-          _isCapturing = false;
-          _currentAudioData = Float64List(0);
-          _audioHistory.clear();
-          _currentFftData = [];
-          _fftHistory.clear();
-          _snr = null;
-          _lastI = null;
-          _lastQ = null;
-          _fftService.clearPeakHold();
-          _fftService.clearAveraging();
-        });
-      } else {
-        if (_isDemoMode) {
-          _startDemoData();
-          _audioOutputService.resume();
-          _pulseController.repeat(reverse: true);
-          setState(() => _isCapturing = true);
-        } else {
-          final hasPermission = await _signalSource.checkPermission();
-          if (hasPermission) {
-            await _signalSource.startCapture();
-            _audioOutputService.resume();
-            _pulseController.repeat(reverse: true);
-            setState(() => _isCapturing = true);
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint("Capture error: $e");
-    }
-  }
-
-  Future<void> _setupIntegratedDriver() async {
-    final success = await NativeSdrDriver().initialize();
-    if (success && mounted) {
-      setState(() {
-        // Re-initialize source now that driver is ready
-        _initializeSignalSource();
-      });
-    }
+    HapticFeedback.mediumImpact();
+    await _controller.toggleCapture();
   }
 
   void _showSettings() {
@@ -575,8 +254,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             final oldFreq = widget.settings.centerFrequency;
             final oldBw = widget.settings.rfBandwidth;
             final oldPpm = widget.settings.ppmCorrection;
+            final oldSkew = widget.settings.frequencySkew;
 
             widget.onSettingsChanged(newSettings);
+            _controller.updateSettings(newSettings);
+
+            // Keep the live "squish" dial in sync if the skew setting changed.
+            if (oldSkew != newSettings.frequencySkew) {
+              setState(() => _squish = newSettings.frequencySkew);
+            }
 
             if (oldSource != newSettings.signalSource ||
                 oldFreq != newSettings.centerFrequency ||
@@ -585,11 +271,12 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                 widget.settings.rfSource != newSettings.rfSource ||
                 widget.settings.rtlTcpHost != newSettings.rtlTcpHost ||
                 widget.settings.rtlTcpPort != newSettings.rtlTcpPort) {
-              _initializeSignalSource(newSettings: newSettings);
+              _controller.reconfigure(newSettings: newSettings);
+              setState(() => _freqRange = _freqRangeForSettings(newSettings));
             }
 
             if (!newSettings.peakHoldEnabled) {
-              _fftService.clearPeakHold();
+              _controller.clearPeakHold();
             }
           },
         ),
@@ -623,20 +310,15 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   double _screenOffsetToFreq(double x, double width) {
-    double t = x / width;
-    if (widget.settings.frequencySkew != 1.0) {
-      t = math.pow(t, widget.settings.frequencySkew).toDouble();
-    }
+    final double t = FrequencyScale.toData(x / width, _squish);
     return _freqRange.start + (_freqRange.end - _freqRange.start) * t;
   }
 
   @override
   void dispose() {
-    _signalSubscription?.cancel();
-    _demoTimer?.cancel();
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
     _pulseController.dispose();
-    _signalSource.dispose();
-    _audioOutputService.dispose();
     super.dispose();
   }
 
@@ -667,15 +349,20 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           Positioned.fill(
             child: Opacity(
               opacity: _waterfallFocusMode ? 1.0 : 0.4,
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: WaterfallPainter(
-                  fftHistory: _fftHistory,
-                  minFreq: _freqRange.start,
-                  maxFreq: _freqRange.end,
-                  sampleRate: _signalSource.sampleRate,
-                  theme: widget.settings.theme,
-                  frequencySkew: widget.settings.frequencySkew,
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _controller.frame,
+                  builder: (context, _) => CustomPaint(
+                    size: Size.infinite,
+                    painter: WaterfallPainter(
+                      fftHistory: _controller.fftHistory,
+                      minFreq: _freqRange.start,
+                      maxFreq: _freqRange.end,
+                      sampleRate: _controller.sampleRate,
+                      theme: widget.settings.theme,
+                      frequencySkew: _squish,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -731,12 +418,17 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                           Expanded(
                                             child: _buildGlassCard(
                                               child: SizedBox.expand(
-                                                child: CustomPaint(
-                                                  size: Size.infinite,
-                                                  painter: WaveformPainter(
-                                                    audioData: _currentAudioData,
-                                                    history: _audioHistory,
-                                                    color: Colors.white.withOpacity(0.8),
+                                                child: RepaintBoundary(
+                                                  child: AnimatedBuilder(
+                                                    animation: _controller.frame,
+                                                    builder: (context, _) => CustomPaint(
+                                                      size: Size.infinite,
+                                                      painter: WaveformPainter(
+                                                        audioData: _controller.currentAudioData,
+                                                        history: _controller.audioHistory,
+                                                        color: Colors.white.withOpacity(0.8),
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -755,12 +447,17 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                                             flex: 2,
                                             child: _buildGlassCard(
                                               child: SizedBox.expand(
-                                                child: CustomPaint(
-                                                  size: Size.infinite,
-                                                  painter: WaveformPainter(
-                                                    audioData: _currentAudioData,
-                                                    history: _audioHistory,
-                                                    color: Colors.white.withOpacity(0.8),
+                                                child: RepaintBoundary(
+                                                  child: AnimatedBuilder(
+                                                    animation: _controller.frame,
+                                                    builder: (context, _) => CustomPaint(
+                                                      size: Size.infinite,
+                                                      painter: WaveformPainter(
+                                                        audioData: _controller.currentAudioData,
+                                                        history: _controller.audioHistory,
+                                                        color: Colors.white.withOpacity(0.8),
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -780,11 +477,27 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                             if (isLandscape && !_waterfallFocusMode)
                               Row(
                                 children: [
-                                  _buildGainTrigger(),
+                                  // Gain/Speed stacked (left edge style).
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildDialTriggerFor(_DialKind.gain),
+                                      const SizedBox(height: 10),
+                                      _buildDialTriggerFor(_DialKind.speed),
+                                    ],
+                                  ),
                                   const SizedBox(width: 16),
                                   Expanded(child: _buildGlassCard(child: _buildFrequencyFocusSlider())),
                                   const SizedBox(width: 16),
-                                  _buildSensTrigger(),
+                                  // Squish/Sensitivity stacked (right edge style).
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildDialTriggerFor(_DialKind.squish),
+                                      const SizedBox(height: 10),
+                                      _buildDialTriggerFor(_DialKind.sensitivity),
+                                    ],
+                                  ),
                                 ],
                               )
                             else ...[
@@ -815,9 +528,16 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             ),
           ),
 
-          // Large Edge Dials
-          if (_gainPersistent || _isDraggingGain) _buildLargeEdgeDial(isLeft: true, value: _gain, label: "GAIN", color: accentColor),
-          if (_sensPersistent || _isDraggingSens) _buildLargeEdgeDial(isLeft: false, value: _sensitivity, label: "SENSITIVITY", color: accentColor),
+          // Large Edge Dial (one at a time): the active dial slides in from its
+          // edge — Gain/Speed on the left, Sensitivity/Squish on the right.
+          if (_activeDial != null)
+            EdgeDial(
+              isLeft: _activeDial!.isLeft,
+              value: _dialValue(_activeDial!),
+              label: _activeDial!.longLabel,
+              color: accentColor,
+              onChanged: (v) => _setDialValue(_activeDial!, v),
+            ),
         ],
       ),
     );
@@ -829,107 +549,31 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         onTapDown: (details) => _handleFftTap(details.localPosition, constraints.biggest),
         child: _buildGlassCard(
           child: SizedBox.expand(
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: FftBarChartPainter(
-                fftData: _currentFftData,
-                peakHoldData: widget.settings.peakHoldEnabled ? _fftService.peakHoldBuffer : null,
-                markers: _markers,
-                showHarmonics: widget.settings.showHarmonics,
-                fundamentalFreq: _detectedTone?.frequency,
-                snrValue: widget.settings.showSnr ? _snr : null,
-                color: accentColor,
-                minFreq: _freqRange.start,
-                maxFreq: _freqRange.end,
-                sampleRate: _signalSource.sampleRate,
-                frequencySkew: widget.settings.frequencySkew,
+            child: RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _controller.frame,
+                builder: (context, _) => CustomPaint(
+                  size: Size.infinite,
+                  painter: FftBarChartPainter(
+                    fftData: _controller.currentFftData,
+                    peakHoldData: widget.settings.peakHoldEnabled ? _controller.peakHoldBuffer : null,
+                    markers: _markers,
+                    showHarmonics: widget.settings.showHarmonics,
+                    fundamentalFreq: _controller.detectedTone?.frequency,
+                    snrValue: widget.settings.showSnr ? _controller.snr : null,
+                    color: accentColor,
+                    minFreq: _freqRange.start,
+                    maxFreq: _freqRange.end,
+                    sampleRate: _controller.sampleRate,
+                    frequencySkew: _squish,
+                  ),
+                ),
               ),
             ),
           ),
         ),
       );
     });
-  }
-
-  Widget _buildLargeEdgeDial(
-      {required bool isLeft, required double value, required String label, required Color color}) {
-    final size = MediaQuery.of(context).size;
-    final padding = MediaQuery.of(context).padding;
-    final dialSize = size.height * _kLargeDialSizeScale;
-
-    final availableHeight = size.height - padding.top - padding.bottom;
-    return Positioned(
-      top: padding.top + (availableHeight - dialSize) / 2,
-      left: isLeft ? -dialSize * _kLargeDialOffsetScale + padding.left : null,
-      right: isLeft ? null : -dialSize * _kLargeDialOffsetScale + padding.right,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onVerticalDragUpdate: (details) {
-          double delta = -details.delta.dy * 0.01;
-          double newValue = (value + delta).clamp(0.1, 5.0);
-          if ((value * 10).floor() != (newValue * 10).floor()) {
-            HapticFeedback.selectionClick();
-          }
-          if (isLeft) {
-            setState(() => _gain = newValue);
-          } else {
-            setState(() => _sensitivity = newValue);
-          }
-        },
-        child: Container(
-          key: Key('large_dial_${isLeft ? "left" : "right"}'),
-          width: dialSize,
-          height: dialSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.black.withOpacity(0.8),
-            border: Border.all(color: color.withOpacity(0.3), width: 4),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.2),
-                blurRadius: 30,
-                spreadRadius: 10,
-              )
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: isLeft
-                    ? const Alignment(0.85, 0.0)
-                    : const Alignment(-0.88, 0.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      value.toStringAsFixed(2),
-                      style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w100,
-                          color: Colors.white),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          color: Colors.white24,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              CustomPaint(
-                size: Size(dialSize, dialSize),
-                painter: DialArcPainter(value: value, isLeft: isLeft, color: color),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildMinimalHeader(bool isLandscape) {
@@ -943,7 +587,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               style: TextStyle(fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.w900, color: Colors.white24),
             ),
             Text(
-              _isCapturing ? "LIVE SIGNAL" : "SIGNAL IDLE",
+              _controller.isCapturing ? "LIVE SIGNAL" : "SIGNAL IDLE",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.8)),
             ),
           ],
@@ -954,9 +598,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             label: "Capture Toggle",
             button: true,
             child: _buildHeaderAction(
-              icon: _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+              icon: _controller.isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
               onPressed: _toggleCapture,
-              iconColor: _isCapturing ? Colors.redAccent : Colors.white70,
+              iconColor: _controller.isCapturing ? Colors.redAccent : Colors.white70,
               iconSize: 24,
             ),
           ),
@@ -1026,22 +670,26 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  Widget _buildFrequencyFocusSlider() {
-    final accentColor = Theme.of(context).colorScheme.secondary;
-    final List<Widget> labelWidgets = [];
-    if (_detectedTone == null) {
-      labelWidgets.add(const Text(
-        "FOCUS",
-        style: TextStyle(
-            fontSize: 10,
-            letterSpacing: 2,
-            color: Colors.white24,
-            fontWeight: FontWeight.bold),
-      ));
-    } else {
-      final t = _detectedTone!;
-      final freqStr = FrequencyFormatter.format(t.frequency, shortUnit: true);
-      labelWidgets.add(SizedBox(
+  /// Builds the detected-tone label widgets shown above the focus slider.
+  /// Recomputed per frame (via the ticker) so it tracks the live signal.
+  List<Widget> _buildToneLabelWidgets() {
+    if (_controller.detectedTone == null) {
+      return [
+        Text(
+          LocalizationHelper.get('dials.focus'),
+          style: const TextStyle(
+              fontSize: 10,
+              letterSpacing: 2,
+              color: Colors.white24,
+              fontWeight: FontWeight.bold),
+        ),
+      ];
+    }
+
+    final t = _controller.detectedTone!;
+    final freqStr = FrequencyFormatter.format(t.frequency, shortUnit: true);
+    return [
+      SizedBox(
         width: 52,
         child: Text(
           freqStr,
@@ -1053,10 +701,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               fontWeight: FontWeight.bold,
               fontFeatures: [FontFeature.tabularFigures()]),
         ),
-      ));
-      labelWidgets.add(const Text(" • ",
-          style: TextStyle(fontSize: 10, color: Colors.white10)));
-      labelWidgets.add(SizedBox(
+      ),
+      const Text(" • ", style: TextStyle(fontSize: 10, color: Colors.white10)),
+      SizedBox(
         width: 28,
         child: Text(
           t.note,
@@ -1067,20 +714,23 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               color: Colors.white24,
               fontWeight: FontWeight.bold),
         ),
-      ));
-      if (t.harmonics.isNotEmpty) {
-        labelWidgets.add(const Text(" • ",
-            style: TextStyle(fontSize: 10, color: Colors.white10)));
-        labelWidgets.add(Text(
+      ),
+      if (t.harmonics.isNotEmpty) ...[
+        const Text(" • ", style: TextStyle(fontSize: 10, color: Colors.white10)),
+        Text(
           "H: ${t.harmonics.join(', ')}",
           style: const TextStyle(
               fontSize: 10,
               letterSpacing: 2,
               color: Colors.white24,
               fontWeight: FontWeight.bold),
-        ));
-      }
-    }
+        ),
+      ],
+    ];
+  }
+
+  Widget _buildFrequencyFocusSlider() {
+    final accentColor = Theme.of(context).colorScheme.secondary;
 
     String rangeText;
     if (widget.settings.signalSource == SignalSourceType.rf) {
@@ -1099,14 +749,22 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: labelWidgets,
+                child: AnimatedBuilder(
+                  animation: _controller.frame,
+                  builder: (context, _) => Row(
+                    children: _buildToneLabelWidgets(),
+                  ),
                 ),
               ),
             ),
-            Text(
+            Flexible(
+              child: Text(
                 rangeText,
-                style: const TextStyle(fontSize: 10, color: Colors.white38)),
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, color: Colors.white38),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -1128,52 +786,62 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   Widget _buildInteractionBar() {
+    // Speed sits next to Gain (left), Squish next to Sensitivity (right).
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildGainTrigger(),
+        _buildDialTriggerFor(_DialKind.gain),
+        _buildDialTriggerFor(_DialKind.speed),
         _buildCaptureButton(),
-        _buildSensTrigger(),
+        _buildDialTriggerFor(_DialKind.squish),
+        _buildDialTriggerFor(_DialKind.sensitivity),
       ],
     );
   }
 
-  Widget _buildGainTrigger() {
-    return Semantics(
-      label: "GAIN",
-      button: true,
-      child: _buildDialTrigger(
-        "GAIN",
-        _gain,
-        (v) => setState(() => _gain = v),
-        (active) => setState(() {
-          _isDraggingGain = active;
-          if (active) _sensPersistent = false;
-        }),
-        () => setState(() {
-          _gainPersistent = !_gainPersistent;
-          if (_gainPersistent) _sensPersistent = false;
-        }),
-      ),
-    );
+  double _dialValue(_DialKind d) {
+    switch (d) {
+      case _DialKind.gain:
+        return _controller.gain;
+      case _DialKind.speed:
+        return _controller.waterfallSpeed;
+      case _DialKind.sensitivity:
+        return _controller.sensitivity;
+      case _DialKind.squish:
+        return _squish;
+    }
   }
 
-  Widget _buildSensTrigger() {
+  void _setDialValue(_DialKind d, double v) {
+    setState(() {
+      switch (d) {
+        case _DialKind.gain:
+          _controller.gain = v;
+          break;
+        case _DialKind.speed:
+          _controller.waterfallSpeed = v;
+          break;
+        case _DialKind.sensitivity:
+          _controller.sensitivity = v;
+          break;
+        case _DialKind.squish:
+          _squish = v;
+          break;
+      }
+    });
+  }
+
+  Widget _buildDialTriggerFor(_DialKind d) {
     return Semantics(
-      label: "SENS",
+      label: d.shortLabel,
       button: true,
-      child: _buildDialTrigger(
-        "SENS",
-        _sensitivity,
-        (v) => setState(() => _sensitivity = v),
-        (active) => setState(() {
-          _isDraggingSens = active;
-          if (active) _gainPersistent = false;
-        }),
-        () => setState(() {
-          _sensPersistent = !_sensPersistent;
-          if (_sensPersistent) _gainPersistent = false;
-        }),
+      child: DialTrigger(
+        id: d.keyId,
+        label: d.shortLabel,
+        value: _dialValue(d),
+        onChanged: (v) => _setDialValue(d, v),
+        onActive: (active) => setState(() => _draggingDial = active ? d : null),
+        onTap: () => setState(() => _pinnedDial = _pinnedDial == d ? null : d),
       ),
     );
   }
@@ -1192,16 +860,16 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
-                border: Border.all(color: _isCapturing ? Colors.red.withOpacity(0.5) : Colors.white24, width: 2),
+                color: _controller.isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
+                border: Border.all(color: _controller.isCapturing ? Colors.red.withOpacity(0.5) : Colors.white24, width: 2),
                 boxShadow: [
-                  if (_isCapturing)
+                  if (_controller.isCapturing)
                     BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10 + 10 * _pulseController.value)
                 ],
               ),
               child: Icon(
-                _isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                color: _isCapturing ? Colors.redAccent : Colors.white,
+                _controller.isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                color: _controller.isCapturing ? Colors.redAccent : Colors.white,
                 size: 32,
               ),
             );
@@ -1211,50 +879,4 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
-  Widget _buildDialTrigger(
-    String label,
-    double value,
-    ValueChanged<double> onChanged,
-    ValueChanged<bool> onActive,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      key: Key('trigger_$label'),
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      onVerticalDragStart: (_) => onActive(true),
-      onVerticalDragEnd: (_) => onActive(false),
-      onVerticalDragCancel: () => onActive(false),
-      onVerticalDragUpdate: (details) {
-        // Simple vertical drag for adjustment
-        double delta = -details.delta.dy * 0.01;
-        double newValue = (value + delta).clamp(0.1, 5.0);
-        if ((value * 10).floor() != (newValue * 10).floor()) {
-          HapticFeedback.selectionClick();
-        }
-        onChanged(newValue);
-      },
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: Text(
-              value.toStringAsFixed(2),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.white24)),
-        ],
-      ),
-    );
-  }
 }

@@ -6,8 +6,10 @@ import '../core/signal_source.dart';
 
 class RfCaptureService implements SignalSource {
   final _dataController = StreamController<Float64List>.broadcast();
+  final math.Random _rng = math.Random();
   Timer? _timer;
   bool _isCapturing = false;
+  int _sampleIndex = 0;
 
   final double centerFrequency; // Hz
   final double bandwidth; // Hz
@@ -33,10 +35,10 @@ class RfCaptureService implements SignalSource {
   Future<void> startCapture() async {
     if (_isCapturing) return;
     _isCapturing = true;
+    _sampleIndex = 0;
 
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       final samples = Float64List(1024 * 2); // 1024 I/Q pairs
-      final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
 
       // Simulate some RF signals relative to center
       // A strong signal at some offset
@@ -45,9 +47,11 @@ class RfCaptureService implements SignalSource {
       final freq2 = -bandwidth * 0.25;
 
       for (int i = 0; i < 1024; i++) {
-        final t = i / sampleRate;
-        final phase1 = 2 * math.pi * freq1 * (now + t);
-        final phase2 = 2 * math.pi * freq2 * (now + t);
+        // Continuous time across frames from a running sample counter, avoiding
+        // the float-precision loss of multiplying by absolute wall-clock time.
+        final t = (_sampleIndex + i) / sampleRate;
+        final phase1 = 2 * math.pi * freq1 * t;
+        final phase2 = 2 * math.pi * freq2 * t;
 
         // Signal 1 (I/Q)
         double i1 = 0.5 * math.cos(phase1);
@@ -58,12 +62,13 @@ class RfCaptureService implements SignalSource {
         double q2 = 0.2 * math.sin(phase2);
 
         // Noise
-        double ni = (math.Random().nextDouble() - 0.5) * 0.05;
-        double nq = (math.Random().nextDouble() - 0.5) * 0.05;
+        double ni = (_rng.nextDouble() - 0.5) * 0.05;
+        double nq = (_rng.nextDouble() - 0.5) * 0.05;
 
         samples[i * 2] = i1 + i2 + ni;
         samples[i * 2 + 1] = q1 + q2 + nq;
       }
+      _sampleIndex += 1024;
       _dataController.add(samples);
     });
   }

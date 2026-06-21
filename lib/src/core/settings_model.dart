@@ -161,31 +161,59 @@ class AppSettings {
         (e) => e.name == (map['rfSource'] ?? 'integrated'),
         orElse: () => RfSourceType.integrated,
       ),
-      rtlTcpHost: map['rtlTcpHost'] ?? '127.0.0.1',
-      rtlTcpPort: map['rtlTcpPort'] ?? 1234,
-      centerFrequency: (map['centerFrequency'] ?? 100.0).toDouble(),
-      rfBandwidth: (map['rfBandwidth'] ?? 2.0).toDouble(),
-      fftWindowSize: map['fftWindowSize'] ?? 1024,
+      rtlTcpHost: _asString(map['rtlTcpHost'], '127.0.0.1'),
+      rtlTcpPort: _asInt(map['rtlTcpPort'], 1234),
+      centerFrequency: _asDouble(map['centerFrequency'], 100.0),
+      rfBandwidth: _asDouble(map['rfBandwidth'], 2.0),
+      fftWindowSize: _asInt(map['fftWindowSize'], 1024),
       fftWindowType: FftWindowType.values.firstWhere(
         (e) => e.name == map['fftWindowType'],
         orElse: () => FftWindowType.hanning,
       ),
-      language: map['language'] ?? 'en',
-      frequencySkew: (map['frequencySkew'] ?? 1.0).toDouble(),
-      peakHoldEnabled: map['peakHoldEnabled'] ?? false,
+      language: _asString(map['language'], 'en'),
+      frequencySkew: _asDouble(map['frequencySkew'], 1.0),
+      peakHoldEnabled: _asBool(map['peakHoldEnabled'], false),
       fftAveragingMode: FftAveragingMode.values.firstWhere(
         (e) => e.name == (map['fftAveragingMode'] ?? 'none'),
         orElse: () => FftAveragingMode.none,
       ),
-      fftAveragingCount: map['fftAveragingCount'] ?? 5,
-      ppmCorrection: (map['ppmCorrection'] ?? 0.0).toDouble(),
-      showHarmonics: map['showHarmonics'] ?? false,
-      showSnr: map['showSnr'] ?? false,
+      fftAveragingCount: _asInt(map['fftAveragingCount'], 5),
+      ppmCorrection: _asDouble(map['ppmCorrection'], 0.0),
+      showHarmonics: _asBool(map['showHarmonics'], false),
+      showSnr: _asBool(map['showSnr'], false),
       demodulationMode: DemodulationMode.values.firstWhere(
         (e) => e.name == (map['demodulationMode'] ?? 'none'),
         orElse: () => DemodulationMode.none,
       ),
-      audioOutputEnabled: map['audioOutputEnabled'] ?? false,
+      audioOutputEnabled: _asBool(map['audioOutputEnabled'], false),
     );
   }
 }
+
+// ---- Lenient coercion helpers for AppSettings.fromMap ----
+// Persisted/injected settings may carry values of an unexpected runtime type
+// (e.g. a number stored as a JSON string, or an int where a double is
+// expected). These coerce where sensible and fall back otherwise, so a single
+// malformed field never throws and discards the whole settings blob.
+
+int _asInt(dynamic v, int fallback) {
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+double _asDouble(dynamic v, double fallback) {
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+bool _asBool(dynamic v, bool fallback) {
+  if (v is bool) return v;
+  if (v is num) return v != 0;
+  if (v is String) return v.toLowerCase() == 'true';
+  return fallback;
+}
+
+String _asString(dynamic v, String fallback) => v is String ? v : fallback;
