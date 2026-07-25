@@ -67,6 +67,19 @@
       "rtlTcp": "RTL-SDR (via rtl_tcp)"
     },
     "rf_source": "Type d'Entrée RF",
+    "sdr_driver": {
+      "ready": "Clé prête",
+      "detected": "Clé détectée",
+      "needs_permission": "Autorisation USB requise",
+      "no_device": "Aucune clé détectée",
+      "no_device_hint": "Connectez un RTL-SDR via USB OTG.",
+      "unsupported": "USB indisponible",
+      "unsupported_hint": "Utilisez la source RTL-TCP sur cette plateforme.",
+      "error": "Erreur du pilote",
+      "connect": "Connecter",
+      "attached_prompt": "Clé RTL-SDR détectée.",
+      "use_it": "UTILISER"
+    },
     "demodulation_mode": "Mode de Démodulation",
     "audio_output": "Sortie Audio",
     "rtl_tcp_host": "Hôte RTL-TCP",

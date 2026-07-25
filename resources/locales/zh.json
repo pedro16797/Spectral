@@ -67,6 +67,19 @@
       "rtlTcp": "RTL-SDR (通过 rtl_tcp)"
     },
     "rf_source": "射频输入类型",
+    "sdr_driver": {
+      "ready": "接收棒就绪",
+      "detected": "检测到接收棒",
+      "needs_permission": "需要 USB 权限",
+      "no_device": "未检测到接收棒",
+      "no_device_hint": "请通过 USB OTG 连接 RTL-SDR。",
+      "unsupported": "USB 不可用",
+      "unsupported_hint": "在此平台请使用 RTL-TCP 信号源。",
+      "error": "驱动错误",
+      "connect": "连接",
+      "attached_prompt": "检测到 RTL-SDR 接收棒。",
+      "use_it": "使用"
+    },
     "demodulation_mode": "解调模式",
     "audio_output": "音频输出",
     "rtl_tcp_host": "RTL-TCP 主机",

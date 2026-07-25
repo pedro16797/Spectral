@@ -67,6 +67,19 @@
       "rtlTcp": "RTL-SDR (via rtl_tcp)"
     },
     "rf_source": "Tipus d'Entrada RF",
+    "sdr_driver": {
+      "ready": "Dongle a punt",
+      "detected": "Dongle detectat",
+      "needs_permission": "Cal permís USB",
+      "no_device": "Cap dongle detectat",
+      "no_device_hint": "Connecta un RTL-SDR per USB OTG.",
+      "unsupported": "USB no disponible",
+      "unsupported_hint": "Fes servir la font RTL-TCP en aquesta plataforma.",
+      "error": "Error del controlador",
+      "connect": "Connecta",
+      "attached_prompt": "Dongle RTL-SDR detectat.",
+      "use_it": "FES-LO SERVIR"
+    },
     "demodulation_mode": "Mode de Desmodulació",
     "audio_output": "Sortida d'Àudio",
     "rtl_tcp_host": "Host RTL-TCP",

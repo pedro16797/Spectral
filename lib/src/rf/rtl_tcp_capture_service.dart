@@ -4,6 +4,11 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import '../core/signal_source.dart';
+import 'rtl2832u.dart';
+
+// The RTL sample conversion is shared with the integrated USB path; re-exported
+// so callers (and tests) of this service can keep importing it from here.
+export 'rtl2832u.dart' show rtlIqBytesToDouble;
 
 /// rtl_tcp control command opcodes (see librtlsdr's rtl_tcp).
 class RtlTcpCommand {
@@ -29,17 +34,6 @@ Uint8List buildRtlTcpCommand(int cmd, int arg) {
   buffer[3] = (arg >> 8) & 0xFF;
   buffer[4] = arg & 0xFF;
   return buffer;
-}
-
-/// Converts a run of unsigned 8-bit rtl_tcp I/Q bytes ([0, 255], centered at
-/// 127.5) into normalized doubles in [-1.0, 1.0). [length] bytes are read from
-/// [data] starting at [offset]. Pure so it can be unit tested.
-Float64List rtlIqBytesToDouble(Uint8List data, int offset, int length) {
-  final out = Float64List(length);
-  for (int i = 0; i < length; i++) {
-    out[i] = (data[offset + i] - 127.5) / 127.5;
-  }
-  return out;
 }
 
 /// Implementation of the rtl_tcp protocol for external SDR hardware.

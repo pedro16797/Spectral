@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'src/rf/native_sdr_driver.dart';
-import 'src/rf/native_sdr_driver_ffi.dart' if (dart.library.html) 'src/rf/native_sdr_driver_web.dart';
+import 'src/rf/native_sdr_driver_channel.dart' if (dart.library.html) 'src/rf/native_sdr_driver_web.dart';
 import 'src/core/signal_controller.dart';
 import 'src/core/settings_model.dart';
 import 'src/core/spectral_theme.dart';
@@ -209,6 +209,54 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       vsync: this,
       duration: const Duration(seconds: 2),
     );
+
+    // Plugging a dongle in should visibly do something even when the app is
+    // not already on the integrated source, otherwise the attach goes
+    // unnoticed and the hardware looks unsupported.
+    _driverStateSubscription =
+        NativeSdrDriver().stateChanges.listen(_onSdrDriverStateChanged);
+  }
+
+  StreamSubscription<SdrDriverState>? _driverStateSubscription;
+
+  void _onSdrDriverStateChanged(SdrDriverState state) {
+    if (!mounted) return;
+    final alreadyUsingDongle =
+        widget.settings.signalSource == SignalSourceType.rf &&
+            widget.settings.rfSource == RfSourceType.integrated;
+    if (alreadyUsingDongle) return;
+    if (state != SdrDriverState.ready &&
+        state != SdrDriverState.needsPermission) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 8),
+        content: Text(
+          LocalizationHelper.get('settings.sdr_driver.attached_prompt'),
+        ),
+        action: SnackBarAction(
+          label: LocalizationHelper.get('settings.sdr_driver.use_it'),
+          onPressed: _switchToIntegratedSource,
+        ),
+      ),
+    );
+  }
+
+  /// Switches the app to the integrated USB source and brings the dongle up.
+  void _switchToIntegratedSource() {
+    final updated = widget.settings.copyWith(
+      signalSource: SignalSourceType.rf,
+      rfSource: RfSourceType.integrated,
+    );
+    widget.onSettingsChanged(updated);
+    _controller.updateSettings(updated);
+    setState(() => _freqRange = _freqRangeForSettings(updated));
+    unawaited(_controller.setupIntegratedDriver());
   }
 
   /// Keeps the capture pulse animation in sync with the controller's capture
@@ -249,6 +297,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         barrierLabel: "Settings",
         pageBuilder: (context, _, __) => SettingsView(
           settings: widget.settings,
+          onSetupSdrDriver: _controller.setupIntegratedDriver,
           onSettingsChanged: (newSettings) {
             final oldSource = widget.settings.signalSource;
             final oldFreq = widget.settings.centerFrequency;
@@ -316,6 +365,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   @override
   void dispose() {
+    _driverStateSubscription?.cancel();
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _pulseController.dispose();

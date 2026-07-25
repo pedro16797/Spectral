@@ -6,10 +6,12 @@ maturity:
 
 | Path | Status | How it reaches the dongle |
 | --- | --- | --- |
+| **Integrated (native USB)** | 🧪 Android only, unvalidated | The app claims the dongle itself over USB host (OTG) and runs the RTL2832U + R82xx bring-up in-process. No bridge app needed. See [The integrated USB driver](#the-integrated-usb-driver). |
 | **rtl_tcp** | ✅ Supported | Connects to an `rtl_tcp` server that owns the USB device (a helper app on Android, or the `rtl_tcp` binary on desktop / a Pi). |
-| **Integrated (native USB)** | 🧪 Experimental | Direct libusb access to the dongle. Register bring-up and the sample stream are **not yet implemented** — this source currently emits *simulated* data. See [Developing the native USB driver](#developing-the-native-usb-driver). |
 
-For real signals today, use the **rtl_tcp** path.
+The integrated path is the one that "just works" from a plugged-in dongle, but
+its register-level driver has **not yet been validated against real hardware**.
+If it misbehaves, the **rtl_tcp** path is the proven fallback.
 
 ## Prerequisites
 
@@ -55,47 +57,108 @@ For real signals today, use the **rtl_tcp** path.
 - **Stuttering:** high bandwidths (> 2.4 MHz) are taxing on mobile. Reduce
   **RF Bandwidth** to `1.0`–`2.0` MHz.
 
-## Developing the native USB driver
+## Using a real dongle (integrated USB)
 
-The `Integrated RTL-SDR` source is a **work in progress**. The native delegate
-(`lib/src/rf/native_sdr_driver_ffi.dart`) currently opens the USB device and
-initializes libusb, but the RTL2832U register bring-up and the bulk-transfer
-sample stream are not implemented, so `IntegratedRfCaptureService` emits a
-*simulated* multi-tone signal. Selecting it will show a **Driver Ready** status
-and simulated data — not live RF.
+This is the path that responds to simply plugging the dongle in.
 
-This driver can only be developed and validated **on a physical device with a
-real dongle**; it cannot be exercised in CI or on the simulators.
+### 1. Plug it in
+Connect the dongle through a USB-OTG adapter. Android matches it against
+`android/app/src/main/res/xml/device_filter.xml` and offers to open Spectral:
 
-### Hardware reference
-`lib/src/rf/rtl2832u.dart` (no FFI) is the reference for an implementation:
-- Known dongle USB IDs (`RtlUsbIds`).
-- RTL2832U register blocks/registers (`RtlBlock`, `RtlReg`).
-- Tuner types and the R82xx I2C address (`RtlTuner`, `kR82xxI2cAddress`).
-- The bulk endpoint and crystal constants (`kBulkEndpoint`, `kRtlCrystalHz`).
-- The documented 7-step bring-up order (`kBringUpSequence`).
+> Open Spectral to handle this USB device?
 
-### Implementation outline
-Inside `NativeSdrDriverDelegate.initialize()` (after the device is open), a real
-implementation performs, over `libusb_control_transfer`:
-1. Claim interface 0; reset the demodulator and initialize the baseband.
-2. Enable the I2C repeater and probe/identify the tuner (R820T/R828D/E4000/…).
-3. Run the tuner init sequence and program the PLL for the LO frequency.
-4. Program the resampler from the 28.8 MHz crystal for the sample rate.
-5. Apply gains (or enable tuner AGC) and the PPM correction (already plumbed
-   through `setGain`/`setPpm`).
-6. Submit bulk transfers on endpoint `0x81` and feed the unsigned-8-bit I/Q
-   into the same conversion the rtl_tcp path uses (`rtlIqBytesToDouble`).
+Accepting that dialog also grants Spectral USB permission for the dongle, so
+there is no second prompt. If you tick *"Use by default for this USB device"*,
+future plug-ins go straight into the app.
 
-`librtlsdr` (`src/librtlsdr.c`, `src/tuner_r82xx.c`) is the canonical reference
-for the exact register sequences.
+Spectral also listens for attach/detach while it is already running, so a
+dongle plugged in mid-session is picked up without restarting.
+
+### 2. Confirm the driver came up
+- If the app was already on another source, a prompt appears: **"RTL-SDR dongle
+  detected"** → tap **USE IT** to switch to the integrated source.
+- Otherwise open **Settings → Mode → RF Input Type → `Integrated RTL-SDR`**.
+  The panel underneath reports the driver state, and offers **Connect** when
+  there is something to act on (permission needed, or a dongle waiting to be
+  opened).
+
+States you may see:
+
+| Panel | Meaning |
+| --- | --- |
+| **Dongle Ready** | Open and tuned. The tuner chip is shown next to it. |
+| **Dongle Detected** | Attached and permitted, not yet opened — tap **Connect**. |
+| **USB Permission Needed** | Attached, but access not granted — tap **Connect**. |
+| **No Dongle Detected** | Nothing attached (or the OTG adapter is not passing it through). |
+| **USB Not Available** | Platform has no USB host path (web/desktop) — use rtl_tcp. |
+| **Driver Error** | Bring-up failed; the reason is shown (e.g. unsupported tuner). |
+
+### 3. Tune and capture
+Set **Center Frequency** and **RF Bandwidth** as for rtl_tcp, then hit
+**Capture**. Gain runs on the dongle's automatic gain control by default.
+
+### Supported hardware
+The driver implements the **R820T / R820T2 / R828D** tuner families, which
+covers essentially every dongle sold as an "RTL-SDR" today. E4000 and FC001x
+dongles are *detected and reported* rather than half-driven — use rtl_tcp for
+those.
+
+Recognised USB IDs live in three places that must stay in sync:
+- `android/app/src/main/res/xml/device_filter.xml` (decimal; drives the attach dialog)
+- `android/app/src/main/kotlin/com/example/spectral/usb/RtlUsbIds.kt`
+- `lib/src/rf/rtl2832u.dart` (`RtlUsbIds.knownDevices`)
+
+### Troubleshooting
+- **Nothing happens when you plug the dongle in:** the VID/PID is probably not
+  in `device_filter.xml`. Find it with `adb shell dumpsys usb` (or `lsusb` on a
+  host) and add it to all three lists above.
+- **The attach dialog never reappears:** you previously chose "use by default"
+  for another app. Clear that app's defaults in Android settings.
+- **"Driver Error — Unsupported tuner":** an E4000/FC001x dongle. Use rtl_tcp.
+- **Opens, then no data:** another app (a driver/bridge app) may still hold the
+  device. Close it and re-plug.
+
+## The integrated USB driver
+
+The register-level driver lives on the Android side, in
+`android/app/src/main/kotlin/com/example/spectral/usb/`, so it can use
+`UsbDeviceConnection` directly — no libusb, no FFI:
+
+| File | Responsibility |
+| --- | --- |
+| `SpectralUsbBridge.kt` | Platform channels, USB permission, attach/detach broadcasts, the bulk-read thread. |
+| `Rtl2832u.kt` | Demodulator register I/O, baseband bring-up, I2C repeater, resampler, IF/PPM. |
+| `R82xxTuner.kt` | R820T/R828D init, filter calibration, PLL programming, gain. |
+| `RtlUsbIds.kt` | Recognised VID/PIDs. |
+
+The Dart half (`lib/src/rf/native_sdr_driver_channel.dart`) mirrors the driver
+state, exposes hot-plug events, and forwards the sample stream;
+`IntegratedRfCaptureService` converts the unsigned-8-bit I/Q with the same
+`rtlIqBytesToDouble` the rtl_tcp path uses.
+
+All blocking USB work runs on a dedicated I/O thread — the R82xx bring-up alone
+sleeps ~250 ms, which would otherwise stall the platform thread.
+
+### ⚠️ Validation status
+
+The bring-up sequences are transcribed from `librtlsdr` (`src/librtlsdr.c`,
+`src/tuner_r82xx.c`) but have **not been exercised against a physical dongle**.
+They cannot be: CI has no USB hardware. Treat the register tables as the most
+likely source of a problem, in this order:
+
+1. `R82xxTuner.freqRanges` — band-switching constants.
+2. `R82xxTuner.INIT_ARRAY` and `setTvStandard()` filter calibration.
+3. `Rtl2832u.setSampleRate()` / `setIfFreq()` arithmetic.
+
+`Rtl2832u.selfTest()` reads back key registers and is exposed over the channel
+as `selfTest`, so a first bring-up can be diagnosed from `adb logcat` without a
+debugger.
 
 ### How to test it on-device
 1. Build a debug Android build on a device with USB-OTG and a dongle attached:
    `flutter run -d <device>`.
-2. In Settings choose **RF → Integrated RTL-SDR** and grant USB permission.
-3. Watch the device log (`flutter logs` / `adb logcat`) — the delegate logs the
-   detected device and which bring-up steps remain.
-4. Implement the steps above incrementally, verifying each register
-   read/write against `librtlsdr`, until `IntegratedRfCaptureService` can be
-   switched from simulated data to the real bulk-transfer stream.
+2. Plug the dongle in and accept the system dialog.
+3. Watch `adb logcat -s Rtl2832u:* R82xxTuner:* SpectralUsbBridge:*` — every
+   failed control transfer is logged with its block and register address.
+4. Compare any failing step against `librtlsdr`, which is the canonical
+   reference for the exact register sequences.

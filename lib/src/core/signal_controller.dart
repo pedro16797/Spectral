@@ -9,6 +9,7 @@ import '../rf/rtl_tcp_capture_service.dart'
     if (dart.library.html) '../rf/rtl_tcp_capture_service_stub.dart';
 import '../rf/integrated_rf_capture_service.dart';
 import '../rf/native_sdr_driver.dart';
+import '../rf/rtl2832u.dart';
 import '../utils/audio_utils.dart';
 import '../utils/mock_file_signal_source.dart';
 import 'audio_filters.dart';
@@ -82,6 +83,10 @@ class SignalController extends ChangeNotifier {
     // The source is created once, inside reconfigure(), which runs synchronously
     // up to installing the stream subscription on this first (non-capturing) call.
     _audioOutputService.init();
+    // React to the dongle being plugged in or unplugged while the app is
+    // running, rather than only when the user re-enters the RF settings.
+    _driverStateSubscription =
+        NativeSdrDriver().stateChanges.listen(_onDriverStateChanged);
     reconfigure();
   }
 
@@ -99,6 +104,7 @@ class SignalController extends ChangeNotifier {
   late SignalSource _signalSource;
   bool _hasSource = false;
   StreamSubscription<Float64List>? _signalSubscription;
+  StreamSubscription<SdrDriverState>? _driverStateSubscription;
   bool _disposed = false;
 
   static const int _maxHistory = 40;
@@ -444,19 +450,74 @@ class SignalController extends ChangeNotifier {
     }
   }
 
-  Future<void> _setupIntegratedDriver() async {
-    final success = await NativeSdrDriver().initialize();
-    if (success && !_disposed) {
-      // Re-initialize source now that the driver is ready.
-      reconfigure();
-      notifyListeners();
+  /// True when the integrated USB source is the one currently in use.
+  bool get _usingIntegratedSource =>
+      playFile == null &&
+      !isDemoMode &&
+      _settings.signalSource == SignalSourceType.rf &&
+      _settings.rfSource == RfSourceType.integrated;
+
+  /// Drives the driver lifecycle off hot-plug events so plugging a dongle in
+  /// is enough to get it set up — no settings round-trip required.
+  void _onDriverStateChanged(SdrDriverState state) {
+    if (_disposed) return;
+
+    if (_usingIntegratedSource) {
+      switch (state) {
+        case SdrDriverState.ready:
+          // Attached and permitted but not open yet: bring it up.
+          unawaited(_setupIntegratedDriver());
+          break;
+        case SdrDriverState.open:
+          // Rebind the source so it streams from the now-open dongle.
+          unawaited(reconfigure());
+          break;
+        case SdrDriverState.noDevice:
+        case SdrDriverState.error:
+          // Unplugged (or the stream died) mid-capture: stop cleanly instead
+          // of leaving a dead source running.
+          if (_isCapturing) unawaited(toggleCapture());
+          break;
+        case SdrDriverState.needsPermission:
+        case SdrDriverState.unsupported:
+          break;
+      }
     }
+
+    // The settings sheet renders the driver state, so refresh either way.
+    notifyListeners();
+  }
+
+  Future<void> _setupIntegratedDriver() async {
+    // reconfigure() runs from the resulting SdrDriverState.open event, so the
+    // source is rebound exactly once regardless of who triggered the open.
+    final success = await NativeSdrDriver().initialize(
+      sampleRate: clampRtlSampleRate((_settings.rfBandwidth * 1e6).toInt()),
+      frequency: (_settings.centerFrequency * 1e6).toInt(),
+      ppm: _settings.ppmCorrection.round(),
+    );
+    if (!success && !_disposed) notifyListeners();
+  }
+
+  /// Requests USB access for an attached dongle, then opens it. Surfaced as
+  /// the settings sheet's **Connect** action, so a driver that needs setup is
+  /// something the user can act on rather than just a status label.
+  Future<void> setupIntegratedDriver() async {
+    final driver = NativeSdrDriver();
+    await driver.refreshDevices();
+    if (_disposed) return;
+    if (driver.state == SdrDriverState.needsPermission) {
+      if (!await driver.requestPermission()) return;
+      if (_disposed) return;
+    }
+    await _setupIntegratedDriver();
   }
 
   @override
   void dispose() {
     _disposed = true;
     _signalSubscription?.cancel();
+    _driverStateSubscription?.cancel();
     _demoTimer?.cancel();
     frame.dispose();
     _signalSource.dispose();

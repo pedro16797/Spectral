@@ -67,6 +67,19 @@
       "rtlTcp": "RTL-SDR (über rtl_tcp)"
     },
     "rf_source": "RF-Eingangstyp",
+    "sdr_driver": {
+      "ready": "Dongle bereit",
+      "detected": "Dongle erkannt",
+      "needs_permission": "USB-Berechtigung nötig",
+      "no_device": "Kein Dongle erkannt",
+      "no_device_hint": "RTL-SDR per USB-OTG anschließen.",
+      "unsupported": "USB nicht verfügbar",
+      "unsupported_hint": "Auf dieser Plattform die RTL-TCP-Quelle nutzen.",
+      "error": "Treiberfehler",
+      "connect": "Verbinden",
+      "attached_prompt": "RTL-SDR-Dongle erkannt.",
+      "use_it": "VERWENDEN"
+    },
     "demodulation_mode": "Demodulationsmodus",
     "audio_output": "Audioausgang",
     "rtl_tcp_host": "RTL-TCP Host",

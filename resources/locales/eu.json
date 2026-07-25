@@ -67,6 +67,19 @@
       "rtlTcp": "RTL-SDR (rtl_tcp bidez)"
     },
     "rf_source": "RF Sarrera Mota",
+    "sdr_driver": {
+      "ready": "Donglea prest",
+      "detected": "Donglea detektatuta",
+      "needs_permission": "USB baimena behar da",
+      "no_device": "Ez da donglerik detektatu",
+      "no_device_hint": "Konektatu RTL-SDR bat USB OTG bidez.",
+      "unsupported": "USB ez dago erabilgarri",
+      "unsupported_hint": "Erabili RTL-TCP iturria plataforma honetan.",
+      "error": "Kontrolagailu-errorea",
+      "connect": "Konektatu",
+      "attached_prompt": "RTL-SDR donglea detektatuta.",
+      "use_it": "ERABILI"
+    },
     "demodulation_mode": "Demodulazio Modua",
     "audio_output": "Audio Irteera",
     "rtl_tcp_host": "RTL-TCP Host",

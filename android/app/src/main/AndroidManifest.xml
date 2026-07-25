@@ -1,5 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- USB host (OTG) access for the integrated RTL-SDR driver. Not required:
+         the app still works over the microphone, the mock sources and rtl_tcp
+         on devices without USB host support, so this must not gate install. -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
     <application
         android:label="spectral"
         android:name="${applicationName}"
@@ -25,6 +31,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Makes Android offer "Open Spectral to handle this USB device?"
+                 when a matching RTL-SDR dongle is attached. Accepting that
+                 dialog also grants USB permission for the device, so the
+                 driver can claim it without a second prompt. -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
