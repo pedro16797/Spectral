@@ -314,20 +314,30 @@ class SpectralUsbBridge(
         usbManager.requestPermission(device, pending)
     }
 
-    private fun openDevice(args: Map<String, Any?>): Map<String, Any?>? {
+    /**
+     * Opens the dongle and runs the bring-up.
+     *
+     * Always returns a map: on success the device description, on failure a
+     * single `error` entry naming the stage that failed. Returning null for
+     * every failure would force the UI to guess at the cause.
+     */
+    private fun openDevice(args: Map<String, Any?>): Map<String, Any?> {
         closeDevice()
 
         val device = findDevice(args["deviceName"] as? String) ?: run {
             Log.w(TAG, "open: no supported dongle attached")
-            return null
+            return failure("No supported RTL-SDR dongle is attached.")
         }
         if (!usbManager.hasPermission(device)) {
             Log.w(TAG, "open: no USB permission for ${device.deviceName}")
-            return null
+            return failure("USB permission has not been granted for this dongle.")
         }
         val connection = usbManager.openDevice(device) ?: run {
             Log.e(TAG, "open: openDevice returned null")
-            return null
+            return failure(
+                "Android refused to open the dongle. Another app may be " +
+                    "holding it — unplug it, close other SDR apps, and retry."
+            )
         }
 
         // The RTL2832U exposes its sample stream on the first interface's
@@ -346,13 +356,14 @@ class SpectralUsbBridge(
         if (bulkIn == null) {
             Log.e(TAG, "open: no bulk IN endpoint")
             connection.close()
-            return null
+            return failure("The dongle exposes no bulk IN endpoint for samples.")
         }
 
         val rtl = Rtl2832u(device, connection, usbInterface, bulkIn)
-        if (!rtl.open()) {
+        val bringUpFailure = rtl.open()
+        if (bringUpFailure != null) {
             rtl.close()
-            return null
+            return failure(bringUpFailure)
         }
 
         (args["sampleRate"] as? Number)?.let { rtl.setSampleRate(it.toInt()) }
@@ -364,6 +375,8 @@ class SpectralUsbBridge(
         driver = rtl
         return describe(device) + mapOf("tuner" to rtl.tuner.name)
     }
+
+    private fun failure(reason: String): Map<String, Any?> = mapOf("error" to reason)
 
     private fun closeDevice() {
         driver?.close()

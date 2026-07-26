@@ -157,16 +157,17 @@ class R82xxTuner(
 
     // ------------------------------------------------------------------ init ---
 
-    fun init(): Boolean {
+    /** Returns null on success, or the stage that failed. */
+    fun init(): String? {
         // Start from the documented register defaults.
         INIT_ARRAY.copyInto(regs)
         if (!writeRegs(REG_SHADOW_START, INIT_ARRAY)) {
             Log.e(TAG, "failed to write init array")
-            return false
+            return "could not write the tuner's initial register block over I2C"
         }
-        if (!setTvStandard()) return false
-        if (!sysFreqSel()) return false
-        return true
+        setTvStandard()?.let { return it }
+        if (!sysFreqSel()) return "system-frequency configuration failed"
+        return null
     }
 
     // ------------------------------------------------------------------ mux ---
@@ -312,7 +313,7 @@ class R82xxTuner(
      * Configures the channel filter for the < 6 MHz case used by SDR, running
      * the filter calibration that determines [filCalCode].
      */
-    private fun setTvStandard(): Boolean {
+    private fun setTvStandard(): String? {
         val ifKhz = 3570
         val filtCalLo = 56_000 // kHz
         val filtGain = 0x10    // +3 dB, 6 MHz on
@@ -345,7 +346,8 @@ class R82xxTuner(
 
             if (!setPll(filtCalLo * 1000) || !hasLock) {
                 Log.e(TAG, "filter calibration: PLL failed to lock")
-                return false
+                return "the PLL did not lock during filter calibration " +
+                    "(attempt ${attempt + 1} at ${filtCalLo / 1000} MHz)"
             }
 
             writeRegMask(0x0b, 0x10, 0x10)     // start trigger
@@ -353,7 +355,8 @@ class R82xxTuner(
             writeRegMask(0x0b, 0x00, 0x10)     // stop trigger
             writeRegMask(0x0f, 0x00, 0x04)     // cali clk off
 
-            val data = read(5) ?: return false
+            val data = read(5)
+                ?: return "could not read back the filter calibration result"
             filCalCode = data[4] and 0x0f
             if (filCalCode != 0 && filCalCode != 0x0f) break
         }
@@ -369,7 +372,7 @@ class R82xxTuner(
         ok = writeRegMask(0x1f, ltAtt, 0x80) && ok
         ok = writeRegMask(0x0f, fltExtWidest, 0x80) && ok
         ok = writeRegMask(0x19, polyfilCur, 0x60) && ok    // RF poly filter current
-        return ok
+        return if (ok) null else "writing the channel-filter registers failed"
     }
 
     /** Applies the DVB-T system settings librtlsdr uses for SDR operation. */

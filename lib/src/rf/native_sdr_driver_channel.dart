@@ -219,11 +219,14 @@ class NativeSdrDriverDelegate implements NativeSdrDriverInterface {
         'ppm': _ppm,
         'tunerGainTenthsDb': _tunerGainTenthsDb,
       });
-      if (result == null) {
+      // The platform reports the stage that failed; only fall back to a
+      // generic message if it somehow returned nothing at all.
+      final reportedError = result?['error']?.toString();
+      if (result == null || reportedError != null) {
         _isOpen = false;
         _setState(
           SdrDriverState.error,
-          error: 'Could not open the dongle. It may be claimed by another app.',
+          error: reportedError ?? 'Could not open the dongle.',
         );
         return false;
       }

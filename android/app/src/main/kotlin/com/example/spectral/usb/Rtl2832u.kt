@@ -196,15 +196,38 @@ class Rtl2832u(
 
     // ------------------------------------------------------------ bring-up ---
 
-    /** Runs the full open sequence. Returns false if any stage fails. */
-    fun open(): Boolean {
+    /**
+     * Last raw values read while probing the I2C bus, so a failed probe can be
+     * reported (and diagnosed) without attaching a debugger.
+     */
+    private var probeReport: String = ""
+
+    /**
+     * Runs the full open sequence.
+     *
+     * Returns null on success, or a human-readable reason for the failure —
+     * the caller surfaces it in the UI, so it has to name the actual stage
+     * rather than a generic "could not open".
+     */
+    fun open(): String? {
         if (!connection.claimInterface(usbInterface, true)) {
             Log.e(TAG, "claimInterface failed")
-            return false
+            return "Could not claim the USB interface. Another app may be " +
+                "holding the dongle — unplug it, close other SDR apps, and retry."
         }
         initBaseband()
+
+        // If the demodulator itself is not responding, every later stage will
+        // fail confusingly. Check it before blaming the tuner.
+        val demodCtl = readReg(BLOCK_SYS, DEMOD_CTL, 1)
+        if (demodCtl < 0) {
+            return "The RTL2832U demodulator is not responding to control " +
+                "transfers (register read failed). The dongle may be faulty, " +
+                "or the USB link may be unstable — try a different OTG cable."
+        }
+
         tuner = probeTuner()
-        Log.i(TAG, "Detected tuner: $tuner")
+        Log.i(TAG, "Detected tuner: $tuner ($probeReport)")
 
         when (tuner) {
             RtlTuner.R820T, RtlTuner.R828D -> {
@@ -222,30 +245,33 @@ class Rtl2832u(
                     xtalHz = RTL_XTAL_HZ,
                 )
                 setI2cRepeater(true)
-                val ok = driver.init()
+                val failure = driver.init()
                 setI2cRepeater(false)
-                if (!ok) {
-                    Log.e(TAG, "R82xx tuner init failed")
-                    return false
+                if (failure != null) {
+                    Log.e(TAG, "R82xx tuner init failed: $failure")
+                    return "$tuner tuner found, but initialisation failed: $failure"
                 }
                 tunerDriver = driver
             }
             RtlTuner.NONE -> {
-                Log.e(TAG, "No supported tuner found on the I2C bus")
-                return false
+                Log.e(TAG, "No supported tuner found on the I2C bus ($probeReport)")
+                return "No tuner responded on the demodulator's I2C bus " +
+                    "($probeReport). The demodulator is reachable, so this is " +
+                    "most likely a driver bug rather than a hardware fault."
             }
             else -> {
                 // E4000 / FC001x need their own tuner drivers, which this
                 // implementation does not provide.
                 Log.e(TAG, "Tuner $tuner is not supported by this driver")
-                return false
+                return "Unsupported tuner ($tuner). This driver supports " +
+                    "R820T/R820T2/R828D dongles; use the RTL-TCP source instead."
             }
         }
 
         setSampleRate(sampleRateHz)
         setCenterFrequency(centerFreqHz)
         setAgc(true)
-        return true
+        return null
     }
 
     private fun initBaseband() {
@@ -314,23 +340,33 @@ class Rtl2832u(
     private fun probeTuner(): RtlTuner {
         setI2cRepeater(true)
         try {
-            if (i2cReadReg(R820T_I2C_ADDR, R82XX_CHECK_ADDR) == R82XX_CHECK_VAL) {
-                return RtlTuner.R820T
+            // Read every candidate address up front so a failed probe can
+            // report what each one actually returned, rather than just "none".
+            val r820t = i2cReadReg(R820T_I2C_ADDR, R82XX_CHECK_ADDR)
+            val r828d = i2cReadReg(R828D_I2C_ADDR, R82XX_CHECK_ADDR)
+            val e4k = i2cReadReg(E4K_I2C_ADDR, E4K_CHECK_ADDR)
+            val fc0013 = i2cReadReg(FC0013_I2C_ADDR, FC0013_CHECK_ADDR)
+
+            probeReport = "R820T@0x34=${hex(r820t)} exp 0x69, " +
+                "R828D@0x74=${hex(r828d)}, " +
+                "E4K@0xc8=${hex(e4k)} exp 0x40, " +
+                "FC0013@0xc6=${hex(fc0013)} exp 0xa3"
+
+            return when {
+                r820t == R82XX_CHECK_VAL -> RtlTuner.R820T
+                r828d == R82XX_CHECK_VAL -> RtlTuner.R828D
+                e4k == E4K_CHECK_VAL -> RtlTuner.E4000
+                fc0013 == FC0013_CHECK_VAL -> RtlTuner.FC0013
+                else -> RtlTuner.NONE
             }
-            if (i2cReadReg(R828D_I2C_ADDR, R82XX_CHECK_ADDR) == R82XX_CHECK_VAL) {
-                return RtlTuner.R828D
-            }
-            if (i2cReadReg(E4K_I2C_ADDR, E4K_CHECK_ADDR) == E4K_CHECK_VAL) {
-                return RtlTuner.E4000
-            }
-            if (i2cReadReg(FC0013_I2C_ADDR, FC0013_CHECK_ADDR) == FC0013_CHECK_VAL) {
-                return RtlTuner.FC0013
-            }
-            return RtlTuner.NONE
         } finally {
             setI2cRepeater(false)
         }
     }
+
+    /** Formats a register read for a diagnostic, distinguishing a failed read. */
+    private fun hex(value: Int): String =
+        if (value < 0) "read-failed" else "0x${value.toString(16).padStart(2, '0')}"
 
     // ------------------------------------------------------------- tuning ---
 

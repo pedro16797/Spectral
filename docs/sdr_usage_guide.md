@@ -114,9 +114,24 @@ Recognised USB IDs live in three places that must stay in sync:
   host) and add it to all three lists above.
 - **The attach dialog never reappears:** you previously chose "use by default"
   for another app. Clear that app's defaults in Android settings.
-- **"Driver Error — Unsupported tuner":** an E4000/FC001x dongle. Use rtl_tcp.
-- **Opens, then no data:** another app (a driver/bridge app) may still hold the
-  device. Close it and re-plug.
+- **"Driver Error":** the panel names the stage that failed. The common ones:
+  - *No tuner responded on the demodulator's I2C bus* — the message includes
+    what each candidate address returned (e.g. `R820T@0x34=0x00 exp 0x69`). The
+    demodulator answered but the tuner did not, which points at the I2C
+    repeater or control-transfer addressing in `Rtl2832u.kt` rather than at
+    your hardware.
+  - *The RTL2832U demodulator is not responding* — no register reads are
+    getting through at all. Suspect the OTG cable or a flaky dongle first.
+  - *PLL did not lock during filter calibration* — the tuner was found, so the
+    problem is in `R82xxTuner.setPll()` / the calibration sequence.
+  - *Unsupported tuner* — an E4000/FC001x dongle. Use rtl_tcp.
+  - *Could not claim the USB interface* / *Android refused to open the dongle*
+    — this is the only genuine "another app has it" case. Note that an
+    **uninstalled** app cannot hold the device: Android USB access is
+    userspace-only, so removing the package removes its claim and its
+    attach association. Look for an app that is still installed.
+- **Opens, then no data:** check the sample rate is one the resampler supports
+  (see `isSupportedRtlSampleRate`) and watch for `bulk read failed` in logcat.
 
 ## The integrated USB driver
 
