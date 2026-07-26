@@ -98,10 +98,17 @@ Set **Center Frequency** and **RF Bandwidth** as for rtl_tcp, then hit
 **Capture**. Gain runs on the dongle's automatic gain control by default.
 
 ### Supported hardware
-The driver implements the **R820T / R820T2 / R828D** tuner families, which
-covers essentially every dongle sold as an "RTL-SDR" today. E4000 and FC001x
-dongles are *detected and reported* rather than half-driven — use rtl_tcp for
-those.
+The driver implements two tuner families:
+
+| Tuner | Typically found in |
+| --- | --- |
+| **R820T / R820T2 / R828D** | Branded "RTL-SDR" dongles (RTL-SDR Blog v3 etc.) |
+| **FC0013** | Cheaper generic RTL2832U / DVB-T sticks |
+
+E4000, FC0012 and FC2580 are *detected and reported* rather than half-driven —
+use rtl_tcp for those. Note that FC0012 and FC0013 share I2C address `0xc6`
+and differ only in the ID byte (`0xa1` vs `0xa3`), so a dongle reporting
+`0xa1` is deliberately rejected rather than driven with the FC0013 sequence.
 
 Recognised USB IDs live in three places that must stay in sync:
 - `android/app/src/main/res/xml/device_filter.xml` (decimal; drives the attach dialog)
@@ -144,6 +151,8 @@ The register-level driver lives on the Android side, in
 | `SpectralUsbBridge.kt` | Platform channels, USB permission, attach/detach broadcasts, the bulk-read thread. |
 | `Rtl2832u.kt` | Demodulator register I/O, baseband bring-up, I2C repeater, resampler, IF/PPM. |
 | `R82xxTuner.kt` | R820T/R828D init, filter calibration, PLL programming, gain. |
+| `Fc0013Tuner.kt` | FC0013 init, band/VHF-track selection, PLL + VCO calibration, LNA gain. |
+| `RtlTunerDriver.kt` | The interface both tuners implement. |
 | `RtlUsbIds.kt` | Recognised VID/PIDs. |
 
 The Dart half (`lib/src/rf/native_sdr_driver_channel.dart`) mirrors the driver
@@ -156,18 +165,33 @@ sleeps ~250 ms, which would otherwise stall the platform thread.
 
 ### ⚠️ Validation status
 
-The bring-up sequences are transcribed from `librtlsdr` (`src/librtlsdr.c`,
-`src/tuner_r82xx.c`) but have **not been exercised against a physical dongle**.
-They cannot be: CI has no USB hardware. Treat the register tables as the most
-likely source of a problem, in this order:
+All sequences are transcribed from `librtlsdr` (`src/librtlsdr.c`,
+`src/tuner_r82xx.c`, `src/tuner_fc0013.c`). CI has no USB hardware, so nothing
+here is covered by automated tests — what follows is what has and has not been
+observed on a real device.
 
-1. `R82xxTuner.freqRanges` — band-switching constants.
-2. `R82xxTuner.INIT_ARRAY` and `setTvStandard()` filter calibration.
-3. `Rtl2832u.setSampleRate()` / `setIfFreq()` arithmetic.
+**Confirmed working on hardware** (an FC0013 dongle, Android):
+- USB attach, permission, `claimInterface`
+- Vendor control transfers in both directions
+- `Rtl2832u.initBaseband()` — the full RTL2832U register bring-up
+- Demodulator register read-back
+- The I2C repeater, and an I2C read returning a correct tuner ID
 
-`Rtl2832u.selfTest()` reads back key registers and is exposed over the channel
-as `selfTest`, so a first bring-up can be diagnosed from `adb logcat` without a
-debugger.
+That covers the whole RTL2832U layer. The tuner drivers sit on top of it.
+
+**Not yet validated:**
+- `Fc0013Tuner` — PLL/VCO calibration and gain, written against a dongle that
+  is available for testing.
+- `R82xxTuner` — *entirely unexercised*, and cannot be validated with an FC0013
+  dongle. If it misbehaves, suspect in this order: `freqRanges`
+  band-switching constants, then `INIT_ARRAY` / `setTvStandard()` filter
+  calibration, then the `setPll()` arithmetic.
+- `Rtl2832u.setSampleRate()` / `setIfFreq()` arithmetic beyond the defaults.
+
+When a bring-up fails, the settings panel names the stage rather than a generic
+error, and `Rtl2832u.selfTest()` (exposed over the channel as `selfTest`) reads
+back key registers — so a failure is diagnosable without `adb`, which matters
+when the phone's only USB port is occupied by the dongle.
 
 ### How to test it on-device
 1. Build a debug Android build on a device with USB-OTG and a dongle attached:

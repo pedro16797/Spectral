@@ -47,10 +47,10 @@ class RtlUsbIds {
 
 /// Tuner chips the RTL2832U is commonly paired with.
 ///
-/// Only the R82xx family is driven by the integrated driver; it covers
-/// essentially every dongle sold as an "RTL-SDR" today. The others are
-/// detected so the app can explain *why* a dongle is unsupported rather than
-/// failing silently.
+/// The integrated driver drives the R82xx family (branded "RTL-SDR" dongles)
+/// and the FC0013 (common in cheaper generic sticks). The rest are detected so
+/// the app can explain *why* a dongle is unsupported rather than failing
+/// silently.
 enum RtlTuner {
   none,
   e4000,
@@ -61,7 +61,10 @@ enum RtlTuner {
   r828d;
 
   /// Whether the integrated driver can drive this tuner.
-  bool get isSupported => this == RtlTuner.r820t || this == RtlTuner.r828d;
+  bool get isSupported =>
+      this == RtlTuner.r820t ||
+      this == RtlTuner.r828d ||
+      this == RtlTuner.fc0013;
 
   /// Parses the tuner name reported by the platform channel.
   static RtlTuner parse(String? name) {

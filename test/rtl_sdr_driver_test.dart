@@ -139,10 +139,18 @@ void main() {
       expect(RtlTuner.parse('something-else'), RtlTuner.none);
     });
 
-    test('only the R82xx family is driveable', () {
+    test('the R82xx family and the FC0013 are driveable', () {
       expect(RtlTuner.r820t.isSupported, isTrue);
       expect(RtlTuner.r828d.isSupported, isTrue);
+      expect(RtlTuner.fc0013.isSupported, isTrue);
+    });
+
+    test('tuners without a native driver are reported unsupported', () {
+      // FC0012 shares the FC0013's I2C address and is easy to confuse with it,
+      // so it must stay explicitly unsupported.
+      expect(RtlTuner.fc0012.isSupported, isFalse);
       expect(RtlTuner.e4000.isSupported, isFalse);
+      expect(RtlTuner.fc2580.isSupported, isFalse);
       expect(RtlTuner.none.isSupported, isFalse);
     });
   });

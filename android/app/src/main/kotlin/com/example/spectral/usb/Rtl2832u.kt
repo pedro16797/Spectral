@@ -52,6 +52,9 @@ class Rtl2832u(
         /** Reference crystal on standard dongles (Hz). */
         const val RTL_XTAL_HZ = 28_800_000
 
+        /** The R828D carries its own 16 MHz reference, unlike the R820T. */
+        const val R828D_XTAL_HZ = 16_000_000
+
         /** IF the RTL2832U is programmed to when paired with an R82xx tuner. */
         const val R82XX_IF_FREQ = 3_570_000
 
@@ -77,7 +80,13 @@ class Rtl2832u(
     var tuner: RtlTuner = RtlTuner.NONE
         private set
 
-    private var tunerDriver: R82xxTuner? = null
+    private var tunerDriver: RtlTunerDriver? = null
+
+    /**
+     * The tuner's own reference crystal, before PPM correction. Most dongles
+     * share the RTL2832U's 28.8 MHz, but the R828D does not.
+     */
+    private var tunerXtalHz: Int = RTL_XTAL_HZ
 
     /** PPM correction currently applied to both the RTL and tuner clocks. */
     private var ppm: Int = 0
@@ -237,12 +246,13 @@ class Rtl2832u(
                 setIfFreq(R82XX_IF_FREQ)
                 demodWriteReg(1, 0x15, 0x01, 1) // enable spectrum inversion
 
-                val i2cAddr = if (tuner == RtlTuner.R828D) R828D_I2C_ADDR else R820T_I2C_ADDR
+                val isR828D = tuner == RtlTuner.R828D
+                if (isR828D) tunerXtalHz = R828D_XTAL_HZ
                 val driver = R82xxTuner(
                     rtl = this,
-                    i2cAddr = i2cAddr,
-                    isR828D = tuner == RtlTuner.R828D,
-                    xtalHz = RTL_XTAL_HZ,
+                    i2cAddr = if (isR828D) R828D_I2C_ADDR else R820T_I2C_ADDR,
+                    isR828D = isR828D,
+                    xtalHz = tunerXtalHz,
                 )
                 setI2cRepeater(true)
                 val failure = driver.init()
@@ -253,6 +263,20 @@ class Rtl2832u(
                 }
                 tunerDriver = driver
             }
+            RtlTuner.FC0013 -> {
+                // The FC0013 runs the demodulator in zero-IF, which is exactly
+                // what initBaseband() left it in — so unlike the R82xx branch
+                // above, no IF-frequency or spectrum-inversion changes here.
+                val driver = Fc0013Tuner(rtl = this, xtalHz = tunerXtalHz)
+                setI2cRepeater(true)
+                val failure = driver.init()
+                setI2cRepeater(false)
+                if (failure != null) {
+                    Log.e(TAG, "FC0013 tuner init failed: $failure")
+                    return "FC0013 tuner found, but initialisation failed: $failure"
+                }
+                tunerDriver = driver
+            }
             RtlTuner.NONE -> {
                 Log.e(TAG, "No supported tuner found on the I2C bus ($probeReport)")
                 return "No tuner responded on the demodulator's I2C bus " +
@@ -260,11 +284,12 @@ class Rtl2832u(
                     "most likely a driver bug rather than a hardware fault."
             }
             else -> {
-                // E4000 / FC001x need their own tuner drivers, which this
-                // implementation does not provide.
+                // E4000 / FC0012 / FC2580 need their own tuner drivers, which
+                // this implementation does not provide.
                 Log.e(TAG, "Tuner $tuner is not supported by this driver")
                 return "Unsupported tuner ($tuner). This driver supports " +
-                    "R820T/R820T2/R828D dongles; use the RTL-TCP source instead."
+                    "R820T/R820T2/R828D and FC0013 dongles; use the RTL-TCP " +
+                    "source instead."
             }
         }
 
@@ -429,8 +454,12 @@ class Rtl2832u(
         if (value == ppm) return true
         ppm = value
         var ok = setSampleFreqCorrection(ppm)
-        tunerDriver?.xtalHz = (RTL_XTAL_HZ * (1.0 + ppm / 1e6)).toInt()
-        ok = setIfFreq(R82XX_IF_FREQ) && ok
+        // Correct the tuner against *its own* reference, not the RTL's.
+        tunerDriver?.xtalHz = (tunerXtalHz * (1.0 + ppm / 1e6)).toInt()
+        // Only the R82xx path runs a real IF; zero-IF tuners have none to move.
+        if (tuner == RtlTuner.R820T || tuner == RtlTuner.R828D) {
+            ok = setIfFreq(R82XX_IF_FREQ) && ok
+        }
         // Retune so the new correction takes effect.
         ok = setCenterFrequency(centerFreqHz) && ok
         return ok

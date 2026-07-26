@@ -10,16 +10,16 @@ import android.util.Log
  * a first bring-up misbehaves, diff them against that file before anything
  * else.
  *
- * Only the R82xx family is implemented. It covers essentially every dongle
- * sold as an "RTL-SDR" today; E4000 and FC001x dongles are detected but
- * rejected rather than half-supported.
+ * Covers essentially every dongle sold as a branded "RTL-SDR". The FC0013
+ * found in cheaper generic sticks has its own driver ([Fc0013Tuner]); E4000,
+ * FC0012 and FC2580 are detected but rejected rather than half-supported.
  */
 class R82xxTuner(
     private val rtl: Rtl2832u,
     private val i2cAddr: Int,
     private val isR828D: Boolean,
-    var xtalHz: Int,
-) {
+    override var xtalHz: Int,
+) : RtlTunerDriver {
     companion object {
         private const val TAG = "R82xxTuner"
 
@@ -101,7 +101,7 @@ class R82xxTuner(
     var intFreqHz: Int = Rtl2832u.R82XX_IF_FREQ
         private set
 
-    var hasLock: Boolean = false
+    override var hasLock: Boolean = false
         private set
 
     private var filCalCode: Int = 0
@@ -158,7 +158,7 @@ class R82xxTuner(
     // ------------------------------------------------------------------ init ---
 
     /** Returns null on success, or the stage that failed. */
-    fun init(): String? {
+    override fun init(): String? {
         // Start from the documented register defaults.
         INIT_ARRAY.copyInto(regs)
         if (!writeRegs(REG_SHADOW_START, INIT_ARRAY)) {
@@ -290,7 +290,7 @@ class R82xxTuner(
 
     // ----------------------------------------------------------------- tune ---
 
-    fun setFreq(freqHz: Int): Boolean {
+    override fun setFreq(freqHz: Int): Boolean {
         val loFreq = freqHz + intFreqHz
         if (!setMux(loFreq)) return false
         if (!setPll(loFreq) || !hasLock) return false
@@ -419,7 +419,7 @@ class R82xxTuner(
      * [gainTenthsDb] is matched by walking the LNA and mixer gain steps, the
      * same approximation librtlsdr uses.
      */
-    fun setGain(manual: Boolean, gainTenthsDb: Int): Boolean {
+    override fun setGain(manual: Boolean, gainTenthsDb: Int): Boolean {
         if (!manual) {
             var ok = writeRegMask(0x05, 0x00, 0x10)  // LNA auto
             ok = writeRegMask(0x07, 0x10, 0x10) && ok // mixer auto
