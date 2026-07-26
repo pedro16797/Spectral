@@ -571,6 +571,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                       child: SettingsContent(
                         settings: widget.settings,
                         onSettingsChanged: widget.onSettingsChanged,
+                        onSetupSdrDriver: _controller.setupIntegratedDriver,
                       ),
                     ),
                   ),

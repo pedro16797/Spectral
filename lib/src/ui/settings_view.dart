@@ -28,10 +28,6 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   late AppSettings _currentSettings;
 
-  /// True while a driver setup attempt is in flight, so the button can show
-  /// progress and reject double taps.
-  bool _isSettingUpDriver = false;
-
   @override
   void initState() {
     super.initState();
@@ -97,6 +93,7 @@ class _SettingsViewState extends State<SettingsView> {
                   child: SettingsContent(
                     settings: _currentSettings,
                     onSettingsChanged: _updateSettings,
+                    onSetupSdrDriver: widget.onSetupSdrDriver,
                     showCloseButton: true,
                   ),
                 ),
@@ -112,12 +109,17 @@ class _SettingsViewState extends State<SettingsView> {
 class SettingsContent extends StatefulWidget {
   final AppSettings settings;
   final ValueChanged<AppSettings> onSettingsChanged;
+
+  /// Requests USB access for an attached RTL-SDR dongle and opens it. When
+  /// null the driver panel is informational only (e.g. in tests).
+  final Future<void> Function()? onSetupSdrDriver;
   final bool showCloseButton;
 
   const SettingsContent({
     super.key,
     required this.settings,
     required this.onSettingsChanged,
+    this.onSetupSdrDriver,
     this.showCloseButton = false,
   });
 
@@ -126,6 +128,10 @@ class SettingsContent extends StatefulWidget {
 }
 
 class _SettingsContentState extends State<SettingsContent> {
+  /// True while a driver setup attempt is in flight, so the button can show
+  /// progress and reject double taps.
+  bool _isSettingUpDriver = false;
+
   late final TextEditingController _freqController;
   late final TextEditingController _bwController;
   late final TextEditingController _rtlHostController;
