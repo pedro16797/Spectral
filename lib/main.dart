@@ -202,7 +202,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       playFile: Uri.base.queryParameters['play_file'],
     );
     _controller.addListener(_onControllerChanged);
-    _freqRange = _freqRangeForSettings(widget.settings);
+    _syncFullRange(widget.settings);
     _squish = widget.settings.frequencySkew;
 
     _pulseController = AnimationController(
@@ -255,7 +255,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
     widget.onSettingsChanged(updated);
     _controller.updateSettings(updated);
-    setState(() => _freqRange = _freqRangeForSettings(updated));
+    setState(() => _syncFullRange(updated));
     unawaited(_controller.setupIntegratedDriver());
   }
 
@@ -264,6 +264,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   /// changes. Fired only on discrete changes, never per signal frame.
   void _onControllerChanged() {
     if (!mounted) return;
+    // The captured span is only known once the source is up, which happens
+    // asynchronously after construction.
+    _syncFullRange(widget.settings);
     if (_controller.isCapturing) {
       if (!_pulseController.isAnimating) _pulseController.repeat(reverse: true);
     } else {
@@ -272,16 +275,38 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     setState(() {});
   }
 
-  /// The visible frequency window implied by [settings] (full audio band, or
-  /// the RF center ± half-bandwidth).
-  RangeValues _freqRangeForSettings(AppSettings settings) {
+  /// The full band currently on screen: the whole captured RF span, or the
+  /// audio band.
+  ///
+  /// The RF span comes from the controller rather than the settings, because
+  /// the hardware may deliver less than was asked for — the RTL2832U caps at
+  /// 3.2 MS/s. Labelling the axis with the requested width would spread the
+  /// captured signal across a window several times too wide, which reads as a
+  /// featureless smear rather than distinct stations.
+  RangeValues _fullRangeForSettings(AppSettings settings) {
     if (settings.signalSource == SignalSourceType.rf) {
-      return RangeValues(
-        (settings.centerFrequency - settings.rfBandwidth / 2) * 1e6,
-        (settings.centerFrequency + settings.rfBandwidth / 2) * 1e6,
-      );
+      final double center = settings.centerFrequency * 1e6;
+      final double halfSpan = _controller.rfSpanHz / 2;
+      return RangeValues(center - halfSpan, center + halfSpan);
     }
     return const RangeValues(0, 22050);
+  }
+
+  /// Span the visible axis was last built for, so the user's zoom selection is
+  /// only reset when the underlying band actually changes.
+  RangeValues? _lastFullRange;
+
+  /// Rebuilds the axis if the captured band changed, preserving the user's
+  /// selection otherwise. Also keeps the controller's tuned channel in step.
+  void _syncFullRange(AppSettings settings) {
+    final full = _fullRangeForSettings(settings);
+    if (_lastFullRange == null ||
+        (full.start - _lastFullRange!.start).abs() > 1 ||
+        (full.end - _lastFullRange!.end).abs() > 1) {
+      _lastFullRange = full;
+      _freqRange = full;
+      _controller.setTunedBand(full.start, full.end);
+    }
   }
 
   Future<void> _toggleCapture() async {
@@ -321,7 +346,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                 widget.settings.rtlTcpHost != newSettings.rtlTcpHost ||
                 widget.settings.rtlTcpPort != newSettings.rtlTcpPort) {
               _controller.reconfigure(newSettings: newSettings);
-              setState(() => _freqRange = _freqRangeForSettings(newSettings));
+              setState(() => _syncFullRange(newSettings));
             }
 
             if (!newSettings.peakHoldEnabled) {
@@ -782,15 +807,16 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   Widget _buildFrequencyFocusSlider() {
     final accentColor = Theme.of(context).colorScheme.secondary;
+    final fullRange = _fullRangeForSettings(widget.settings);
 
-    String rangeText;
-    if (widget.settings.signalSource == SignalSourceType.rf) {
-      final start = (widget.settings.centerFrequency - widget.settings.rfBandwidth / 2) * 1e6;
-      final end = (widget.settings.centerFrequency + widget.settings.rfBandwidth / 2) * 1e6;
-      rangeText = "${FrequencyFormatter.format(start, precision: 3)} - ${FrequencyFormatter.format(end, precision: 3)}";
-    } else {
-      rangeText = "${FrequencyFormatter.format(_freqRange.start)} - ${FrequencyFormatter.format(_freqRange.end)}";
-    }
+    // Report the *selected* window rather than the whole band: on RF that is
+    // the slice being demodulated, so it is the number the user is tuning.
+    final bool isRf = widget.settings.signalSource == SignalSourceType.rf;
+    final rangeText = isRf
+        ? "${FrequencyFormatter.format(_freqRange.start, precision: 3)} - "
+            "${FrequencyFormatter.format(_freqRange.end, precision: 3)}"
+        : "${FrequencyFormatter.format(_freqRange.start)} - "
+            "${FrequencyFormatter.format(_freqRange.end)}";
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -821,14 +847,12 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         const SizedBox(height: 8),
         RadioDialFocusSlider(
           values: _freqRange,
-          min: widget.settings.signalSource == SignalSourceType.rf
-              ? (widget.settings.centerFrequency - widget.settings.rfBandwidth / 2) * 1e6
-              : 0,
-          max: widget.settings.signalSource == SignalSourceType.rf
-              ? (widget.settings.centerFrequency + widget.settings.rfBandwidth / 2) * 1e6
-              : 22050,
+          min: fullRange.start,
+          max: fullRange.end,
           onChanged: (values) {
             setState(() => _freqRange = values);
+            // Tuning the visible window also tunes what is demodulated.
+            _controller.setTunedBand(values.start, values.end);
           },
           accentColor: accentColor,
         ),

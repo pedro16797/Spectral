@@ -94,8 +94,33 @@ States you may see:
 | **Driver Error** | Bring-up failed; the reason is shown (e.g. unsupported tuner). |
 
 ### 3. Tune and capture
-Set **Center Frequency** and **RF Bandwidth** as for rtl_tcp, then hit
-**Capture**. Gain runs on the dongle's automatic gain control by default.
+Set **Center Frequency** and **RF Bandwidth**, then hit **Capture**. Gain runs
+on the dongle's automatic gain control by default.
+
+**RF Bandwidth is capped by the hardware.** The RTL2832U resampler tops out at
+3.2 MS/s, so a larger figure is clamped rather than accepted — an unclamped
+setting would stretch the frequency axis over a span the dongle never captured,
+which reads on screen as one featureless smear instead of separate stations.
+To watch a wider slice of spectrum, move the centre frequency instead.
+
+### 4. Tuning a station
+The spectrum and waterfall always show the **whole captured RF band**, even
+while demodulating — it is the map you tune by.
+
+1. Find a peak in the waterfall.
+2. Drag the frequency slider so the selected window sits over it.
+3. With **Demodulation Mode** set to `FM` (or `AM`) and **Audio Output** on,
+   you hear *only that window*.
+
+The selection is a digital down-converter, not just a zoom: the chosen slice is
+mixed to baseband and decimated before demodulation, so neighbouring stations
+are filtered out rather than mixed in. Retuning is instant and does not restart
+the stream — the dongle stays parked on the centre frequency while you move
+around inside the band it is already receiving.
+
+Very narrow selections are widened to 48 kHz, the least that can still carry
+audio. FM broadcast wants roughly 150-200 kHz to sound clean; a much narrower
+window will be audible but muffled.
 
 ### Supported hardware
 The driver implements two tuner families:

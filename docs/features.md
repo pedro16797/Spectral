@@ -86,6 +86,7 @@ Spectral supports real-world RF spectral analysis using external SDR (Software D
 - **Real Hardware via rtl_tcp:** Drive a standard RTL-SDR dongle through an `rtl_tcp` bridge (an Android driver app, or the desktop/Pi `rtl_tcp` binary), with frequency, sample-rate, PPM-correction, and automatic-gain control.
 - **Integrated USB driver (Android):** Plug an RTL-SDR into the phone over USB OTG and Spectral offers to open it directly — no bridge app. The app claims the dongle, runs the RTL2832U + R820T/R828D bring-up in-process, and streams live I/Q. Hot-plug and unplug are handled while running. *Not yet validated against physical hardware; rtl_tcp remains the proven path.*
 - **PPM Correction:** Calibrate for hardware oscillator offsets to ensure frequency accuracy.
+- **Tune by dragging:** The waterfall shows the whole captured band; drag the frequency slider onto a peak and the audio follows. The selection drives a digital down-converter (mix to baseband, filter, decimate), so you hear only the selected slice — no hardware retune, no stream restart.
 - **Complex FFT Engine:** Specifically designed for RF I/Q signals with centered DC components.
 
 For setup and hardware requirements, see the [SDR Usage Guide](sdr_usage_guide.md).

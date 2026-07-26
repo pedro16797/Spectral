@@ -13,6 +13,7 @@ import '../rf/rtl2832u.dart';
 import '../utils/audio_utils.dart';
 import '../utils/mock_file_signal_source.dart';
 import 'audio_filters.dart';
+import 'channel_extractor.dart';
 import 'signal_source.dart';
 import 'fft_service.dart';
 import 'settings_model.dart';
@@ -106,6 +107,54 @@ class SignalController extends ChangeNotifier {
   StreamSubscription<Float64List>? _signalSubscription;
   StreamSubscription<SdrDriverState>? _driverStateSubscription;
   bool _disposed = false;
+
+  /// Down-converter used to pull the tuned channel out of the captured band.
+  final ChannelExtractor _channelExtractor = ChannelExtractor();
+
+  /// The band the user has selected on the frequency slider, in absolute Hz.
+  /// Null means "the whole captured band".
+  double? _tunedStartHz;
+  double? _tunedEndHz;
+
+  /// Sample rate the audio chain is currently configured for. Tracked so the
+  /// de-emphasis filter is only reconfigured when the channel width changes.
+  double _audioChainRate = 0;
+
+  /// The span the hardware is actually delivering, which is not always what
+  /// was requested: the RTL2832U resampler caps out at 3.2 MS/s, so asking for
+  /// a 20 MHz window silently yields far less. The display must follow this
+  /// rather than the requested setting, or the frequency axis lies and every
+  /// station smears across it.
+  double get rfSpanHz {
+    if (_hasSource && _signalSource.isComplex) {
+      return _signalSource.sampleRate.toDouble();
+    }
+    return _settings.rfBandwidth * 1e6;
+  }
+
+  /// Selects the slice of the captured band to demodulate, in absolute Hz.
+  /// Driven by the frequency slider, so tuning a station is a drag rather than
+  /// a trip into settings.
+  void setTunedBand(double startHz, double endHz) {
+    if (_tunedStartHz == startHz && _tunedEndHz == endHz) return;
+    _tunedStartHz = startHz;
+    _tunedEndHz = endHz;
+  }
+
+  /// How to reach the tuned channel from the current capture.
+  ChannelPlan get _channelPlan {
+    final start = _tunedStartHz;
+    final end = _tunedEndHz;
+    if (start == null || end == null) {
+      return const ChannelPlan(offsetHz: 0, decimation: 1);
+    }
+    return planChannel(
+      startHz: start,
+      endHz: end,
+      centerHz: _settings.centerFrequency * 1e6,
+      captureRateHz: _signalSource.sampleRate.toDouble(),
+    );
+  }
 
   static const int _maxHistory = 40;
   static const int _maxAudioHistory = 5;
@@ -220,10 +269,14 @@ class SignalController extends ChangeNotifier {
       _signalSource = _sourceFactory(currentSettings, playFile);
       _hasSource = true;
 
-      // Reset audio-output filters for the new stream and match the FM
-      // de-emphasis time constant to the source's sample rate.
+      // Reset audio-output filters and the down-converter for the new stream.
+      // The de-emphasis rate is provisional: once demodulation runs it is
+      // reconfigured to the tuned channel's rate, which is what actually feeds
+      // the filter.
       _dcBlocker.reset();
-      _deemphasis.configure(sampleRate: _signalSource.sampleRate.toDouble());
+      _channelExtractor.reset();
+      _audioChainRate = _signalSource.sampleRate.toDouble();
+      _deemphasis.configure(sampleRate: _audioChainRate);
       _deemphasis.reset();
 
       // Reusable buffer for decimation.
@@ -234,9 +287,37 @@ class SignalController extends ChangeNotifier {
         try {
           // Hot path: mutate visualization state directly and repaint only the
           // live layers via [frame].
-          final audio = _updateAudioData(data);
+          final bool isComplex = _signalSource.isComplex;
           final bool useDemod =
-              _signalSource.isComplex && _settings.demodulationMode != DemodulationMode.none;
+              isComplex && _settings.demodulationMode != DemodulationMode.none;
+
+          // Audio path: down-convert the selected slice first, so demodulation
+          // hears only the tuned channel instead of the whole captured band.
+          // The visualization keeps using the wideband data below.
+          Float64List audioInput = data;
+          double audioRate = _signalSource.sampleRate.toDouble();
+          if (useDemod) {
+            final plan = _channelPlan;
+            if (!plan.isPassthrough) {
+              audioInput = _channelExtractor.process(
+                data,
+                offsetHz: plan.offsetHz,
+                sampleRate: audioRate,
+                decimation: plan.decimation,
+              );
+              audioRate = audioRate / plan.decimation;
+            }
+            // De-emphasis is rate-dependent, so retune it when the user
+            // changes the channel width.
+            if (audioRate != _audioChainRate) {
+              _audioChainRate = audioRate;
+              _deemphasis.configure(sampleRate: audioRate);
+              _deemphasis.reset();
+              _dcBlocker.reset();
+            }
+          }
+
+          final audio = _updateAudioData(audioInput, useDemod: useDemod);
 
           if (useDemod && _settings.audioOutputEnabled) {
             // Condition the playback signal (on a copy, so the visualization
@@ -248,7 +329,9 @@ class SignalController extends ChangeNotifier {
               _deemphasis.processInPlace(audioForOutput);
             }
 
-            final int decimationFactor = (_signalSource.sampleRate / 44100).round().clamp(1, 100);
+            // Decimate from the channel rate — not the capture rate — to the
+            // ~44.1 kHz the output expects.
+            final int decimationFactor = (audioRate / 44100).round().clamp(1, 100);
             if (decimationFactor > 1) {
               decimationBuffer =
                   AudioUtils.decimateAveraged(audioForOutput, decimationFactor, target: decimationBuffer);
@@ -258,16 +341,20 @@ class SignalController extends ChangeNotifier {
             }
           }
 
+          // The spectrum always shows the RF band for complex sources, even
+          // while demodulating: it is the map the user tunes by, so replacing
+          // it with the audio spectrum would remove the only view of where the
+          // stations are.
           final fft = _fftService.processSignalData(
-            useDemod ? audio : data,
+            isComplex ? data : audio,
             windowSize: _settings.fftWindowSize,
             windowType: _settings.fftWindowType,
-            isComplex: useDemod ? false : _signalSource.isComplex,
+            isComplex: isComplex,
             peakHoldEnabled: _settings.peakHoldEnabled,
             averagingMode: _settings.fftAveragingMode,
             averagingCount: _settings.fftAveragingCount,
           );
-          _processFftFrame(fft, isComplex: useDemod ? false : _signalSource.isComplex);
+          _processFftFrame(fft, isComplex: isComplex);
           frame.tick();
         } catch (e) {
           debugPrint("Signal processing error: $e");
@@ -290,11 +377,13 @@ class SignalController extends ChangeNotifier {
     }
   }
 
-  Float64List _updateAudioData(Float64List rawData) {
+  /// Turns a frame into the audio/waveform signal.
+  ///
+  /// [rawData] is the down-converted channel when [useDemod] is set, not the
+  /// raw capture — demodulating the full band would mix every station at once.
+  Float64List _updateAudioData(Float64List rawData, {required bool useDemod}) {
     Float64List processedAudio;
     final gain = this.gain;
-    final bool useDemod =
-        _signalSource.isComplex && _settings.demodulationMode != DemodulationMode.none;
 
     if (useDemod) {
       final int numPairs = rawData.length ~/ 2;
@@ -387,7 +476,7 @@ class SignalController extends ChangeNotifier {
         if (_demoPhase > 2 * math.pi) _demoPhase -= 2 * math.pi;
       }
       if (_disposed) return;
-      _updateAudioData(samples);
+      _updateAudioData(samples, useDemod: false);
 
       final fft = _fftService.processSignalData(
         samples,

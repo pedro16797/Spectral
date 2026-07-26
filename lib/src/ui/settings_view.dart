@@ -322,7 +322,17 @@ class _SettingsContentState extends State<SettingsContent> {
               controller: _bwController,
               onChanged: (val) {
                 final double? bw = double.tryParse(val);
-                if (bw != null) _updateSettings(widget.settings.copyWith(rfBandwidth: bw));
+                if (bw == null) return;
+                // A real dongle cannot exceed the RTL2832U resampler's range,
+                // so clamp rather than accept a figure the hardware will
+                // silently ignore — an over-wide setting used to stretch the
+                // frequency axis until every station smeared together.
+                final bool isDongle =
+                    widget.settings.rfSource != RfSourceType.mock;
+                final double applied = isDongle
+                    ? clampRtlSampleRate((bw * 1e6).round()) / 1e6
+                    : bw;
+                _updateSettings(widget.settings.copyWith(rfBandwidth: applied));
               },
             ),
             const SizedBox(height: 16),
