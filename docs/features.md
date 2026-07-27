@@ -24,11 +24,40 @@ The Frequency Focus Slider is a powerful tool for zooming into specific spectral
 - **Zooming:** The FFT bar chart and Waterfall visualization dynamically update to show only the selected frequency range.
 - **Tone Analysis:** When a clear tone is detected, the slider displays the fundamental frequency (e.g., `440Hz` or `12.4kHz`), the corresponding musical note (e.g., `A4`), and any detected harmonics.
 
+## 🔀 RF or Audio: choosing what is analysed
+
+On an SDR source there are two genuinely different signals to look at, and a
+toggle in the header (next to the settings button) switches between them.
+
+| View | Spectrum shows | Axis |
+| --- | --- | --- |
+| **Radio band** (default) | The whole captured RF band | Centre frequency ± half the capture rate |
+| **Demodulated audio** | The audio recovered from the tuned channel | 0 Hz – channel Nyquist |
+
+The choice drives the *entire* analysis chain, not just the picture: FFT input,
+tone detection, harmonics, SNR, peak hold and the waterfall all follow it. Peak
+hold and waterfall history are cleared on each switch, since they describe the
+previous signal on a different axis.
+
+![Demodulated audio view](../resources/screenshots/sdr_demodulated_view.png)
+
+Above, the same capture as below but with the toggle flipped: the axis has
+become a 0 Hz-to-Nyquist audio spectrum, and SNR and harmonics now describe the
+recovered programme.
+
+The toggle only appears for an SDR source — an audio source has just the one
+spectrum. It is shown but disabled when **Demodulation Mode** is `None`, since
+there is then nothing to demodulate.
+
+Switching views never costs you your station: the frequency slider is a display
+zoom while the audio view is up, and the tuned channel is restored when you
+return to the radio band.
+
+![Advanced Analysis](../resources/screenshots/sdr_advanced_analysis.png)
+
 ## 📊 Advanced Spectral Analysis
 
 Sprint 4.2 introduced professional-grade tools for deep signal analysis.
-
-![Advanced Analysis](../resources/screenshots/sdr_advanced_analysis.png)
 
 ### Peak Hold
 - **Function:** Retains the maximum magnitude of every frequency bin over time.
@@ -84,8 +113,9 @@ Spectral supports real-world RF spectral analysis using external SDR (Software D
 ![SDR Settings](../resources/screenshots/sdr_settings.png)
 
 - **Real Hardware via rtl_tcp:** Drive a standard RTL-SDR dongle through an `rtl_tcp` bridge (an Android driver app, or the desktop/Pi `rtl_tcp` binary), with frequency, sample-rate, PPM-correction, and automatic-gain control.
-- **Native USB driver (experimental):** A direct libusb path is in progress; until it lands, the "Integrated" source emits simulated data.
+- **Integrated USB driver (Android):** Plug an RTL-SDR into the phone over USB OTG and Spectral offers to open it directly — no bridge app. The app claims the dongle, runs the RTL2832U + R820T/R828D bring-up in-process, and streams live I/Q. Hot-plug and unplug are handled while running. *Not yet validated against physical hardware; rtl_tcp remains the proven path.*
 - **PPM Correction:** Calibrate for hardware oscillator offsets to ensure frequency accuracy.
+- **Tune by dragging:** The waterfall shows the whole captured band; drag the frequency slider onto a peak and the audio follows. The selection drives a digital down-converter (mix to baseband, filter, decimate), so you hear only the selected slice — no hardware retune, no stream restart.
 - **Complex FFT Engine:** Specifically designed for RF I/Q signals with centered DC components.
 
 For setup and hardware requirements, see the [SDR Usage Guide](sdr_usage_guide.md).

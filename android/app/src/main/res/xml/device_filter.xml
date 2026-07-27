@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  USB devices that should offer to open Spectral when plugged in.
+
+  Android parses vendor-id/product-id here as DECIMAL, so each entry carries
+  the hex equivalent in a comment. Keep this list in sync with
+  `RtlUsbIds.knownDevices` in `lib/src/rf/rtl2832u.dart` and with
+  `RtlUsbIds.KNOWN_DEVICES` in
+  `android/app/src/main/kotlin/com/example/spectral/usb/RtlUsbIds.kt`.
+-->
+<resources>
+    <!-- Realtek Semiconductor Corp. (0x0bda) -->
+    <usb-device vendor-id="3034" product-id="10289" /> <!-- 0x0bda:0x2831 RTL2831U -->
+    <usb-device vendor-id="3034" product-id="10290" /> <!-- 0x0bda:0x2832 RTL2832U -->
+    <usb-device vendor-id="3034" product-id="10292" /> <!-- 0x0bda:0x2834 RTL2834 -->
+    <usb-device vendor-id="3034" product-id="10295" /> <!-- 0x0bda:0x2837 RTL2837 -->
+    <usb-device vendor-id="3034" product-id="10296" /> <!-- 0x0bda:0x2838 RTL2838 (RTL-SDR Blog v3 etc.) -->
+
+    <!-- Common rebrands that ship an RTL2832U inside -->
+    <usb-device vendor-id="3277" product-id="169" />   <!-- 0x0ccd:0x00a9 Terratec Cinergy T Stick Black -->
+    <usb-device vendor-id="3277" product-id="179" />   <!-- 0x0ccd:0x00b3 Terratec NOXON DAB/DAB+ -->
+    <usb-device vendor-id="7449" product-id="4353" />  <!-- 0x1d19:0x1101 Dexatek DK DVB-T -->
+    <usb-device vendor-id="7040" product-id="54180" /> <!-- 0x1b80:0xd3a4 Twintech UT-40 -->
+    <usb-device vendor-id="8013" product-id="47107" /> <!-- 0x1f4d:0xb803 GTek T803 -->
+</resources>

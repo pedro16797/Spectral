@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'src/rf/native_sdr_driver.dart';
-import 'src/rf/native_sdr_driver_ffi.dart' if (dart.library.html) 'src/rf/native_sdr_driver_web.dart';
+import 'src/rf/native_sdr_driver_channel.dart' if (dart.library.html) 'src/rf/native_sdr_driver_web.dart';
 import 'src/core/signal_controller.dart';
 import 'src/core/settings_model.dart';
 import 'src/core/spectral_theme.dart';
@@ -202,13 +202,61 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       playFile: Uri.base.queryParameters['play_file'],
     );
     _controller.addListener(_onControllerChanged);
-    _freqRange = _freqRangeForSettings(widget.settings);
+    _syncFullRange(widget.settings);
     _squish = widget.settings.frequencySkew;
 
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     );
+
+    // Plugging a dongle in should visibly do something even when the app is
+    // not already on the integrated source, otherwise the attach goes
+    // unnoticed and the hardware looks unsupported.
+    _driverStateSubscription =
+        NativeSdrDriver().stateChanges.listen(_onSdrDriverStateChanged);
+  }
+
+  StreamSubscription<SdrDriverState>? _driverStateSubscription;
+
+  void _onSdrDriverStateChanged(SdrDriverState state) {
+    if (!mounted) return;
+    final alreadyUsingDongle =
+        widget.settings.signalSource == SignalSourceType.rf &&
+            widget.settings.rfSource == RfSourceType.integrated;
+    if (alreadyUsingDongle) return;
+    if (state != SdrDriverState.ready &&
+        state != SdrDriverState.needsPermission) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 8),
+        content: Text(
+          LocalizationHelper.get('settings.sdr_driver.attached_prompt'),
+        ),
+        action: SnackBarAction(
+          label: LocalizationHelper.get('settings.sdr_driver.use_it'),
+          onPressed: _switchToIntegratedSource,
+        ),
+      ),
+    );
+  }
+
+  /// Switches the app to the integrated USB source and brings the dongle up.
+  void _switchToIntegratedSource() {
+    final updated = widget.settings.copyWith(
+      signalSource: SignalSourceType.rf,
+      rfSource: RfSourceType.integrated,
+    );
+    widget.onSettingsChanged(updated);
+    _controller.updateSettings(updated);
+    setState(() => _syncFullRange(updated));
+    unawaited(_controller.setupIntegratedDriver());
   }
 
   /// Keeps the capture pulse animation in sync with the controller's capture
@@ -216,6 +264,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   /// changes. Fired only on discrete changes, never per signal frame.
   void _onControllerChanged() {
     if (!mounted) return;
+    // The captured span is only known once the source is up, which happens
+    // asynchronously after construction.
+    _syncFullRange(widget.settings);
     if (_controller.isCapturing) {
       if (!_pulseController.isAnimating) _pulseController.repeat(reverse: true);
     } else {
@@ -224,16 +275,58 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     setState(() {});
   }
 
-  /// The visible frequency window implied by [settings] (full audio band, or
-  /// the RF center ± half-bandwidth).
-  RangeValues _freqRangeForSettings(AppSettings settings) {
-    if (settings.signalSource == SignalSourceType.rf) {
-      return RangeValues(
-        (settings.centerFrequency - settings.rfBandwidth / 2) * 1e6,
-        (settings.centerFrequency + settings.rfBandwidth / 2) * 1e6,
-      );
+  /// The full band currently on screen: the whole captured RF span, or the
+  /// audio band.
+  ///
+  /// The RF span comes from the controller rather than the settings, because
+  /// the hardware may deliver less than was asked for — the RTL2832U caps at
+  /// 3.2 MS/s. Labelling the axis with the requested width would spread the
+  /// captured signal across a window several times too wide, which reads as a
+  /// featureless smear rather than distinct stations.
+  RangeValues _fullRangeForSettings() {
+    final band = _controller.analysisBandHz;
+    return RangeValues(band.start, band.end);
+  }
+
+  /// The full band currently on screen. Derived, so the painters, the slider
+  /// and the tuned-channel plan cannot drift apart.
+  RangeValues get _fullRange => _fullRangeForSettings();
+
+  /// Span the visible axis was last built for, so the user's zoom selection is
+  /// only reset when the underlying band actually changes.
+  RangeValues? _lastFullRange;
+
+  /// Rebuilds the axis if the captured band changed, preserving the user's
+  /// selection otherwise. Also keeps the controller's tuned channel in step.
+  void _syncFullRange(AppSettings settings) {
+    final full = _fullRangeForSettings();
+    if (_lastFullRange != null &&
+        (full.start - _lastFullRange!.start).abs() <= 1 &&
+        (full.end - _lastFullRange!.end).abs() <= 1) {
+      return;
     }
-    return const RangeValues(0, 22050);
+    _lastFullRange = full;
+
+    // In the demodulated view the axis is an audio spectrum, so the selection
+    // is a display zoom only — pushing it to setTunedBand would reinterpret
+    // audio frequencies as an RF slice and retune off the station.
+    if (_controller.isShowingDemodulated) {
+      _freqRange = full;
+      return;
+    }
+
+    // Back on RF: restore the channel still being demodulated, so toggling the
+    // view does not cost the user their station.
+    final tuned = _controller.tunedBandHz;
+    if (tuned != null &&
+        tuned.start >= full.start - 1 &&
+        tuned.end <= full.end + 1 &&
+        tuned.end > tuned.start) {
+      _freqRange = RangeValues(tuned.start, tuned.end);
+      return;
+    }
+    _freqRange = full;
+    _controller.setTunedBand(full.start, full.end);
   }
 
   Future<void> _toggleCapture() async {
@@ -249,6 +342,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         barrierLabel: "Settings",
         pageBuilder: (context, _, __) => SettingsView(
           settings: widget.settings,
+          onSetupSdrDriver: _controller.setupIntegratedDriver,
           onSettingsChanged: (newSettings) {
             final oldSource = widget.settings.signalSource;
             final oldFreq = widget.settings.centerFrequency;
@@ -272,7 +366,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                 widget.settings.rtlTcpHost != newSettings.rtlTcpHost ||
                 widget.settings.rtlTcpPort != newSettings.rtlTcpPort) {
               _controller.reconfigure(newSettings: newSettings);
-              setState(() => _freqRange = _freqRangeForSettings(newSettings));
+              setState(() => _syncFullRange(newSettings));
             }
 
             if (!newSettings.peakHoldEnabled) {
@@ -316,6 +410,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   @override
   void dispose() {
+    _driverStateSubscription?.cancel();
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _pulseController.dispose();
@@ -358,7 +453,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                       fftHistory: _controller.fftHistory,
                       minFreq: _freqRange.start,
                       maxFreq: _freqRange.end,
-                      sampleRate: _controller.sampleRate,
+                      bandStart: _fullRange.start,
+                      bandEnd: _fullRange.end,
+                      sampleRate: _controller.analysisSampleRate.round(),
                       theme: widget.settings.theme,
                       frequencySkew: _squish,
                     ),
@@ -521,6 +618,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                       child: SettingsContent(
                         settings: widget.settings,
                         onSettingsChanged: widget.onSettingsChanged,
+                        onSetupSdrDriver: _controller.setupIntegratedDriver,
                       ),
                     ),
                   ),
@@ -564,7 +662,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                     color: accentColor,
                     minFreq: _freqRange.start,
                     maxFreq: _freqRange.end,
-                    sampleRate: _controller.sampleRate,
+                    bandStart: _fullRange.start,
+                    bandEnd: _fullRange.end,
+                    sampleRate: _controller.analysisSampleRate.round(),
                     frequencySkew: _squish,
                   ),
                 ),
@@ -574,6 +674,34 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         ),
       );
     });
+  }
+
+  /// There is only something to demodulate when a mode is selected; without
+  /// one the toggle stays visible but inert, so its absence is never a mystery.
+  bool get _canShowDemodulated =>
+      widget.settings.demodulationMode != DemodulationMode.none;
+
+  String get _spectrumViewTooltip {
+    if (!_canShowDemodulated) {
+      return LocalizationHelper.get('header.spectrum_view_needs_demod');
+    }
+    return _controller.isShowingDemodulated
+        ? LocalizationHelper.get('header.spectrum_view_demodulated')
+        : LocalizationHelper.get('header.spectrum_view_rf');
+  }
+
+  /// Flips the whole analysis chain — spectrum, waterfall, tone detection,
+  /// harmonics, SNR and peak hold — between the radio band and the audio
+  /// recovered from the tuned channel.
+  void _toggleSpectrumView() {
+    final next = widget.settings.spectrumView == SpectrumView.demodulated
+        ? SpectrumView.rf
+        : SpectrumView.demodulated;
+    final updated = widget.settings.copyWith(spectrumView: next);
+    widget.onSettingsChanged(updated);
+    // The controller must see the change before the axis is recomputed from it.
+    _controller.updateSettings(updated);
+    setState(() => _syncFullRange(updated));
   }
 
   Widget _buildMinimalHeader(bool isLandscape) {
@@ -606,6 +734,27 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ),
           const SizedBox(width: 12),
         ],
+        // Only meaningful for SDR: an audio source has just the one spectrum.
+        if (widget.settings.signalSource == SignalSourceType.rf) ...[
+          Semantics(
+            label: LocalizationHelper.get('header.spectrum_view'),
+            button: true,
+            child: Tooltip(
+              message: _spectrumViewTooltip,
+              child: _buildHeaderAction(
+                icon: _controller.isShowingDemodulated
+                    ? Icons.graphic_eq_rounded
+                    : Icons.cell_tower_rounded,
+                iconColor: _controller.isShowingDemodulated
+                    ? Theme.of(context).colorScheme.secondary
+                    : Colors.white70,
+                enabled: _canShowDemodulated,
+                onPressed: _toggleSpectrumView,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
         if (!isLandscape || MediaQuery.of(context).size.shortestSide < 600)
           Semantics(
             label: "Settings",
@@ -630,6 +779,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     required VoidCallback onPressed,
     Color? iconColor,
     double? iconSize,
+    bool enabled = true,
   }) {
     return ClipOval(
       child: BackdropFilter(
@@ -641,11 +791,17 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: IconButton(
-            icon: Icon(icon, size: iconSize ?? 20, color: iconColor ?? Colors.white70),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              onPressed();
-            },
+            icon: Icon(
+              icon,
+              size: iconSize ?? 20,
+              color: enabled ? (iconColor ?? Colors.white70) : Colors.white24,
+            ),
+            onPressed: enabled
+                ? () {
+                    HapticFeedback.lightImpact();
+                    onPressed();
+                  }
+                : null,
           ),
         ),
       ),
@@ -732,14 +888,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   Widget _buildFrequencyFocusSlider() {
     final accentColor = Theme.of(context).colorScheme.secondary;
 
-    String rangeText;
-    if (widget.settings.signalSource == SignalSourceType.rf) {
-      final start = (widget.settings.centerFrequency - widget.settings.rfBandwidth / 2) * 1e6;
-      final end = (widget.settings.centerFrequency + widget.settings.rfBandwidth / 2) * 1e6;
-      rangeText = "${FrequencyFormatter.format(start, precision: 3)} - ${FrequencyFormatter.format(end, precision: 3)}";
-    } else {
-      rangeText = "${FrequencyFormatter.format(_freqRange.start)} - ${FrequencyFormatter.format(_freqRange.end)}";
-    }
+    // Report the *selected* window rather than the whole band: on RF that is
+    // the slice being demodulated, so it is the number the user is tuning.
+    final bool isRf = widget.settings.signalSource == SignalSourceType.rf;
+    final rangeText = isRf
+        ? "${FrequencyFormatter.format(_freqRange.start, precision: 3)} - "
+            "${FrequencyFormatter.format(_freqRange.end, precision: 3)}"
+        : "${FrequencyFormatter.format(_freqRange.start)} - "
+            "${FrequencyFormatter.format(_freqRange.end)}";
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -770,14 +926,16 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         const SizedBox(height: 8),
         RadioDialFocusSlider(
           values: _freqRange,
-          min: widget.settings.signalSource == SignalSourceType.rf
-              ? (widget.settings.centerFrequency - widget.settings.rfBandwidth / 2) * 1e6
-              : 0,
-          max: widget.settings.signalSource == SignalSourceType.rf
-              ? (widget.settings.centerFrequency + widget.settings.rfBandwidth / 2) * 1e6
-              : 22050,
+          min: _fullRange.start,
+          max: _fullRange.end,
           onChanged: (values) {
             setState(() => _freqRange = values);
+            // On the RF band the visible window *is* the tuned channel. In the
+            // demodulated view it is only a zoom over the audio spectrum, and
+            // retuning from it would throw the station away.
+            if (!_controller.isShowingDemodulated) {
+              _controller.setTunedBand(values.start, values.end);
+            }
           },
           accentColor: accentColor,
         ),

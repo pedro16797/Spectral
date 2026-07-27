@@ -14,7 +14,7 @@ Spectral aims to provide users with a powerful yet user-friendly tool to observe
 - **FFT Bar Chart:** High-performance frequency analysis with dynamic scaling.
 - **Waterfall Display:** Time-frequency visualization for detecting patterns over time, integrated as a background layer.
 - **Slick HUD Architecture:** Immersive "Waterfall Focus Mode" for a data-centric experience.
-- **SDR (RF Support):** Real RTL-SDR hardware via the `rtl_tcp` protocol (frequency, sample rate, PPM correction, and automatic gain), with an experimental native USB driver in progress (see [SDR Usage Guide](docs/sdr_usage_guide.md)).
+- **SDR (RF Support):** Real RTL-SDR hardware two ways — plug a dongle straight into the phone over USB OTG (native RTL2832U driver, R820T/R820T2/R828D and FC0013 tuners), or connect to an `rtl_tcp` bridge. Tune by dragging the frequency slider onto a peak in the waterfall: the selection is digitally down-converted, so you hear only that station without retuning the hardware. A header toggle switches the spectrum, waterfall and analysis readouts between the radio band and the demodulated audio (see [SDR Usage Guide](docs/sdr_usage_guide.md)).
 - **Frequency Focus (Zoom):** Advanced Radio Dial Slider for panning and zooming into specific frequency bands.
 - **Edge Dial Interaction:** Space-saving, tactile dials for Gain and Sensitivity adjustments.
 - **Highly Configurable:** Customizable themes (Liquid Blue, Inferno, Monochrome, Emerald) and technical parameters (FFT Window Size/Type).

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../utils/frequency_formatter.dart';
 import '../utils/frequency_scale.dart';
+import '../utils/spectrum_bins.dart';
 
 class FftBarChartPainter extends CustomPainter {
   final List<double> fftData;
@@ -16,6 +17,10 @@ class FftBarChartPainter extends CustomPainter {
   final int sampleRate;
   final double frequencySkew;
 
+  /// Full span the FFT data covers; see [WaterfallPainter.bandStart].
+  final double? bandStart;
+  final double? bandEnd;
+
   FftBarChartPainter({
     required this.fftData,
     this.peakHoldData,
@@ -28,6 +33,8 @@ class FftBarChartPainter extends CustomPainter {
     this.maxFreq = 22050,
     this.sampleRate = 44100,
     this.frequencySkew = 1.0,
+    this.bandStart,
+    this.bandEnd,
   });
 
   @override
@@ -36,10 +43,6 @@ class FftBarChartPainter extends CustomPainter {
 
     final width = size.width;
     final height = size.height;
-    final totalNyquist = sampleRate / 2;
-    final double startNormalized = (minFreq / totalNyquist);
-    final double endNormalized = (maxFreq / totalNyquist);
-    final double range = endNormalized - startNormalized;
 
     final paint = Paint()
       ..style = PaintingStyle.fill
@@ -47,6 +50,15 @@ class FftBarChartPainter extends CustomPainter {
 
     const actualBarCount = 120;
     final barWidth = width / actualBarCount;
+
+    final mapper = SpectrumBinMapper(
+      columnCount: actualBarCount,
+      viewStartHz: minFreq,
+      viewEndHz: maxFreq,
+      bandStartHz: bandStart ?? 0,
+      bandEndHz: bandEnd ?? sampleRate / 2,
+      frequencySkew: frequencySkew,
+    );
     final double spacing = barWidth > 15 ? 4.0 : (barWidth > 8 ? 2.0 : (barWidth > 4 ? 1.0 : 0.0));
     final double actualWidth = math.max(1.0, barWidth - spacing);
 
@@ -55,12 +67,9 @@ class FftBarChartPainter extends CustomPainter {
 
     // Draw bars
     for (var i = 0; i < actualBarCount; i++) {
-      final double t = FrequencyScale.toData(i / actualBarCount, frequencySkew);
-
-      final double freqNorm = startNormalized + t * range;
-      final int dataIndex = (freqNorm * fftData.length).floor().clamp(0, fftData.length - 1);
-
-      final maxMag = fftData[dataIndex];
+      // Peak across the covered bins rather than one sampled bin, so narrow
+      // carriers cannot fall between bars.
+      final maxMag = mapper.peak(fftData, i);
       // Fast log approximation for small values or just pre-scale
       // ln(x+1) = log(x+1) * ln(10) if log is log10, but math.log is ln.
       final normalizedHeight = (math.log(maxMag + 1) * logScale).clamp(0.0, 1.0);
@@ -100,11 +109,7 @@ class FftBarChartPainter extends CustomPainter {
       bool first = true;
 
       for (var i = 0; i < actualBarCount; i++) {
-        final double t = FrequencyScale.toData(i / actualBarCount, frequencySkew);
-        final double freqNorm = startNormalized + t * range;
-        final int dataIndex = (freqNorm * peakHoldData!.length).floor().clamp(0, peakHoldData!.length - 1);
-
-        final mag = peakHoldData![dataIndex];
+        final mag = mapper.peak(peakHoldData!, i);
         final normalizedHeight = (math.log(mag + 1) * logScale).clamp(0.0, 1.0);
         final y = (height - 20) - (normalizedHeight * (height - 20));
         final x = i * barWidth + barWidth / 2;

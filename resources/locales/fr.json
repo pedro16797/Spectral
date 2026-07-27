@@ -7,6 +7,12 @@
     "name": "Spectral",
     "tagline": "Visualisation Spectrale Moderne"
   },
+  "header": {
+    "spectrum_view": "Vue du spectre",
+    "spectrum_view_rf": "Bande radio affichée — touchez pour analyser l'audio démodulé",
+    "spectrum_view_demodulated": "Audio démodulé affiché — touchez pour analyser la bande radio",
+    "spectrum_view_needs_demod": "Choisissez un mode de démodulation pour analyser l'audio"
+  },
   "visualizations": {
     "waveform": "Forme d'onde",
     "fft": "FFT",
@@ -67,6 +73,19 @@
       "rtlTcp": "RTL-SDR (via rtl_tcp)"
     },
     "rf_source": "Type d'Entrée RF",
+    "sdr_driver": {
+      "ready": "Clé prête",
+      "detected": "Clé détectée",
+      "needs_permission": "Autorisation USB requise",
+      "no_device": "Aucune clé détectée",
+      "no_device_hint": "Connectez un RTL-SDR via USB OTG.",
+      "unsupported": "USB indisponible",
+      "unsupported_hint": "Utilisez la source RTL-TCP sur cette plateforme.",
+      "error": "Erreur du pilote",
+      "connect": "Connecter",
+      "attached_prompt": "Clé RTL-SDR détectée.",
+      "use_it": "UTILISER"
+    },
     "demodulation_mode": "Mode de Démodulation",
     "audio_output": "Sortie Audio",
     "rtl_tcp_host": "Hôte RTL-TCP",

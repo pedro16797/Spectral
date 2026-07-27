@@ -1,105 +1,133 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
+
 import '../core/signal_source.dart';
 import 'native_sdr_driver.dart';
+import 'rtl2832u.dart';
 
 /// Capture service for the integrated (native USB) SDR path.
 ///
-/// The native RTL2832U driver is experimental and does not yet stream real
-/// samples (see `NativeSdrDriverDelegate` and `rtl2832u.dart`), so this
-/// currently emits a simulated multi-tone signal once the driver reports
-/// ready. For real hardware today, use the rtl_tcp source with a bridge.
+/// Streams real interleaved I/Q from an RTL-SDR dongle claimed directly by the
+/// app over USB — no rtl_tcp bridge in between. The register-level driver runs
+/// on the platform side; this service owns the Dart-side lifecycle: it applies
+/// the tuning settings, starts the bulk stream, and converts the RTL2832U's
+/// unsigned-8-bit samples into the normalized doubles the pipeline expects.
 class IntegratedRfCaptureService implements SignalSource {
-  final double centerFrequency; // Hz
-  final double bandwidth; // Hz
-  final double ppmCorrection; // PPM
-  final _dataController = StreamController<Float64List>.broadcast();
-  final math.Random _rng = math.Random();
-  Timer? _timer;
-  bool _isCapturing = false;
-  int _sampleIndex = 0;
-
   IntegratedRfCaptureService({
     required this.centerFrequency,
     required this.bandwidth,
     this.ppmCorrection = 0.0,
-  });
+    this.tunerGainTenthsDb,
+    NativeSdrDriverInterface? driver,
+  })  : _driver = driver ?? NativeSdrDriver(),
+        _sampleRate = clampRtlSampleRate(bandwidth.toInt());
+
+  final double centerFrequency; // Hz
+  final double bandwidth; // Hz
+  final double ppmCorrection; // PPM
+
+  /// Fixed tuner gain in tenths of a dB. Null (the default) runs the dongle's
+  /// automatic gain, which is the configuration that works out of the box.
+  final int? tunerGainTenthsDb;
+
+  final NativeSdrDriverInterface _driver;
+  final int _sampleRate;
+
+  final _dataController = StreamController<Float64List>.broadcast();
+  StreamSubscription<Uint8List>? _sampleSubscription;
+  bool _isCapturing = false;
+
+  /// Holds a trailing odd byte between chunks so I/Q pairs never drift out of
+  /// phase if a transfer ever splits mid-sample.
+  int? _pendingByte;
 
   @override
   Stream<Float64List> get dataStream => _dataController.stream;
 
   @override
-  int get sampleRate => bandwidth.toInt();
+  int get sampleRate => _sampleRate;
 
   @override
   bool get isComplex => true;
 
   @override
-  Future<bool> checkPermission() async {
-    return NativeSdrDriver().isInitialized;
-  }
+  Future<bool> checkPermission() async => _driver.isInitialized;
 
   @override
   Future<void> startCapture() async {
     if (_isCapturing) return;
 
-    // In a real implementation, this would trigger libusb bulk transfers.
-    // For this prototype, we'll simulate high-quality RF data if the driver is ready.
-    if (!NativeSdrDriver().isInitialized) {
-       throw Exception("Native SDR Driver not initialized.");
+    if (!_driver.isInitialized) {
+      // Try to bring the dongle up on demand — the user may have plugged it in
+      // (or granted permission) after this source was created.
+      final opened = await _driver.initialize(
+        sampleRate: _sampleRate,
+        frequency: centerFrequency.toInt(),
+        ppm: ppmCorrection.round(),
+        tunerGainTenthsDb: tunerGainTenthsDb,
+      );
+      if (!opened) {
+        throw StateError(
+          _driver.lastError ?? 'The RTL-SDR dongle is not ready.',
+        );
+      }
+    } else {
+      // Already open: re-apply this source's settings.
+      await _driver.setSampleRate(_sampleRate);
+      await _driver.setPpm(ppmCorrection.round());
+      await _driver.setFrequency(centerFrequency.toInt());
+      if (tunerGainTenthsDb == null) {
+        await _driver.setAgc(true);
+      } else {
+        await _driver.setTunerGain(tunerGainTenthsDb!);
+      }
     }
 
-    // Apply PPM correction to internal state if this were talking to hardware
-    await NativeSdrDriver().setPpm(ppmCorrection.toInt());
+    _pendingByte = null;
+    _sampleSubscription = _driver.samples.listen(
+      _onSamples,
+      onError: (Object e) => debugPrint('IntegratedRfCaptureService: $e'),
+    );
 
+    if (!await _driver.startStream()) {
+      await _sampleSubscription?.cancel();
+      _sampleSubscription = null;
+      throw StateError('Could not start the RTL-SDR sample stream.');
+    }
     _isCapturing = true;
-    _sampleIndex = 0;
-    _timer = Timer.periodic(const Duration(milliseconds: 40), (timer) {
-      final samples = Float64List(1024 * 2);
+  }
 
-      // Simulate frequency offset due to PPM correction (simulating hardware error)
-      final double actualOffsetHz = centerFrequency * (ppmCorrection / 1e6);
+  void _onSamples(Uint8List chunk) {
+    if (_dataController.isClosed || chunk.isEmpty) return;
 
-      // Simulate multiple peaks on a lower noise floor to distinguish from Mock
-      final freqs = [
-        bandwidth * 0.1 - actualOffsetHz,
-        -bandwidth * 0.3 - actualOffsetHz,
-        bandwidth * 0.45 - actualOffsetHz
-      ];
-      final amps = [0.6, 0.4, 0.2];
+    final pending = _pendingByte;
+    Uint8List data;
+    if (pending == null) {
+      data = chunk;
+    } else {
+      data = Uint8List(chunk.length + 1)
+        ..[0] = pending
+        ..setRange(1, chunk.length + 1, chunk);
+      _pendingByte = null;
+    }
 
-      for (int i = 0; i < 1024; i++) {
-        // Continuous time across frames from a running sample counter, avoiding
-        // the float-precision loss of multiplying by absolute wall-clock time.
-        final t = (_sampleIndex + i) / sampleRate;
-        double realSum = 0;
-        double imagSum = 0;
+    // Emit whole I/Q pairs only; carry any odd trailing byte to the next chunk.
+    final usable = data.length - (data.length % 2);
+    if (usable < data.length) _pendingByte = data[data.length - 1];
+    if (usable == 0) return;
 
-        for (int f = 0; f < freqs.length; f++) {
-          final phase = 2 * math.pi * freqs[f] * t;
-          realSum += amps[f] * math.cos(phase);
-          imagSum += amps[f] * math.sin(phase);
-        }
-
-        // Low noise floor
-        double ni = (_rng.nextDouble() - 0.5) * 0.01;
-        double nq = (_rng.nextDouble() - 0.5) * 0.01;
-
-        samples[i * 2] = realSum + ni;
-        samples[i * 2 + 1] = imagSum + nq;
-      }
-      _sampleIndex += 1024;
-      _dataController.add(samples);
-    });
+    _dataController.add(rtlIqBytesToDouble(data, 0, usable));
   }
 
   @override
   Future<void> stopCapture() async {
-    _timer?.cancel();
-    _timer = null;
+    if (!_isCapturing) return;
     _isCapturing = false;
+    await _sampleSubscription?.cancel();
+    _sampleSubscription = null;
+    await _driver.stopStream();
   }
 
   @override

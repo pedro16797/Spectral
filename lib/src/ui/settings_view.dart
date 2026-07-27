@@ -3,16 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/settings_model.dart';
 import '../rf/native_sdr_driver.dart';
+import '../rf/rtl2832u.dart';
 import '../utils/localization_helper.dart';
 
 class SettingsView extends StatefulWidget {
   final AppSettings settings;
   final ValueChanged<AppSettings> onSettingsChanged;
 
+  /// Requests USB access for an attached RTL-SDR dongle and opens it. When
+  /// null the driver panel is informational only (e.g. in tests).
+  final Future<void> Function()? onSetupSdrDriver;
+
   const SettingsView({
     super.key,
     required this.settings,
     required this.onSettingsChanged,
+    this.onSetupSdrDriver,
   });
 
   @override
@@ -87,6 +93,7 @@ class _SettingsViewState extends State<SettingsView> {
                   child: SettingsContent(
                     settings: _currentSettings,
                     onSettingsChanged: _updateSettings,
+                    onSetupSdrDriver: widget.onSetupSdrDriver,
                     showCloseButton: true,
                   ),
                 ),
@@ -102,12 +109,17 @@ class _SettingsViewState extends State<SettingsView> {
 class SettingsContent extends StatefulWidget {
   final AppSettings settings;
   final ValueChanged<AppSettings> onSettingsChanged;
+
+  /// Requests USB access for an attached RTL-SDR dongle and opens it. When
+  /// null the driver panel is informational only (e.g. in tests).
+  final Future<void> Function()? onSetupSdrDriver;
   final bool showCloseButton;
 
   const SettingsContent({
     super.key,
     required this.settings,
     required this.onSettingsChanged,
+    this.onSetupSdrDriver,
     this.showCloseButton = false,
   });
 
@@ -116,6 +128,10 @@ class SettingsContent extends StatefulWidget {
 }
 
 class _SettingsContentState extends State<SettingsContent> {
+  /// True while a driver setup attempt is in flight, so the button can show
+  /// progress and reject double taps.
+  bool _isSettingUpDriver = false;
+
   late final TextEditingController _freqController;
   late final TextEditingController _bwController;
   late final TextEditingController _rtlHostController;
@@ -306,7 +322,17 @@ class _SettingsContentState extends State<SettingsContent> {
               controller: _bwController,
               onChanged: (val) {
                 final double? bw = double.tryParse(val);
-                if (bw != null) _updateSettings(widget.settings.copyWith(rfBandwidth: bw));
+                if (bw == null) return;
+                // A real dongle cannot exceed the RTL2832U resampler's range,
+                // so clamp rather than accept a figure the hardware will
+                // silently ignore — an over-wide setting used to stretch the
+                // frequency axis until every station smeared together.
+                final bool isDongle =
+                    widget.settings.rfSource != RfSourceType.mock;
+                final double applied = isDongle
+                    ? clampRtlSampleRate((bw * 1e6).round()) / 1e6
+                    : bw;
+                _updateSettings(widget.settings.copyWith(rfBandwidth: applied));
               },
             ),
             const SizedBox(height: 16),
@@ -480,35 +506,158 @@ class _SettingsContentState extends State<SettingsContent> {
     );
   }
 
+  /// Localized headline for the driver panel, plus whether the state is one
+  /// the user can act on from here.
+  ({String title, String detail, bool actionable, bool ok}) _driverStatusCopy(
+    SdrDriverState state,
+  ) {
+    final device = NativeSdrDriver().device;
+    switch (state) {
+      case SdrDriverState.open:
+        final tuner = device?.tuner;
+        return (
+          title: LocalizationHelper.get('settings.sdr_driver.ready'),
+          detail: tuner != null && tuner != RtlTuner.none
+              ? '${device?.displayName ?? ''} · ${tuner.name.toUpperCase()}'
+              : (device?.displayName ?? ''),
+          actionable: false,
+          ok: true,
+        );
+      case SdrDriverState.ready:
+        return (
+          title: LocalizationHelper.get('settings.sdr_driver.detected'),
+          detail: device?.displayName ?? '',
+          actionable: true,
+          ok: false,
+        );
+      case SdrDriverState.needsPermission:
+        return (
+          title: LocalizationHelper.get('settings.sdr_driver.needs_permission'),
+          detail: device?.displayName ?? '',
+          actionable: true,
+          ok: false,
+        );
+      case SdrDriverState.noDevice:
+        return (
+          title: LocalizationHelper.get('settings.sdr_driver.no_device'),
+          detail: LocalizationHelper.get('settings.sdr_driver.no_device_hint'),
+          actionable: true,
+          ok: false,
+        );
+      case SdrDriverState.unsupported:
+        return (
+          title: LocalizationHelper.get('settings.sdr_driver.unsupported'),
+          detail: LocalizationHelper.get('settings.sdr_driver.unsupported_hint'),
+          actionable: false,
+          ok: false,
+        );
+      case SdrDriverState.error:
+        return (
+          title: LocalizationHelper.get('settings.sdr_driver.error'),
+          detail: NativeSdrDriver().lastError ?? '',
+          actionable: true,
+          ok: false,
+        );
+    }
+  }
+
   Widget _buildDriverStatus() {
-    final bool isReady = NativeSdrDriver().isInitialized;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isReady ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isReady ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isReady ? Icons.check_circle_outline : Icons.info_outline,
-            size: 16,
-            color: isReady ? Colors.greenAccent : Colors.orangeAccent,
+    // Rebuilds on hot-plug, so plugging the dongle in updates this panel
+    // while the settings sheet is open.
+    return StreamBuilder<SdrDriverState>(
+      stream: NativeSdrDriver().stateChanges,
+      initialData: NativeSdrDriver().state,
+      builder: (context, snapshot) {
+        final state = snapshot.data ?? SdrDriverState.noDevice;
+        final copy = _driverStatusCopy(state);
+        final accent = copy.ok ? Colors.greenAccent : Colors.orangeAccent;
+        final base = copy.ok ? Colors.green : Colors.orange;
+        final canAct = copy.actionable && widget.onSetupSdrDriver != null;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: base.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: base.withOpacity(0.3)),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isReady ? "Driver Ready" : "Driver Setup Required",
-              style: TextStyle(
-                color: isReady ? Colors.greenAccent : Colors.orangeAccent,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                copy.ok ? Icons.check_circle_outline : Icons.usb,
+                size: 16,
+                color: accent,
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      copy.title,
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (copy.detail.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          copy.detail,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (canAct) ...[
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: _isSettingUpDriver
+                      ? null
+                      : () async {
+                          HapticFeedback.lightImpact();
+                          setState(() => _isSettingUpDriver = true);
+                          try {
+                            await widget.onSetupSdrDriver!();
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isSettingUpDriver = false);
+                            }
+                          }
+                        },
+                  style: TextButton.styleFrom(
+                    foregroundColor: accent,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: _isSettingUpDriver
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          LocalizationHelper.get('settings.sdr_driver.connect'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ],
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

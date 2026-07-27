@@ -9,9 +9,11 @@ import '../rf/rtl_tcp_capture_service.dart'
     if (dart.library.html) '../rf/rtl_tcp_capture_service_stub.dart';
 import '../rf/integrated_rf_capture_service.dart';
 import '../rf/native_sdr_driver.dart';
+import '../rf/rtl2832u.dart';
 import '../utils/audio_utils.dart';
 import '../utils/mock_file_signal_source.dart';
 import 'audio_filters.dart';
+import 'channel_extractor.dart';
 import 'signal_source.dart';
 import 'fft_service.dart';
 import 'settings_model.dart';
@@ -82,6 +84,10 @@ class SignalController extends ChangeNotifier {
     // The source is created once, inside reconfigure(), which runs synchronously
     // up to installing the stream subscription on this first (non-capturing) call.
     _audioOutputService.init();
+    // React to the dongle being plugged in or unplugged while the app is
+    // running, rather than only when the user re-enters the RF settings.
+    _driverStateSubscription =
+        NativeSdrDriver().stateChanges.listen(_onDriverStateChanged);
     reconfigure();
   }
 
@@ -99,7 +105,104 @@ class SignalController extends ChangeNotifier {
   late SignalSource _signalSource;
   bool _hasSource = false;
   StreamSubscription<Float64List>? _signalSubscription;
+  StreamSubscription<SdrDriverState>? _driverStateSubscription;
   bool _disposed = false;
+
+  /// Down-converter used to pull the tuned channel out of the captured band.
+  final ChannelExtractor _channelExtractor = ChannelExtractor();
+
+  /// The band the user has selected on the frequency slider, in absolute Hz.
+  /// Null means "the whole captured band".
+  double? _tunedStartHz;
+  double? _tunedEndHz;
+
+  /// Sample rate the audio chain is currently configured for. Tracked so the
+  /// de-emphasis filter is only reconfigured when the channel width changes.
+  double _audioChainRate = 0;
+
+  /// The span the hardware is actually delivering, which is not always what
+  /// was requested: the RTL2832U resampler caps out at 3.2 MS/s, so asking for
+  /// a 20 MHz window silently yields far less. The display must follow this
+  /// rather than the requested setting, or the frequency axis lies and every
+  /// station smears across it.
+  double get rfSpanHz {
+    if (_hasSource && _signalSource.isComplex) {
+      return _signalSource.sampleRate.toDouble();
+    }
+    return _settings.rfBandwidth * 1e6;
+  }
+
+  /// Selects the slice of the captured band to demodulate, in absolute Hz.
+  /// Driven by the frequency slider, so tuning a station is a drag rather than
+  /// a trip into settings.
+  void setTunedBand(double startHz, double endHz) {
+    if (_tunedStartHz == startHz && _tunedEndHz == endHz) return;
+    _tunedStartHz = startHz;
+    _tunedEndHz = endHz;
+  }
+
+  /// True when the analysis chain should describe the demodulated audio rather
+  /// than the radio band. Requires something to actually demodulate.
+  bool get isShowingDemodulated =>
+      _hasSource &&
+      _signalSource.isComplex &&
+      _settings.demodulationMode != DemodulationMode.none &&
+      _settings.spectrumView == SpectrumView.demodulated;
+
+  /// Sample rate of whatever the spectrum currently describes: the capture rate
+  /// for the RF view, or the tuned channel's rate for the demodulated view.
+  double get analysisSampleRate {
+    if (!_hasSource) return _settings.rfBandwidth * 1e6;
+    final double captureRate = _signalSource.sampleRate.toDouble();
+    if (!isShowingDemodulated) return captureRate;
+    return captureRate / _channelPlan.decimation;
+  }
+
+  /// The frequency span the current spectrum covers, in absolute Hz.
+  ///
+  /// The RF view spans the tuned centre +/- half the capture rate; the
+  /// demodulated view is a real audio spectrum running 0..Nyquist. The two have
+  /// completely different axes, so the display has to follow this rather than
+  /// assume either one.
+  ({double start, double end}) get analysisBandHz {
+    if (isShowingDemodulated) {
+      return (start: 0, end: analysisSampleRate / 2);
+    }
+    if (_hasSource && _signalSource.isComplex) {
+      final double centre = _settings.centerFrequency * 1e6;
+      final double half = rfSpanHz / 2;
+      return (start: centre - half, end: centre + half);
+    }
+    if (_settings.signalSource == SignalSourceType.rf) {
+      final double centre = _settings.centerFrequency * 1e6;
+      final double half = rfSpanHz / 2;
+      return (start: centre - half, end: centre + half);
+    }
+    return (start: 0, end: 22050);
+  }
+
+  /// The slice currently being demodulated, if one has been chosen.
+  ({double start, double end})? get tunedBandHz {
+    final start = _tunedStartHz;
+    final end = _tunedEndHz;
+    if (start == null || end == null) return null;
+    return (start: start, end: end);
+  }
+
+  /// How to reach the tuned channel from the current capture.
+  ChannelPlan get _channelPlan {
+    final start = _tunedStartHz;
+    final end = _tunedEndHz;
+    if (start == null || end == null) {
+      return const ChannelPlan(offsetHz: 0, decimation: 1);
+    }
+    return planChannel(
+      startHz: start,
+      endHz: end,
+      centerHz: _settings.centerFrequency * 1e6,
+      captureRateHz: _signalSource.sampleRate.toDouble(),
+    );
+  }
 
   static const int _maxHistory = 40;
   static const int _maxAudioHistory = 5;
@@ -149,7 +252,21 @@ class SignalController extends ChangeNotifier {
   /// Updates the settings used for subsequent processing without rebuilding the
   /// source. Call [reconfigure] when source-affecting parameters change.
   void updateSettings(AppSettings settings) {
+    // Switching between the RF and demodulated views swaps the spectrum for a
+    // completely different signal on a different axis. Accumulated peak-hold
+    // and averaging belong to the old one, so carrying them over would paint
+    // phantom peaks at meaningless frequencies.
+    final bool viewChanged = settings.spectrumView != _settings.spectrumView ||
+        settings.demodulationMode != _settings.demodulationMode;
     _settings = settings;
+    if (viewChanged) {
+      _fftService.clearPeakHold();
+      _fftService.clearAveraging();
+      detectedTone = null;
+      snr = null;
+      fftHistory.clear();
+      currentFftData = const [];
+    }
   }
 
   void clearPeakHold() => _fftService.clearPeakHold();
@@ -214,10 +331,14 @@ class SignalController extends ChangeNotifier {
       _signalSource = _sourceFactory(currentSettings, playFile);
       _hasSource = true;
 
-      // Reset audio-output filters for the new stream and match the FM
-      // de-emphasis time constant to the source's sample rate.
+      // Reset audio-output filters and the down-converter for the new stream.
+      // The de-emphasis rate is provisional: once demodulation runs it is
+      // reconfigured to the tuned channel's rate, which is what actually feeds
+      // the filter.
       _dcBlocker.reset();
-      _deemphasis.configure(sampleRate: _signalSource.sampleRate.toDouble());
+      _channelExtractor.reset();
+      _audioChainRate = _signalSource.sampleRate.toDouble();
+      _deemphasis.configure(sampleRate: _audioChainRate);
       _deemphasis.reset();
 
       // Reusable buffer for decimation.
@@ -228,9 +349,37 @@ class SignalController extends ChangeNotifier {
         try {
           // Hot path: mutate visualization state directly and repaint only the
           // live layers via [frame].
-          final audio = _updateAudioData(data);
+          final bool isComplex = _signalSource.isComplex;
           final bool useDemod =
-              _signalSource.isComplex && _settings.demodulationMode != DemodulationMode.none;
+              isComplex && _settings.demodulationMode != DemodulationMode.none;
+
+          // Audio path: down-convert the selected slice first, so demodulation
+          // hears only the tuned channel instead of the whole captured band.
+          // The visualization keeps using the wideband data below.
+          Float64List audioInput = data;
+          double audioRate = _signalSource.sampleRate.toDouble();
+          if (useDemod) {
+            final plan = _channelPlan;
+            if (!plan.isPassthrough) {
+              audioInput = _channelExtractor.process(
+                data,
+                offsetHz: plan.offsetHz,
+                sampleRate: audioRate,
+                decimation: plan.decimation,
+              );
+              audioRate = audioRate / plan.decimation;
+            }
+            // De-emphasis is rate-dependent, so retune it when the user
+            // changes the channel width.
+            if (audioRate != _audioChainRate) {
+              _audioChainRate = audioRate;
+              _deemphasis.configure(sampleRate: audioRate);
+              _deemphasis.reset();
+              _dcBlocker.reset();
+            }
+          }
+
+          final audio = _updateAudioData(audioInput, useDemod: useDemod);
 
           if (useDemod && _settings.audioOutputEnabled) {
             // Condition the playback signal (on a copy, so the visualization
@@ -242,7 +391,9 @@ class SignalController extends ChangeNotifier {
               _deemphasis.processInPlace(audioForOutput);
             }
 
-            final int decimationFactor = (_signalSource.sampleRate / 44100).round().clamp(1, 100);
+            // Decimate from the channel rate — not the capture rate — to the
+            // ~44.1 kHz the output expects.
+            final int decimationFactor = (audioRate / 44100).round().clamp(1, 100);
             if (decimationFactor > 1) {
               decimationBuffer =
                   AudioUtils.decimateAveraged(audioForOutput, decimationFactor, target: decimationBuffer);
@@ -252,16 +403,23 @@ class SignalController extends ChangeNotifier {
             }
           }
 
+          // Which signal the spectrum describes is the user's choice. RF is the
+          // default and the map they tune by; the demodulated view instead
+          // points the whole analysis chain — tone detection, harmonics, SNR,
+          // peak hold — at the recovered audio.
+          final bool analyseDemodulated = isShowingDemodulated;
+          final bool fftIsComplex = isComplex && !analyseDemodulated;
+
           final fft = _fftService.processSignalData(
-            useDemod ? audio : data,
+            analyseDemodulated ? audio : (isComplex ? data : audio),
             windowSize: _settings.fftWindowSize,
             windowType: _settings.fftWindowType,
-            isComplex: useDemod ? false : _signalSource.isComplex,
+            isComplex: fftIsComplex,
             peakHoldEnabled: _settings.peakHoldEnabled,
             averagingMode: _settings.fftAveragingMode,
             averagingCount: _settings.fftAveragingCount,
           );
-          _processFftFrame(fft, isComplex: useDemod ? false : _signalSource.isComplex);
+          _processFftFrame(fft, isComplex: fftIsComplex);
           frame.tick();
         } catch (e) {
           debugPrint("Signal processing error: $e");
@@ -284,11 +442,13 @@ class SignalController extends ChangeNotifier {
     }
   }
 
-  Float64List _updateAudioData(Float64List rawData) {
+  /// Turns a frame into the audio/waveform signal.
+  ///
+  /// [rawData] is the down-converted channel when [useDemod] is set, not the
+  /// raw capture — demodulating the full band would mix every station at once.
+  Float64List _updateAudioData(Float64List rawData, {required bool useDemod}) {
     Float64List processedAudio;
     final gain = this.gain;
-    final bool useDemod =
-        _signalSource.isComplex && _settings.demodulationMode != DemodulationMode.none;
 
     if (useDemod) {
       final int numPairs = rawData.length ~/ 2;
@@ -343,7 +503,11 @@ class SignalController extends ChangeNotifier {
 
     currentFftData = adjustedFft;
     // Tone detection is only meaningful for real-valued signals.
-    detectedTone = isComplex ? null : _fftService.detectPrimaryTone(adjustedFft, _signalSource.sampleRate);
+    // Tone detection needs the rate of the signal actually analysed, which in
+    // the demodulated view is the tuned channel's rate, not the capture rate.
+    detectedTone = isComplex
+        ? null
+        : _fftService.detectPrimaryTone(adjustedFft, analysisSampleRate.round());
     snr = _fftService.calculateSNR(adjustedFft);
 
     if (adjustedFft.isNotEmpty) {
@@ -381,7 +545,7 @@ class SignalController extends ChangeNotifier {
         if (_demoPhase > 2 * math.pi) _demoPhase -= 2 * math.pi;
       }
       if (_disposed) return;
-      _updateAudioData(samples);
+      _updateAudioData(samples, useDemod: false);
 
       final fft = _fftService.processSignalData(
         samples,
@@ -444,19 +608,74 @@ class SignalController extends ChangeNotifier {
     }
   }
 
-  Future<void> _setupIntegratedDriver() async {
-    final success = await NativeSdrDriver().initialize();
-    if (success && !_disposed) {
-      // Re-initialize source now that the driver is ready.
-      reconfigure();
-      notifyListeners();
+  /// True when the integrated USB source is the one currently in use.
+  bool get _usingIntegratedSource =>
+      playFile == null &&
+      !isDemoMode &&
+      _settings.signalSource == SignalSourceType.rf &&
+      _settings.rfSource == RfSourceType.integrated;
+
+  /// Drives the driver lifecycle off hot-plug events so plugging a dongle in
+  /// is enough to get it set up — no settings round-trip required.
+  void _onDriverStateChanged(SdrDriverState state) {
+    if (_disposed) return;
+
+    if (_usingIntegratedSource) {
+      switch (state) {
+        case SdrDriverState.ready:
+          // Attached and permitted but not open yet: bring it up.
+          unawaited(_setupIntegratedDriver());
+          break;
+        case SdrDriverState.open:
+          // Rebind the source so it streams from the now-open dongle.
+          unawaited(reconfigure());
+          break;
+        case SdrDriverState.noDevice:
+        case SdrDriverState.error:
+          // Unplugged (or the stream died) mid-capture: stop cleanly instead
+          // of leaving a dead source running.
+          if (_isCapturing) unawaited(toggleCapture());
+          break;
+        case SdrDriverState.needsPermission:
+        case SdrDriverState.unsupported:
+          break;
+      }
     }
+
+    // The settings sheet renders the driver state, so refresh either way.
+    notifyListeners();
+  }
+
+  Future<void> _setupIntegratedDriver() async {
+    // reconfigure() runs from the resulting SdrDriverState.open event, so the
+    // source is rebound exactly once regardless of who triggered the open.
+    final success = await NativeSdrDriver().initialize(
+      sampleRate: clampRtlSampleRate((_settings.rfBandwidth * 1e6).toInt()),
+      frequency: (_settings.centerFrequency * 1e6).toInt(),
+      ppm: _settings.ppmCorrection.round(),
+    );
+    if (!success && !_disposed) notifyListeners();
+  }
+
+  /// Requests USB access for an attached dongle, then opens it. Surfaced as
+  /// the settings sheet's **Connect** action, so a driver that needs setup is
+  /// something the user can act on rather than just a status label.
+  Future<void> setupIntegratedDriver() async {
+    final driver = NativeSdrDriver();
+    await driver.refreshDevices();
+    if (_disposed) return;
+    if (driver.state == SdrDriverState.needsPermission) {
+      if (!await driver.requestPermission()) return;
+      if (_disposed) return;
+    }
+    await _setupIntegratedDriver();
   }
 
   @override
   void dispose() {
     _disposed = true;
     _signalSubscription?.cancel();
+    _driverStateSubscription?.cancel();
     _demoTimer?.cancel();
     frame.dispose();
     _signalSource.dispose();

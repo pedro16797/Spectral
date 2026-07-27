@@ -31,7 +31,14 @@ is a thin **view** that observes the controller:
           capture backend.
         - `fft_service.dart`: FFT, windowing, peak-hold, averaging, tone/SNR
           detection.
-        - `settings_model.dart`: `AppSettings` immutable model + serialization.
+        - `channel_extractor.dart`: digital down-converter. Mixes the tuned
+          slice of a wideband I/Q stream to baseband with an NCO and decimates
+          to the channel rate, so demodulation hears one station rather than the
+          whole captured band. `planChannel()` works out the offset and
+          decimation for a requested window.
+        - `settings_model.dart`: `AppSettings` immutable model + serialization,
+          including `SpectrumView` (whether the analysis chain describes the RF
+          band or the demodulated audio).
         - `spectral_theme.dart`: Per-theme accent/background colors and the
           waterfall magnitude→color ramp.
     - **`audio/`**: `audio_capture_service.dart` (mic capture via `record`) and
@@ -40,11 +47,16 @@ is a thin **view** that observes the controller:
         - `rtl_tcp_capture_service.dart`: `rtl_tcp` client (uses `dart:io`); has
           a web stub (`rtl_tcp_capture_service_stub.dart`) selected via
           conditional import so the web build does not pull in `dart:io`.
-        - `rf_capture_service.dart` / `integrated_rf_capture_service.dart`:
-          currently *simulated* RF sources.
-        - `native_sdr_driver.dart` + `native_sdr_driver_ffi.dart` /
-          `native_sdr_driver_web.dart`: platform driver delegate (FFI on
-          Android, mocked on web).
+        - `rf_capture_service.dart`: simulated RF source (mock).
+        - `integrated_rf_capture_service.dart`: live I/Q from a USB dongle
+          claimed by the app itself, via the native driver below.
+        - `rtl2832u.dart`: platform-free RTL constants shared by both RF paths
+          (known USB IDs, tuner enum, sample-rate limits, I/Q conversion).
+        - `native_sdr_driver.dart` + `native_sdr_driver_channel.dart` /
+          `native_sdr_driver_web.dart`: platform driver delegate (Android USB
+          host via platform channels, unsupported on web). The register-level
+          driver itself lives in
+          `android/app/src/main/kotlin/com/example/spectral/usb/`.
     - **`ui/`**: Rendering and interaction.
         - `waveform_painter.dart`, `fft_bar_chart_painter.dart`,
           `waterfall_painter.dart`: `CustomPainter` visualizations.
@@ -54,7 +66,10 @@ is a thin **view** that observes the controller:
       `shared_preferences`).
     - **`utils/`**: Shared helpers — `audio_utils.dart` (PCM/decimation),
       `frequency_formatter.dart`, `frequency_scale.dart` (skew transforms),
-      `localization_helper.dart`, `mock_file_signal_source.dart`.
+      `spectrum_bins.dart` (maps display columns onto FFT bins for both
+      painters; handles the RF case where the spectrum is centred on the tuned
+      frequency rather than starting at 0 Hz), `localization_helper.dart`,
+      `mock_file_signal_source.dart`.
 - **`test/`**: Unit and widget tests.
 - **`docs/`**: Project documentation, roadmaps, and guides.
 - **`resources/`**: Static assets.

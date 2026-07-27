@@ -87,9 +87,21 @@ void main() {
       showSnr: true,
       demodulationMode: DemodulationMode.fm,
       audioOutputEnabled: true,
+      spectrumView: SpectrumView.demodulated,
     );
 
     final restored = AppSettings.fromMap(original.toMap());
     expect(restored.toMap(), original.toMap());
+    // Named explicitly: a persisted view that silently reset to RF on restart
+    // would look like the toggle had been ignored.
+    expect(restored.spectrumView, SpectrumView.demodulated);
+  });
+
+  test('an unknown or missing spectrum view falls back to RF', () {
+    expect(AppSettings.fromMap(const {}).spectrumView, SpectrumView.rf);
+    expect(
+      AppSettings.fromMap(const {'spectrumView': 'nonsense'}).spectrumView,
+      SpectrumView.rf,
+    );
   });
 }
