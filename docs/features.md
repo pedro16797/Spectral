@@ -24,11 +24,40 @@ The Frequency Focus Slider is a powerful tool for zooming into specific spectral
 - **Zooming:** The FFT bar chart and Waterfall visualization dynamically update to show only the selected frequency range.
 - **Tone Analysis:** When a clear tone is detected, the slider displays the fundamental frequency (e.g., `440Hz` or `12.4kHz`), the corresponding musical note (e.g., `A4`), and any detected harmonics.
 
+## 🔀 RF or Audio: choosing what is analysed
+
+On an SDR source there are two genuinely different signals to look at, and a
+toggle in the header (next to the settings button) switches between them.
+
+| View | Spectrum shows | Axis |
+| --- | --- | --- |
+| **Radio band** (default) | The whole captured RF band | Centre frequency ± half the capture rate |
+| **Demodulated audio** | The audio recovered from the tuned channel | 0 Hz – channel Nyquist |
+
+The choice drives the *entire* analysis chain, not just the picture: FFT input,
+tone detection, harmonics, SNR, peak hold and the waterfall all follow it. Peak
+hold and waterfall history are cleared on each switch, since they describe the
+previous signal on a different axis.
+
+![Demodulated audio view](../resources/screenshots/sdr_demodulated_view.png)
+
+Above, the same capture as below but with the toggle flipped: the axis has
+become a 0 Hz-to-Nyquist audio spectrum, and SNR and harmonics now describe the
+recovered programme.
+
+The toggle only appears for an SDR source — an audio source has just the one
+spectrum. It is shown but disabled when **Demodulation Mode** is `None`, since
+there is then nothing to demodulate.
+
+Switching views never costs you your station: the frequency slider is a display
+zoom while the audio view is up, and the tuned channel is restored when you
+return to the radio band.
+
+![Advanced Analysis](../resources/screenshots/sdr_advanced_analysis.png)
+
 ## 📊 Advanced Spectral Analysis
 
 Sprint 4.2 introduced professional-grade tools for deep signal analysis.
-
-![Advanced Analysis](../resources/screenshots/sdr_advanced_analysis.png)
 
 ### Peak Hold
 - **Function:** Retains the maximum magnitude of every frequency bin over time.

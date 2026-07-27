@@ -31,7 +31,14 @@ is a thin **view** that observes the controller:
           capture backend.
         - `fft_service.dart`: FFT, windowing, peak-hold, averaging, tone/SNR
           detection.
-        - `settings_model.dart`: `AppSettings` immutable model + serialization.
+        - `channel_extractor.dart`: digital down-converter. Mixes the tuned
+          slice of a wideband I/Q stream to baseband with an NCO and decimates
+          to the channel rate, so demodulation hears one station rather than the
+          whole captured band. `planChannel()` works out the offset and
+          decimation for a requested window.
+        - `settings_model.dart`: `AppSettings` immutable model + serialization,
+          including `SpectrumView` (whether the analysis chain describes the RF
+          band or the demodulated audio).
         - `spectral_theme.dart`: Per-theme accent/background colors and the
           waterfall magnitude→color ramp.
     - **`audio/`**: `audio_capture_service.dart` (mic capture via `record`) and
@@ -59,7 +66,10 @@ is a thin **view** that observes the controller:
       `shared_preferences`).
     - **`utils/`**: Shared helpers — `audio_utils.dart` (PCM/decimation),
       `frequency_formatter.dart`, `frequency_scale.dart` (skew transforms),
-      `localization_helper.dart`, `mock_file_signal_source.dart`.
+      `spectrum_bins.dart` (maps display columns onto FFT bins for both
+      painters; handles the RF case where the spectrum is centred on the tuned
+      frequency rather than starting at 0 Hz), `localization_helper.dart`,
+      `mock_file_signal_source.dart`.
 - **`test/`**: Unit and widget tests.
 - **`docs/`**: Project documentation, roadmaps, and guides.
 - **`resources/`**: Static assets.

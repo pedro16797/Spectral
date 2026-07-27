@@ -112,6 +112,8 @@ while demodulating — it is the map you tune by.
 3. With **Demodulation Mode** set to `FM` (or `AM`) and **Audio Output** on,
    you hear *only that window*.
 
+![Tuned FM channel](../resources/screenshots/sdr_tuned_channel.png)
+
 The selection is a digital down-converter, not just a zoom: the chosen slice is
 mixed to baseband and decimated before demodulation, so neighbouring stations
 are filtered out rather than mixed in. Retuning is instant and does not restart
@@ -121,6 +123,22 @@ around inside the band it is already receiving.
 Very narrow selections are widened to 48 kHz, the least that can still carry
 audio. FM broadcast wants roughly 150-200 kHz to sound clean; a much narrower
 window will be audible but muffled.
+
+### 5. Analysing the audio instead of the band
+The toggle in the header (beside the settings icon) switches what the whole
+analysis chain describes:
+
+- **Radio band** (default, tower icon) — the captured RF spectrum. This is the
+  map you tune by, so it stays available while you listen.
+- **Demodulated audio** (waveform icon) — the audio recovered from the tuned
+  channel, on a 0 Hz-to-Nyquist axis. Tone detection, harmonics, SNR and peak
+  hold then describe the programme rather than the radio spectrum.
+
+The toggle needs a **Demodulation Mode** set; without one it is visible but
+disabled. Switching clears peak hold and waterfall history, because they belong
+to the previous signal on a different axis. Your tuned station is preserved:
+while the audio view is up the frequency slider only zooms the display, and the
+channel is restored when you switch back.
 
 ### Supported hardware
 The driver implements two tuner families:
