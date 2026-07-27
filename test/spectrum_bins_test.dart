@@ -34,11 +34,18 @@ void main() {
         bandEndHz: 22050,
         frequencySkew: 1.0,
       );
-      // Spike in the lower half must not appear.
+      // Of 16 bins, the upper half is bins 8-15, split across two columns:
+      // column 0 covers 8-11 and column 1 covers 12-15.
+      //
+      // A spike in the lower half is outside the view entirely.
       expect(mapper.peak(spikeAt(1, 16), 0), 1.0);
       expect(mapper.peak(spikeAt(1, 16), 1), 1.0);
-      // Spike in the upper half must.
-      expect(mapper.peak(spikeAt(12, 16), 0), 100.0);
+      // Spikes in the upper half appear in whichever column covers them.
+      expect(mapper.peak(spikeAt(9, 16), 0), 100.0);
+      expect(mapper.peak(spikeAt(12, 16), 1), 100.0);
+      // ...and not in the neighbouring column.
+      expect(mapper.peak(spikeAt(9, 16), 1), 1.0);
+      expect(mapper.peak(spikeAt(12, 16), 0), 1.0);
     });
   });
 
