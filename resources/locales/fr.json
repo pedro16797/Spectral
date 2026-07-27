@@ -7,6 +7,12 @@
     "name": "Spectral",
     "tagline": "Visualisation Spectrale Moderne"
   },
+  "header": {
+    "spectrum_view": "Vue du spectre",
+    "spectrum_view_rf": "Bande radio affichée — touchez pour analyser l'audio démodulé",
+    "spectrum_view_demodulated": "Audio démodulé affiché — touchez pour analyser la bande radio",
+    "spectrum_view_needs_demod": "Choisissez un mode de démodulation pour analyser l'audio"
+  },
   "visualizations": {
     "waveform": "Forme d'onde",
     "fft": "FFT",

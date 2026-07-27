@@ -7,6 +7,12 @@
     "name": "Spectral",
     "tagline": "Espektro Bistaratze Modernoa"
   },
+  "header": {
+    "spectrum_view": "Espektroaren ikuspegia",
+    "spectrum_view_rf": "Irrati-banda erakusten: sakatu demodulatutako audioa aztertzeko",
+    "spectrum_view_demodulated": "Demodulatutako audioa erakusten: sakatu irrati-banda aztertzeko",
+    "spectrum_view_needs_demod": "Ezarri demodulazio-modu bat audioa aztertzeko"
+  },
   "visualizations": {
     "waveform": "Uhin-forma",
     "fft": "FFT",

@@ -7,6 +7,12 @@
     "name": "Spectral",
     "tagline": "モダンなスペクトル可視化"
   },
+  "header": {
+    "spectrum_view": "スペクトル表示",
+    "spectrum_view_rf": "電波帯を表示中 — タップで復調音声を解析",
+    "spectrum_view_demodulated": "復調音声を表示中 — タップで電波帯を解析",
+    "spectrum_view_needs_demod": "音声を解析するには復調モードを設定してください"
+  },
   "visualizations": {
     "waveform": "波形",
     "fft": "FFT",

@@ -74,6 +74,113 @@ void main() {
     );
   }
 
+  group('spectrum view toggle', () {
+    // A complex SDR source with FM demodulation is the only configuration in
+    // which the two views differ.
+    const sdr = AppSettings(
+      signalSource: SignalSourceType.rf,
+      rfSource: RfSourceType.mock,
+      centerFrequency: 100.0,
+      rfBandwidth: 2.0,
+      demodulationMode: DemodulationMode.fm,
+    );
+
+    test('defaults to the RF band', () async {
+      final c = makeController(sdr, (_) {},
+          isComplex: true, sampleRate: 2000000);
+      await settle();
+      expect(c.isShowingDemodulated, isFalse);
+      expect(c.analysisSampleRate, 2000000);
+      // The RF axis is centred on the tuned frequency.
+      expect(c.analysisBandHz.start, closeTo(99e6, 1));
+      expect(c.analysisBandHz.end, closeTo(101e6, 1));
+      c.dispose();
+    });
+
+    test('the demodulated view switches to an audio axis', () async {
+      final c = makeController(sdr, (_) {},
+          isComplex: true, sampleRate: 2000000);
+      await settle();
+      c.setTunedBand(99.9e6, 100.1e6); // a 200 kHz channel
+      c.updateSettings(sdr.copyWith(spectrumView: SpectrumView.demodulated));
+      await settle();
+
+      expect(c.isShowingDemodulated, isTrue);
+      // The channel rate, not the capture rate.
+      expect(c.analysisSampleRate, lessThan(2000000));
+      // A real spectrum starts at DC rather than at an RF centre frequency.
+      expect(c.analysisBandHz.start, 0);
+      expect(c.analysisBandHz.end, closeTo(c.analysisSampleRate / 2, 1));
+      c.dispose();
+    });
+
+    test('the toggle is inert without a demodulation mode', () async {
+      final c = makeController(
+        sdr.copyWith(demodulationMode: DemodulationMode.none),
+        (_) {},
+        isComplex: true,
+        sampleRate: 2000000,
+      );
+      await settle();
+      c.updateSettings(sdr.copyWith(
+        demodulationMode: DemodulationMode.none,
+        spectrumView: SpectrumView.demodulated,
+      ));
+      await settle();
+      // Nothing to demodulate, so the RF band stays on screen.
+      expect(c.isShowingDemodulated, isFalse);
+      c.dispose();
+    });
+
+    test('an audio source never enters the demodulated view', () async {
+      final c = makeController(
+        const AppSettings(spectrumView: SpectrumView.demodulated),
+        (_) {},
+      );
+      await settle();
+      expect(c.isShowingDemodulated, isFalse);
+      c.dispose();
+    });
+
+    test('switching views drops accumulated analysis state', () async {
+      late FakeSignalSource src;
+      final c = makeController(sdr, (s) => src = s,
+          isComplex: true, sampleRate: 2000000);
+      c.setTunedBand(99.9e6, 100.1e6);
+      await settle();
+
+      src.emit(Float64List.fromList(List<double>.filled(8192, 0.5)));
+      await settle();
+      expect(c.currentFftData, isNotEmpty);
+
+      c.updateSettings(sdr.copyWith(spectrumView: SpectrumView.demodulated));
+      // Peaks and history belong to the old spectrum, on a different axis;
+      // carrying them over would paint phantom signals.
+      expect(c.currentFftData, isEmpty);
+      expect(c.fftHistory, isEmpty);
+      expect(c.detectedTone, isNull);
+      expect(c.snr, isNull);
+      c.dispose();
+    });
+
+    test('the tuned channel survives a round trip through both views', () async {
+      final c = makeController(sdr, (_) {},
+          isComplex: true, sampleRate: 2000000);
+      await settle();
+      c.setTunedBand(99.9e6, 100.1e6);
+
+      c.updateSettings(sdr.copyWith(spectrumView: SpectrumView.demodulated));
+      await settle();
+      c.updateSettings(sdr.copyWith(spectrumView: SpectrumView.rf));
+      await settle();
+
+      // Toggling the view must not cost the user their station.
+      expect(c.tunedBandHz?.start, closeTo(99.9e6, 1));
+      expect(c.tunedBandHz?.end, closeTo(100.1e6, 1));
+      c.dispose();
+    });
+  });
+
   test('applies gain to real audio samples', () async {
     late FakeSignalSource src;
     final c = makeController(const AppSettings(), (s) => src = s);

@@ -283,18 +283,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   /// 3.2 MS/s. Labelling the axis with the requested width would spread the
   /// captured signal across a window several times too wide, which reads as a
   /// featureless smear rather than distinct stations.
-  RangeValues _fullRangeForSettings(AppSettings settings) {
-    if (settings.signalSource == SignalSourceType.rf) {
-      final double center = settings.centerFrequency * 1e6;
-      final double halfSpan = _controller.rfSpanHz / 2;
-      return RangeValues(center - halfSpan, center + halfSpan);
-    }
-    return const RangeValues(0, 22050);
+  RangeValues _fullRangeForSettings() {
+    final band = _controller.analysisBandHz;
+    return RangeValues(band.start, band.end);
   }
 
   /// The full band currently on screen. Derived, so the painters, the slider
   /// and the tuned-channel plan cannot drift apart.
-  RangeValues get _fullRange => _fullRangeForSettings(widget.settings);
+  RangeValues get _fullRange => _fullRangeForSettings();
 
   /// Span the visible axis was last built for, so the user's zoom selection is
   /// only reset when the underlying band actually changes.
@@ -303,14 +299,34 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   /// Rebuilds the axis if the captured band changed, preserving the user's
   /// selection otherwise. Also keeps the controller's tuned channel in step.
   void _syncFullRange(AppSettings settings) {
-    final full = _fullRangeForSettings(settings);
-    if (_lastFullRange == null ||
-        (full.start - _lastFullRange!.start).abs() > 1 ||
-        (full.end - _lastFullRange!.end).abs() > 1) {
-      _lastFullRange = full;
-      _freqRange = full;
-      _controller.setTunedBand(full.start, full.end);
+    final full = _fullRangeForSettings();
+    if (_lastFullRange != null &&
+        (full.start - _lastFullRange!.start).abs() <= 1 &&
+        (full.end - _lastFullRange!.end).abs() <= 1) {
+      return;
     }
+    _lastFullRange = full;
+
+    // In the demodulated view the axis is an audio spectrum, so the selection
+    // is a display zoom only — pushing it to setTunedBand would reinterpret
+    // audio frequencies as an RF slice and retune off the station.
+    if (_controller.isShowingDemodulated) {
+      _freqRange = full;
+      return;
+    }
+
+    // Back on RF: restore the channel still being demodulated, so toggling the
+    // view does not cost the user their station.
+    final tuned = _controller.tunedBandHz;
+    if (tuned != null &&
+        tuned.start >= full.start - 1 &&
+        tuned.end <= full.end + 1 &&
+        tuned.end > tuned.start) {
+      _freqRange = RangeValues(tuned.start, tuned.end);
+      return;
+    }
+    _freqRange = full;
+    _controller.setTunedBand(full.start, full.end);
   }
 
   Future<void> _toggleCapture() async {
@@ -439,7 +455,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                       maxFreq: _freqRange.end,
                       bandStart: _fullRange.start,
                       bandEnd: _fullRange.end,
-                      sampleRate: _controller.sampleRate,
+                      sampleRate: _controller.analysisSampleRate.round(),
                       theme: widget.settings.theme,
                       frequencySkew: _squish,
                     ),
@@ -648,7 +664,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                     maxFreq: _freqRange.end,
                     bandStart: _fullRange.start,
                     bandEnd: _fullRange.end,
-                    sampleRate: _controller.sampleRate,
+                    sampleRate: _controller.analysisSampleRate.round(),
                     frequencySkew: _squish,
                   ),
                 ),
@@ -658,6 +674,34 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         ),
       );
     });
+  }
+
+  /// There is only something to demodulate when a mode is selected; without
+  /// one the toggle stays visible but inert, so its absence is never a mystery.
+  bool get _canShowDemodulated =>
+      widget.settings.demodulationMode != DemodulationMode.none;
+
+  String get _spectrumViewTooltip {
+    if (!_canShowDemodulated) {
+      return LocalizationHelper.get('header.spectrum_view_needs_demod');
+    }
+    return _controller.isShowingDemodulated
+        ? LocalizationHelper.get('header.spectrum_view_demodulated')
+        : LocalizationHelper.get('header.spectrum_view_rf');
+  }
+
+  /// Flips the whole analysis chain — spectrum, waterfall, tone detection,
+  /// harmonics, SNR and peak hold — between the radio band and the audio
+  /// recovered from the tuned channel.
+  void _toggleSpectrumView() {
+    final next = widget.settings.spectrumView == SpectrumView.demodulated
+        ? SpectrumView.rf
+        : SpectrumView.demodulated;
+    final updated = widget.settings.copyWith(spectrumView: next);
+    widget.onSettingsChanged(updated);
+    // The controller must see the change before the axis is recomputed from it.
+    _controller.updateSettings(updated);
+    setState(() => _syncFullRange(updated));
   }
 
   Widget _buildMinimalHeader(bool isLandscape) {
@@ -690,6 +734,27 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ),
           const SizedBox(width: 12),
         ],
+        // Only meaningful for SDR: an audio source has just the one spectrum.
+        if (widget.settings.signalSource == SignalSourceType.rf) ...[
+          Semantics(
+            label: LocalizationHelper.get('header.spectrum_view'),
+            button: true,
+            child: Tooltip(
+              message: _spectrumViewTooltip,
+              child: _buildHeaderAction(
+                icon: _controller.isShowingDemodulated
+                    ? Icons.graphic_eq_rounded
+                    : Icons.cell_tower_rounded,
+                iconColor: _controller.isShowingDemodulated
+                    ? Theme.of(context).colorScheme.secondary
+                    : Colors.white70,
+                enabled: _canShowDemodulated,
+                onPressed: _toggleSpectrumView,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
         if (!isLandscape || MediaQuery.of(context).size.shortestSide < 600)
           Semantics(
             label: "Settings",
@@ -714,6 +779,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     required VoidCallback onPressed,
     Color? iconColor,
     double? iconSize,
+    bool enabled = true,
   }) {
     return ClipOval(
       child: BackdropFilter(
@@ -725,11 +791,17 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: IconButton(
-            icon: Icon(icon, size: iconSize ?? 20, color: iconColor ?? Colors.white70),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              onPressed();
-            },
+            icon: Icon(
+              icon,
+              size: iconSize ?? 20,
+              color: enabled ? (iconColor ?? Colors.white70) : Colors.white24,
+            ),
+            onPressed: enabled
+                ? () {
+                    HapticFeedback.lightImpact();
+                    onPressed();
+                  }
+                : null,
           ),
         ),
       ),
@@ -858,8 +930,12 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           max: _fullRange.end,
           onChanged: (values) {
             setState(() => _freqRange = values);
-            // Tuning the visible window also tunes what is demodulated.
-            _controller.setTunedBand(values.start, values.end);
+            // On the RF band the visible window *is* the tuned channel. In the
+            // demodulated view it is only a zoom over the audio spectrum, and
+            // retuning from it would throw the station away.
+            if (!_controller.isShowingDemodulated) {
+              _controller.setTunedBand(values.start, values.end);
+            }
           },
           accentColor: accentColor,
         ),

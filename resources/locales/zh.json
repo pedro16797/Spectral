@@ -7,6 +7,12 @@
     "name": "Spectral",
     "tagline": "现代频谱可视化"
   },
+  "header": {
+    "spectrum_view": "频谱视图",
+    "spectrum_view_rf": "正在显示射频频段 — 点按以分析解调音频",
+    "spectrum_view_demodulated": "正在显示解调音频 — 点按以分析射频频段",
+    "spectrum_view_needs_demod": "请先设置解调模式以分析音频"
+  },
   "visualizations": {
     "waveform": "波形",
     "fft": "FFT",

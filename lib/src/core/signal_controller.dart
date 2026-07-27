@@ -141,6 +141,54 @@ class SignalController extends ChangeNotifier {
     _tunedEndHz = endHz;
   }
 
+  /// True when the analysis chain should describe the demodulated audio rather
+  /// than the radio band. Requires something to actually demodulate.
+  bool get isShowingDemodulated =>
+      _hasSource &&
+      _signalSource.isComplex &&
+      _settings.demodulationMode != DemodulationMode.none &&
+      _settings.spectrumView == SpectrumView.demodulated;
+
+  /// Sample rate of whatever the spectrum currently describes: the capture rate
+  /// for the RF view, or the tuned channel's rate for the demodulated view.
+  double get analysisSampleRate {
+    if (!_hasSource) return _settings.rfBandwidth * 1e6;
+    final double captureRate = _signalSource.sampleRate.toDouble();
+    if (!isShowingDemodulated) return captureRate;
+    return captureRate / _channelPlan.decimation;
+  }
+
+  /// The frequency span the current spectrum covers, in absolute Hz.
+  ///
+  /// The RF view spans the tuned centre +/- half the capture rate; the
+  /// demodulated view is a real audio spectrum running 0..Nyquist. The two have
+  /// completely different axes, so the display has to follow this rather than
+  /// assume either one.
+  ({double start, double end}) get analysisBandHz {
+    if (isShowingDemodulated) {
+      return (start: 0, end: analysisSampleRate / 2);
+    }
+    if (_hasSource && _signalSource.isComplex) {
+      final double centre = _settings.centerFrequency * 1e6;
+      final double half = rfSpanHz / 2;
+      return (start: centre - half, end: centre + half);
+    }
+    if (_settings.signalSource == SignalSourceType.rf) {
+      final double centre = _settings.centerFrequency * 1e6;
+      final double half = rfSpanHz / 2;
+      return (start: centre - half, end: centre + half);
+    }
+    return (start: 0, end: 22050);
+  }
+
+  /// The slice currently being demodulated, if one has been chosen.
+  ({double start, double end})? get tunedBandHz {
+    final start = _tunedStartHz;
+    final end = _tunedEndHz;
+    if (start == null || end == null) return null;
+    return (start: start, end: end);
+  }
+
   /// How to reach the tuned channel from the current capture.
   ChannelPlan get _channelPlan {
     final start = _tunedStartHz;
@@ -204,7 +252,21 @@ class SignalController extends ChangeNotifier {
   /// Updates the settings used for subsequent processing without rebuilding the
   /// source. Call [reconfigure] when source-affecting parameters change.
   void updateSettings(AppSettings settings) {
+    // Switching between the RF and demodulated views swaps the spectrum for a
+    // completely different signal on a different axis. Accumulated peak-hold
+    // and averaging belong to the old one, so carrying them over would paint
+    // phantom peaks at meaningless frequencies.
+    final bool viewChanged = settings.spectrumView != _settings.spectrumView ||
+        settings.demodulationMode != _settings.demodulationMode;
     _settings = settings;
+    if (viewChanged) {
+      _fftService.clearPeakHold();
+      _fftService.clearAveraging();
+      detectedTone = null;
+      snr = null;
+      fftHistory.clear();
+      currentFftData = const [];
+    }
   }
 
   void clearPeakHold() => _fftService.clearPeakHold();
@@ -341,20 +403,23 @@ class SignalController extends ChangeNotifier {
             }
           }
 
-          // The spectrum always shows the RF band for complex sources, even
-          // while demodulating: it is the map the user tunes by, so replacing
-          // it with the audio spectrum would remove the only view of where the
-          // stations are.
+          // Which signal the spectrum describes is the user's choice. RF is the
+          // default and the map they tune by; the demodulated view instead
+          // points the whole analysis chain — tone detection, harmonics, SNR,
+          // peak hold — at the recovered audio.
+          final bool analyseDemodulated = isShowingDemodulated;
+          final bool fftIsComplex = isComplex && !analyseDemodulated;
+
           final fft = _fftService.processSignalData(
-            isComplex ? data : audio,
+            analyseDemodulated ? audio : (isComplex ? data : audio),
             windowSize: _settings.fftWindowSize,
             windowType: _settings.fftWindowType,
-            isComplex: isComplex,
+            isComplex: fftIsComplex,
             peakHoldEnabled: _settings.peakHoldEnabled,
             averagingMode: _settings.fftAveragingMode,
             averagingCount: _settings.fftAveragingCount,
           );
-          _processFftFrame(fft, isComplex: isComplex);
+          _processFftFrame(fft, isComplex: fftIsComplex);
           frame.tick();
         } catch (e) {
           debugPrint("Signal processing error: $e");
@@ -438,7 +503,11 @@ class SignalController extends ChangeNotifier {
 
     currentFftData = adjustedFft;
     // Tone detection is only meaningful for real-valued signals.
-    detectedTone = isComplex ? null : _fftService.detectPrimaryTone(adjustedFft, _signalSource.sampleRate);
+    // Tone detection needs the rate of the signal actually analysed, which in
+    // the demodulated view is the tuned channel's rate, not the capture rate.
+    detectedTone = isComplex
+        ? null
+        : _fftService.detectPrimaryTone(adjustedFft, analysisSampleRate.round());
     snr = _fftService.calculateSNR(adjustedFft);
 
     if (adjustedFft.isNotEmpty) {

@@ -30,6 +30,20 @@ enum FftAveragingMode {
   exponential,
 }
 
+/// What the spectrum, waterfall and analysis readouts represent.
+///
+/// Only meaningful for a complex (SDR) source, where there are two genuinely
+/// different signals to look at: the radio band itself, or the audio recovered
+/// from the tuned channel.
+enum SpectrumView {
+  /// The captured RF band — the map used to find and tune stations.
+  rf,
+
+  /// The demodulated audio, so tone detection, harmonics and SNR describe the
+  /// recovered programme rather than the radio spectrum.
+  demodulated,
+}
+
 enum DemodulationMode {
   none,
   am,
@@ -56,6 +70,7 @@ class AppSettings {
   final bool showSnr;
   final DemodulationMode demodulationMode;
   final bool audioOutputEnabled;
+  final SpectrumView spectrumView;
 
   const AppSettings({
     this.theme = AppTheme.frost,
@@ -77,6 +92,7 @@ class AppSettings {
     this.showSnr = false,
     this.demodulationMode = DemodulationMode.none,
     this.audioOutputEnabled = false,
+    this.spectrumView = SpectrumView.rf,
   });
 
   AppSettings copyWith({
@@ -99,6 +115,7 @@ class AppSettings {
     bool? showSnr,
     DemodulationMode? demodulationMode,
     bool? audioOutputEnabled,
+    SpectrumView? spectrumView,
   }) {
     return AppSettings(
       theme: theme ?? this.theme,
@@ -120,6 +137,7 @@ class AppSettings {
       showSnr: showSnr ?? this.showSnr,
       demodulationMode: demodulationMode ?? this.demodulationMode,
       audioOutputEnabled: audioOutputEnabled ?? this.audioOutputEnabled,
+      spectrumView: spectrumView ?? this.spectrumView,
     );
   }
 
@@ -144,6 +162,7 @@ class AppSettings {
       'showSnr': showSnr,
       'demodulationMode': demodulationMode.name,
       'audioOutputEnabled': audioOutputEnabled,
+      'spectrumView': spectrumView.name,
     };
   }
 
@@ -186,6 +205,10 @@ class AppSettings {
         orElse: () => DemodulationMode.none,
       ),
       audioOutputEnabled: _asBool(map['audioOutputEnabled'], false),
+      spectrumView: SpectrumView.values.firstWhere(
+        (e) => e.name == (map['spectrumView'] ?? 'rf'),
+        orElse: () => SpectrumView.rf,
+      ),
     );
   }
 }
