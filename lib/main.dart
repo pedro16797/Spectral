@@ -292,6 +292,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return const RangeValues(0, 22050);
   }
 
+  /// The full band currently on screen. Derived, so the painters, the slider
+  /// and the tuned-channel plan cannot drift apart.
+  RangeValues get _fullRange => _fullRangeForSettings(widget.settings);
+
   /// Span the visible axis was last built for, so the user's zoom selection is
   /// only reset when the underlying band actually changes.
   RangeValues? _lastFullRange;
@@ -433,6 +437,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                       fftHistory: _controller.fftHistory,
                       minFreq: _freqRange.start,
                       maxFreq: _freqRange.end,
+                      bandStart: _fullRange.start,
+                      bandEnd: _fullRange.end,
                       sampleRate: _controller.sampleRate,
                       theme: widget.settings.theme,
                       frequencySkew: _squish,
@@ -640,6 +646,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                     color: accentColor,
                     minFreq: _freqRange.start,
                     maxFreq: _freqRange.end,
+                    bandStart: _fullRange.start,
+                    bandEnd: _fullRange.end,
                     sampleRate: _controller.sampleRate,
                     frequencySkew: _squish,
                   ),
@@ -807,7 +815,6 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   Widget _buildFrequencyFocusSlider() {
     final accentColor = Theme.of(context).colorScheme.secondary;
-    final fullRange = _fullRangeForSettings(widget.settings);
 
     // Report the *selected* window rather than the whole band: on RF that is
     // the slice being demodulated, so it is the number the user is tuning.
@@ -847,8 +854,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         const SizedBox(height: 8),
         RadioDialFocusSlider(
           values: _freqRange,
-          min: fullRange.start,
-          max: fullRange.end,
+          min: _fullRange.start,
+          max: _fullRange.end,
           onChanged: (values) {
             setState(() => _freqRange = values);
             // Tuning the visible window also tunes what is demodulated.

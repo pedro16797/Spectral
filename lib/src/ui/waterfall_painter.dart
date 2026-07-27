@@ -1,9 +1,8 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../core/settings_model.dart';
 import '../core/spectral_theme.dart';
-import '../utils/frequency_scale.dart';
+import '../utils/spectrum_bins.dart';
 
 class WaterfallPainter extends CustomPainter {
   final List<List<double>> fftHistory;
@@ -13,6 +12,12 @@ class WaterfallPainter extends CustomPainter {
   final AppTheme theme;
   final double frequencySkew;
 
+  /// Full span the FFT data covers. Null means a real (audio) spectrum running
+  /// 0..Nyquist; a complex RF spectrum must pass its centre ± sampleRate/2,
+  /// because absolute RF frequencies mean nothing against Nyquist alone.
+  final double? bandStart;
+  final double? bandEnd;
+
   WaterfallPainter({
     required this.fftHistory,
     this.minFreq = 0,
@@ -20,6 +25,8 @@ class WaterfallPainter extends CustomPainter {
     this.sampleRate = 44100,
     this.theme = AppTheme.frost,
     this.frequencySkew = 1.0,
+    this.bandStart,
+    this.bandEnd,
   });
 
   @override
@@ -31,22 +38,17 @@ class WaterfallPainter extends CustomPainter {
     final historyCount = fftHistory.length;
     final rowHeight = height / historyCount;
 
-    final totalNyquist = sampleRate / 2;
-    final double startNormalized = (minFreq / totalNyquist);
-    final double endNormalized = (maxFreq / totalNyquist);
-    final double range = endNormalized - startNormalized;
     const int binCount = 160;
     final barWidth = width / binCount;
 
-    // Pre-calculate skew if needed
-    final skewedIndices = Int32List(binCount);
-    for (int j = 0; j < binCount; j++) {
-      final double t = FrequencyScale.toData(j / binCount, frequencySkew);
-      final double freqNorm = startNormalized + t * range;
-      // Note: fftData length might vary if window size changes, but usually it's stable.
-      // We'll calculate indices relative to a normalized factor.
-      skewedIndices[j] = (freqNorm * 1e6).toInt(); // Use a high precision factor
-    }
+    final mapper = SpectrumBinMapper(
+      columnCount: binCount,
+      viewStartHz: minFreq,
+      viewEndHz: maxFreq,
+      bandStartHz: bandStart ?? 0,
+      bandEndHz: bandEnd ?? sampleRate / 2,
+      frequencySkew: frequencySkew,
+    );
 
     const double logScale = 1.0 / 4.0;
 
@@ -64,9 +66,9 @@ class WaterfallPainter extends CustomPainter {
       final y = i * rowHeight;
 
       for (var j = 0; j < binCount; j++) {
-        final int dataIndex = (skewedIndices[j] * fftData.length ~/ 1e6).clamp(0, fftData.length - 1);
-
-        final magnitude = fftData[dataIndex];
+        // Peak across the covered bins, so a narrow carrier cannot fall
+        // between columns and vanish.
+        final magnitude = mapper.peak(fftData, j);
         // Use consistent scale with FftBarChartPainter
         final normalized = (math.log(magnitude + 1) * logScale).clamp(0.0, 1.1);
 
