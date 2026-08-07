@@ -80,11 +80,7 @@ class Fc0013Tuner(
     )
 
     /** Returns the register value, or -1 if the transfer failed. */
-    private fun readReg(reg: Int): Int {
-        if (!rtl.i2cWrite(I2C_ADDR, byteArrayOf((reg and 0xff).toByte()))) return -1
-        val data = rtl.i2cRead(I2C_ADDR, 1) ?: return -1
-        return data[0].toInt() and 0xff
-    }
+    private fun readReg(reg: Int): Int = rtl.i2cReadReg(I2C_ADDR, reg)
 
     // --------------------------------------------------------------- init ---
 

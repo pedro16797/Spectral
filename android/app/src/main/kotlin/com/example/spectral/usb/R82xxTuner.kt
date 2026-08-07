@@ -151,6 +151,10 @@ class R82xxTuner(
      * sequential reads from zero, and returns each byte bit-reversed.
      */
     private fun read(len: Int): IntArray? {
+        // librtlsdr resets the read pointer with a one-byte write before every
+        // read; without it the chip answers from whatever offset the previous
+        // transaction left behind.
+        if (!rtl.i2cWrite(i2cAddr, byteArrayOf(0x00))) return null
         val raw = rtl.i2cRead(i2cAddr, len) ?: return null
         return IntArray(len) { bitrev(raw[it].toInt() and 0xff) }
     }
@@ -199,17 +203,14 @@ class R82xxTuner(
         val vcoMin = 1_770_000L // kHz
         val vcoMax = vcoMin * 2
 
-        var pllRef = xtalHz
-        var refdiv2 = 0x00
-        if (isR828D) {
-            // The R828D halves the reference.
-            pllRef /= 2
-            refdiv2 = 0x10
-        }
+        // librtlsdr always runs the PLL from the full crystal (refdiv2 = 0),
+        // on the R828D too. Halving the reference caps the achievable VCO at
+        // ~2 GHz and made most R828D tunes fail the integer-divider check.
+        val pllRef = xtalHz
         val pllRefKhz = (pllRef + 500) / 1000
         val freqKhz = ((freqHz.toLong() + 500) / 1000)
 
-        var ok = writeRegMask(0x10, refdiv2, 0x10)
+        var ok = writeRegMask(0x10, 0x00, 0x10)
         ok = writeRegMask(0x1a, 0x00, 0x0c) && ok // pll autotune = 128 kHz
         ok = writeRegMask(0x12, 0x80, 0xe0) && ok // VCO current = 100
 
@@ -399,12 +400,12 @@ class R82xxTuner(
         ok = writeRegMask(0x0a, filterCur, 0x60) && ok
 
         // Settle the AGC: drop the LNA to its lowest top, run the fast AGC
-        // clock briefly, then restore. This is librtlsdr's digital-TV path.
+        // clock briefly, then restore. This is librtlsdr's digital-TV path
+        // (librtlsdr keeps its msleep(250) here commented out, so no delay).
         ok = writeRegMask(0x1d, 0x00, 0x38) && ok // LNA TOP lowest
         ok = writeRegMask(0x1c, 0x00, 0x04) && ok // normal mode
         ok = writeRegMask(0x06, 0x00, 0x40) && ok // PRE_DECT off
         ok = writeRegMask(0x1a, 0x30, 0x30) && ok // agc clk 250 Hz
-        Thread.sleep(250)
         ok = writeRegMask(0x1d, 0x18, 0x38) && ok // LNA TOP = 3
         ok = writeRegMask(0x1c, mixerTop, 0x04) && ok
         ok = writeRegMask(0x1e, lnaDischarge, 0x1f) && ok
@@ -423,14 +424,14 @@ class R82xxTuner(
         if (!manual) {
             var ok = writeRegMask(0x05, 0x00, 0x10)  // LNA auto
             ok = writeRegMask(0x07, 0x10, 0x10) && ok // mixer auto
-            ok = writeRegMask(0x0c, 0x0b, 0x9f) && ok // fixed VGA gain 16.3 dB
+            ok = writeRegMask(0x0c, 0x0b, 0x9f) && ok // fixed VGA gain 26.5 dB
             return ok
         }
 
         var ok = writeRegMask(0x05, 0x10, 0x10)  // LNA manual
         ok = writeRegMask(0x07, 0x00, 0x10) && ok // mixer manual
         if (read(4) == null) return false
-        ok = writeRegMask(0x0c, 0x08, 0x9f) && ok // fixed VGA gain 26.5 dB
+        ok = writeRegMask(0x0c, 0x08, 0x9f) && ok // fixed VGA gain 16.3 dB
 
         var totalGain = 0
         var lnaIndex = 0

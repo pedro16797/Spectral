@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- The rtl_tcp signal source streams I/Q samples over a socket. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- USB host (OTG) access for the integrated RTL-SDR driver. Not required:
          the app still works over the microphone, the mock sources and rtl_tcp

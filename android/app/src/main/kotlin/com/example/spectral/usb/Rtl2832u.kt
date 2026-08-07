@@ -35,7 +35,6 @@ class Rtl2832u(
             UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_VENDOR // 0x40
 
         // Register blocks, selected by the high byte of wIndex.
-        const val BLOCK_DEMOD = 0
         const val BLOCK_USB = 1
         const val BLOCK_SYS = 2
         const val BLOCK_IIC = 6
@@ -197,7 +196,8 @@ class Rtl2832u(
     fun i2cRead(i2cAddr: Int, len: Int): ByteArray? =
         readArray(BLOCK_IIC, i2cAddr, len)
 
-    private fun i2cReadReg(i2cAddr: Int, reg: Int): Int {
+    /** Writes the register address, then reads one byte back. */
+    fun i2cReadReg(i2cAddr: Int, reg: Int): Int {
         if (!writeArray(BLOCK_IIC, i2cAddr, byteArrayOf((reg and 0xff).toByte()))) return -1
         val data = readArray(BLOCK_IIC, i2cAddr, 1) ?: return -1
         return data[0].toInt() and 0xff
@@ -465,11 +465,18 @@ class Rtl2832u(
         return ok
     }
 
+    /** Last manual tuner gain requested, replayed when AGC is switched off. */
+    private var lastManualGainTenthsDb = 0
+
     /** Enables tuner AGC + RTL2832 AGC (true) or a fixed manual gain (false). */
     fun setAgc(enabled: Boolean): Boolean {
         val driver = tunerDriver ?: return false
         setI2cRepeater(true)
-        val ok = driver.setGain(manual = !enabled, gainTenthsDb = 0)
+        // Leaving AGC restores the last manual gain rather than slamming the
+        // tuner to its minimum until the user touches the gain control.
+        val ok = driver.setGain(
+            manual = !enabled, gainTenthsDb = lastManualGainTenthsDb
+        )
         setI2cRepeater(false)
         // RTL2832 digital AGC.
         return demodWriteReg(0, 0x19, if (enabled) 0x25 else 0x05, 1) && ok
@@ -478,6 +485,7 @@ class Rtl2832u(
     /** Sets a manual tuner gain, in tenths of a dB. */
     fun setTunerGain(gainTenthsDb: Int): Boolean {
         val driver = tunerDriver ?: return false
+        lastManualGainTenthsDb = gainTenthsDb
         setI2cRepeater(true)
         val ok = driver.setGain(manual = true, gainTenthsDb = gainTenthsDb)
         setI2cRepeater(false)
