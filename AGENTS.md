@@ -1,43 +1,24 @@
 # Agent Guidance for Spectral
 
-Welcome, Agent. This document serves as the primary entry point for understanding the goals, technical standards, and safety protocols for Spectral.
+This document is the entry point for AI agents working on Spectral. It covers what is agent-specific; the general contributor process lives in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project Overview
-Spectral is a mobile-first application (Android priority, with iOS compatibility in mind) for observing spectral and wave data (audio, RF, etc.) in a modern, elegant, and performant way.
+Spectral is a mobile-first Flutter application (Android priority, iOS-compatible) for observing spectral and wave data (audio, RF via RTL-SDR) in a modern, elegant, and performant way.
 
-## Main Objectives
-We are currently in the initial setup phase. Our focus is:
-1.  **Project Foundation:** Establishing a solid directory structure and documentation.
-2.  **Architecture Planning:** Defining a cross-platform-ready architecture that ensures high performance for real-time visualizations.
-3.  **MVP Definition:** Planning for core features:
-    - Real-time wave visualization.
-    - FFT bar chart.
-    - Waterfall display.
-    - Highly configurable themes and modes.
+## Current Status
+The core feature set is implemented — real-time visualization, SDR capture (native USB and rtl_tcp), demodulation, 11 languages, and a distribution pipeline. See [docs/roadmap.md](docs/roadmap.md) for what is in flight (currently: hardware validation of the native SDR driver) and [docs/project_structure.md](docs/project_structure.md) for the architecture.
 
 ## Core Directives
-To maintain the quality and performance of this visualization tool:
--   **Performance First:** Spectral data processing and rendering must be highly optimized.
--   **Cross-Platform Readiness:** While Android is the first target, avoid platform-specific lock-in where possible.
--   **Localization:** Account for internationalization from the start. All strings should be externalized.
--   **Minimize Blast Radius:** Touch only the files and functions required for your specific task.
--   **Verify Everything:** Use `list_files`, `read_file`, and relevant verification tools to confirm every modification.
--   **Versioning:** Always sync the version from the root `VERSION` file using `scripts/sync_version.sh` before any distribution.
-
-## Working Workflow
-1.  **Plan:** Propose a detailed plan before making changes.
-2.  **Isolate:** Work on the minimum subset of code needed.
-3.  **Validate:** Run tests and use frontend verification tools where applicable.
-4.  **Visualize:** Assess if the change has a visual impact. If so, it is **imperative** to update the project's screenshots using `scripts/generate_screenshots.py`.
-5.  **Review:** Perform a self-review or request a review on your diff before finalizing.
+- **Performance First:** Spectral data processing and rendering must be highly optimized; keep per-frame work off the widget-rebuild path.
+- **Cross-Platform Readiness:** Android is the first target, but avoid platform lock-in; web and iOS builds must keep working (note the conditional imports around `dart:io`).
+- **Localization:** All user-facing strings are externalized to `resources/locales/*.json`. When adding a string, add the key to **all** locale files — key parity with `en.json` is expected.
+- **Minimize Blast Radius:** Touch only the files and functions required for your task.
+- **Validate:** Run `flutter analyze` and `flutter test` before finalizing.
+- **Versioning:** Sync the version from the root `VERSION` file using `scripts/sync_version.sh` before any distribution.
+- **Screenshots:** If a change has visual impact, update the project's screenshots (see "Visual Documentation" in CONTRIBUTING.md).
 
 ## Documentation Maintenance
-Keep the project documentation accurate:
--   **`README.md`**: Update with high-level project status and setup instructions.
--   **`AGENTS.md`**: (This file) Update with major goals and guidelines.
--   **`docs/project_structure.md`**: Update whenever directories or major files are added or moved.
--   **`docs/roadmap.md`**: Update as features are implemented or prioritized.
-
-## Localization
--   **Base Language:** English (`en`).
--   **Storage:** JSON files in `resources/locales/`.
+Keep the project documentation accurate as you work:
+- **`docs/project_structure.md`**: update when directories or major files are added or moved.
+- **`docs/roadmap.md`**: update as features are implemented or reprioritized.
+- **`README.md`** / **`AGENTS.md`**: update on high-level status or guideline changes.

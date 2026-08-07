@@ -36,18 +36,20 @@ is a thin **view** that observes the controller:
           to the channel rate, so demodulation hears one station rather than the
           whole captured band. `planChannel()` works out the offset and
           decimation for a requested window.
-        - `settings_model.dart`: `AppSettings` immutable model + serialization,
-          including `SpectrumView` (whether the analysis chain describes the RF
-          band or the demodulated audio).
-        - `spectral_theme.dart`: Per-theme accent/background colors and the
-          waterfall magnitude→color ramp.
+        - `settings_model.dart`: `AppSettings` immutable model + validated
+          serialization, including `SpectrumView` (whether the analysis chain
+          describes the RF band or the demodulated audio).
+        - `audio_filters.dart`: DC blocker, FM de-emphasis, and the streaming
+          linear resampler used to condition the audio-output path.
+        - `spectral_theme.dart`: Per-theme accent/background colors, shared
+          surface colors, and the waterfall magnitude→color ramp.
     - **`audio/`**: `audio_capture_service.dart` (mic capture via `record`) and
       `audio_output_service.dart` (PCM playback via `mp_audio_stream`).
     - **`rf/`**: RF acquisition backends.
         - `rtl_tcp_capture_service.dart`: `rtl_tcp` client (uses `dart:io`); has
           a web stub (`rtl_tcp_capture_service_stub.dart`) selected via
           conditional import so the web build does not pull in `dart:io`.
-        - `rf_capture_service.dart`: simulated RF source (mock).
+        - `simulated_rf_capture_service.dart`: simulated RF source (mock).
         - `integrated_rf_capture_service.dart`: live I/Q from a USB dongle
           claimed by the app itself, via the native driver below.
         - `rtl2832u.dart`: platform-free RTL constants shared by both RF paths
@@ -61,6 +63,8 @@ is a thin **view** that observes the controller:
         - `waveform_painter.dart`, `fft_bar_chart_painter.dart`,
           `waterfall_painter.dart`: `CustomPainter` visualizations.
         - `radio_dial_focus_slider.dart`: frequency zoom/pan control.
+        - `edge_dial.dart`: the small dial-trigger chips and the large
+          edge-mounted dial they expand into.
         - `settings_view.dart`: settings dialog and inline tablet panel.
     - **`services/`**: `settings_service.dart` (persistence via
       `shared_preferences`).
@@ -75,9 +79,14 @@ is a thin **view** that observes the controller:
 - **`resources/`**: Static assets.
     - **`locales/`**: JSON files for internationalization.
     - **`screenshots/`**: Marketing/store screenshots.
-- **`scripts/`**: Build, packaging, version-sync, and screenshot scripts.
+- **`scripts/`**: Tooling — `build.sh <android|web|ios>` (release builds),
+  `package_distribution.sh`, `sync_version.sh`, `generate_screenshots.py`,
+  `generate_samples.py`, `generate_placeholder_icon.py`.
+- **`.github/workflows/`**: CI (tests, analysis, and per-platform builds via
+  `scripts/build.sh`).
 - **`android/` `ios/` `web/` `linux/` `macos/` `windows/`**: Flutter platform
-  runners.
+  runners. The register-level USB driver lives in
+  `android/app/src/main/kotlin/com/example/spectral/usb/`.
 
 ## Root Files
 

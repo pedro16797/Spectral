@@ -14,18 +14,18 @@ Spectral aims to provide users with a powerful yet user-friendly tool to observe
 - **FFT Bar Chart:** High-performance frequency analysis with dynamic scaling.
 - **Waterfall Display:** Time-frequency visualization for detecting patterns over time, integrated as a background layer.
 - **Slick HUD Architecture:** Immersive "Waterfall Focus Mode" for a data-centric experience.
-- **SDR (RF Support):** Real RTL-SDR hardware two ways — plug a dongle straight into the phone over USB OTG (native RTL2832U driver, R820T/R820T2/R828D and FC0013 tuners), or connect to an `rtl_tcp` bridge. Tune by dragging the frequency slider onto a peak in the waterfall: the selection is digitally down-converted, so you hear only that station without retuning the hardware. A header toggle switches the spectrum, waterfall and analysis readouts between the radio band and the demodulated audio (see [SDR Usage Guide](docs/sdr_usage_guide.md)).
+- **SDR (RF Support):** Real RTL-SDR hardware over USB OTG (native RTL2832U driver) or via an `rtl_tcp` bridge, with drag-to-tune digital down-conversion and AM/FM demodulation — see the [SDR Usage Guide](docs/sdr_usage_guide.md).
 - **Frequency Focus (Zoom):** Advanced Radio Dial Slider for panning and zooming into specific frequency bands.
 - **Edge Dial Interaction:** Space-saving, tactile dials for Gain and Sensitivity adjustments.
-- **Highly Configurable:** Customizable themes (Liquid Blue, Inferno, Monochrome, Emerald) and technical parameters (FFT Window Size/Type).
+- **Highly Configurable:** Customizable themes (Frost, Magma, Gray, Emerald, Rainbow) and technical parameters (FFT Window Size/Type).
 - **Modern UI:** Elegant, glassmorphic interface designed for mobile.
-- **Localization:** Built with internationalization in mind from day one.
+- **Localization:** 11 languages, managed as JSON files in `resources/locales/`.
 
 For a deep dive into these features, see [docs/features.md](docs/features.md).
 
 ## 🛠 Project Status
 
-Spectral is currently in the **early development phase**. We have initialized the project with core audio visualization capabilities.
+The core feature set — real-time visualization, SDR capture, demodulation, localization, and the distribution pipeline — is implemented. Current work focuses on validating the native USB driver against physical hardware; see [docs/roadmap.md](docs/roadmap.md).
 
 ## 🛠 Getting Started
 
@@ -35,74 +35,31 @@ Spectral is currently in the **early development phase**. We have initialized th
 - Android/iOS emulator or a physical device for testing
 
 ### Setup
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-repo/spectral.git
-   cd spectral
-   ```
+1. Clone the repository and `cd` into it.
 2. Install dependencies:
    ```bash
    flutter pub get
    ```
 
-### Running the App
-- **Run on a specific device:**
-  ```bash
-  flutter run
-  ```
-- **Run for Web:**
-  ```bash
-  flutter run -d chrome
-  ```
-
-### Building the App
-- **Build Android APK:**
-  ```bash
-  flutter build apk --release
-  ```
-- **Build Web:**
-  ```bash
-  flutter build web --release
-  ```
-
-### Running Tests
-- **Run all tests:**
-  ```bash
-  flutter test
-  ```
+### Run, Test, Build
+```bash
+flutter run              # run on the connected device
+flutter run -d chrome    # run for web
+flutter test             # run all tests
+bash scripts/build.sh <android|web|ios>   # optimized release builds
+```
 
 ## 🏷️ Versioning & Distribution
 
-### Versioning
-The app version is centrally managed in the `VERSION` file at the root of the project. To update the version:
-1. Edit the `VERSION` file (e.g., `1.1.0+2`).
-2. Run `./scripts/sync_version.sh` to synchronize it with `pubspec.yaml`.
-
-### Distribution
-To prepare a full distribution bundle (Android APKs, Web zip, and Screenshots):
-```bash
-./scripts/package_distribution.sh
-```
-The resulting bundle will be located in the `distribution/v<VERSION>/` directory.
-
-For more details on publishing, see [docs/distribution_guide.md](docs/distribution_guide.md) and [docs/app_store_listing.md](docs/app_store_listing.md).
+The app version lives in the root `VERSION` file and is synced into `pubspec.yaml` with `./scripts/sync_version.sh`. A full distribution bundle (APKs, web zip, store screenshots) is produced by `./scripts/package_distribution.sh` into `distribution/v<VERSION>/`. Details: [docs/distribution_guide.md](docs/distribution_guide.md).
 
 ## 📂 Project Structure
 
-- `lib/src/`: Core application source code.
-- `docs/`: Detailed documentation and planning.
-- `config/`: Configuration settings.
-- `resources/`: Static assets and localization files.
-- `tests/`: Unit and integration tests.
-
-For more details, see [docs/project_structure.md](docs/project_structure.md).
+See [docs/project_structure.md](docs/project_structure.md) for the directory layout and architecture overview.
 
 ## 🌍 Localization
 
-We prioritize localization. Currently, we support:
-- English (US) - `en`
-
-Translations are managed via JSON files in `resources/locales/`.
+The app ships in 11 languages (en, es, ca, gl, eu, fr, it, pt, de, ja, zh). Translations are managed via JSON files in `resources/locales/`, with full key parity enforced against `en.json`.
 
 ## 🤝 Contributing
 
