@@ -1,5 +1,12 @@
-import struct
+"""Regenerates the bundled demo sample files under resources/samples/."""
 import math
+import os
+import struct
+
+# Paths are repo-relative; run from anywhere.
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+os.makedirs('resources/samples/audio', exist_ok=True)
+os.makedirs('resources/samples/rf', exist_ok=True)
 
 def write_wav(filename, samples, sample_rate):
     with open(filename, 'wb') as f:

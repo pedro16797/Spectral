@@ -23,6 +23,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
@@ -42,6 +43,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
@@ -53,7 +55,7 @@ jobs:
 
   build-android:
     name: Build Android APK
-    needs: test
+    needs: [test, analyze]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -70,19 +72,15 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
+          cache: true
 
       - name: Strip sample files for production build
+        # Belt-and-braces: the samples are not in pubspec assets, but removing
+        # them guarantees a future pubspec change cannot bloat release builds.
         run: rm -rf resources/samples/
 
       - name: Build APK (Release)
-        run: |
-          flutter build apk --release \
-            --split-per-abi \
-            --obfuscate \
-            --split-debug-info=build/app/outputs/debug-info
+        run: bash scripts/build.sh android
 
       - name: Upload arm64-v8a APK
         uses: actions/upload-artifact@v6
@@ -104,7 +102,7 @@ jobs:
 
   build-web:
     name: Build Web App
-    needs: test
+    needs: [test, analyze]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -115,15 +113,13 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
+          cache: true
 
       - name: Strip sample files for production build
         run: rm -rf resources/samples/
 
       - name: Build Web (Release)
-        run: flutter build web --release
+        run: bash scripts/build.sh web
 
       - name: Upload Web Build
         uses: actions/upload-artifact@v6
@@ -133,7 +129,7 @@ jobs:
 
   build-ios:
     name: Build iOS App
-    needs: test
+    needs: [test, analyze]
     runs-on: macos-latest
     steps:
       - name: Checkout repository
@@ -144,15 +140,13 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
+          cache: true
 
       - name: Strip sample files for production build
         run: rm -rf resources/samples/
 
       - name: Build iOS (No-Codesign)
-        run: flutter build ios --release --no-codesign
+        run: bash scripts/build.sh ios
 
       - name: Upload iOS App Bundle
         uses: actions/upload-artifact@v6

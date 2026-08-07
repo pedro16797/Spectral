@@ -23,8 +23,6 @@ Prerequisites, all of which are easy to miss:
 """
 
 import os
-import time
-import subprocess
 import http.server
 import socketserver
 import threading
@@ -170,7 +168,7 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                         lambda route: route.fulfill(path=fallback_font, content_type="font/ttf"),
                     )
 
-                def capture_state(name, settings, url_suffix="", clicks=[]):
+                def capture_state(name, settings, url_suffix="", clicks=()):
                     page = context.new_page()
 
                     settings_copy = settings.copy()
@@ -260,11 +258,29 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
 
             browser.close()
     except Exception as e:
-        print(f"Error during screenshot generation: {e}")
+        # Fail loudly: a swallowed error here used to let callers (and CI)
+        # ship blank or missing screenshots as a "success".
+        print(f"Error during screenshot generation: {e}", file=sys.stderr)
+        raise SystemExit(1)
     finally:
         httpd.shutdown()
         httpd.server_close()
         print("Server stopped.")
+
+    # Every scene must have produced a capture at every resolution.
+    expected = [
+        "01_home", "02_audio_active", "03_sdr_advanced", "04_settings",
+        "05_sdr_tuned_rf", "06_sdr_demodulated", "07_sdr_settings",
+    ]
+    missing = [
+        os.path.join(output_base_dir, res, f"{name}.png")
+        for res in RESOLUTIONS
+        for name in expected
+        if not os.path.exists(os.path.join(output_base_dir, res, f"{name}.png"))
+    ]
+    if missing:
+        print(f"Missing screenshots: {missing}", file=sys.stderr)
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     out_dir = sys.argv[1] if len(sys.argv) > 1 else "resources/screenshots"
