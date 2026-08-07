@@ -62,17 +62,11 @@ class FftBarChartPainter extends CustomPainter {
     final double spacing = barWidth > 15 ? 4.0 : (barWidth > 8 ? 2.0 : (barWidth > 4 ? 1.0 : 0.0));
     final double actualWidth = math.max(1.0, barWidth - spacing);
 
-    // Scaling constant for performance (1 / log(1.1 + 1) is too low, let's use the previous 4.5)
-    const double logScale = 1.0 / 4.5;
-
     // Draw bars
     for (var i = 0; i < actualBarCount; i++) {
       // Peak across the covered bins rather than one sampled bin, so narrow
       // carriers cannot fall between bars.
-      final maxMag = mapper.peak(fftData, i);
-      // Fast log approximation for small values or just pre-scale
-      // ln(x+1) = log(x+1) * ln(10) if log is log10, but math.log is ln.
-      final normalizedHeight = (math.log(maxMag + 1) * logScale).clamp(0.0, 1.0);
+      final normalizedHeight = normalizeMagnitude(mapper.peak(fftData, i));
       final barHeight = normalizedHeight * (height - 20);
 
       final x = i * barWidth + (spacing / 2);
@@ -83,8 +77,8 @@ class FftBarChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          color.withOpacity(0.6 * normalizedHeight + 0.2),
-          color.withOpacity(0.05),
+          color.withValues(alpha: 0.6 * normalizedHeight + 0.2),
+          color.withValues(alpha: 0.05),
         ],
       ).createShader(rect);
 
@@ -101,7 +95,7 @@ class FftBarChartPainter extends CustomPainter {
     // Draw Peak Hold
     if (peakHoldData != null && peakHoldData!.length == fftData.length) {
       final peakPaint = Paint()
-        ..color = color.withOpacity(0.4)
+        ..color = color.withValues(alpha: 0.4)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0;
 
@@ -109,8 +103,7 @@ class FftBarChartPainter extends CustomPainter {
       bool first = true;
 
       for (var i = 0; i < actualBarCount; i++) {
-        final mag = mapper.peak(peakHoldData!, i);
-        final normalizedHeight = (math.log(mag + 1) * logScale).clamp(0.0, 1.0);
+        final normalizedHeight = normalizeMagnitude(mapper.peak(peakHoldData!, i));
         final y = (height - 20) - (normalizedHeight * (height - 20));
         final x = i * barWidth + barWidth / 2;
 
@@ -134,7 +127,7 @@ class FftBarChartPainter extends CustomPainter {
       final x = screenT * width;
 
       final markerPaint = Paint()
-        ..color = Colors.white.withOpacity(0.8)
+        ..color = Colors.white.withValues(alpha: 0.8)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5;
 
@@ -148,7 +141,7 @@ class FftBarChartPainter extends CustomPainter {
     // Draw Harmonics
     if (showHarmonics && fundamentalFreq != null) {
       final harmonicPaint = Paint()
-        ..color = color.withOpacity(0.5)
+        ..color = color.withValues(alpha: 0.5)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0;
 
@@ -164,7 +157,7 @@ class FftBarChartPainter extends CustomPainter {
         for (double dy = 0; dy < height - 20; dy += 10) {
           canvas.drawLine(Offset(x, dy), Offset(x, dy + 5), harmonicPaint);
         }
-        _drawText(canvas, "${h}H", Offset(x + 4, height - 35), color.withOpacity(0.7));
+        _drawText(canvas, "${h}H", Offset(x + 4, height - 35), color.withValues(alpha: 0.7));
       }
     }
 
@@ -174,7 +167,7 @@ class FftBarChartPainter extends CustomPainter {
         canvas,
         "SNR: ${snrValue!.toStringAsFixed(1)} dB",
         const Offset(10, 10),
-        color.withOpacity(0.8),
+        color.withValues(alpha: 0.8),
         fontSize: 10,
         fontWeight: FontWeight.bold,
       );
@@ -194,7 +187,7 @@ class FftBarChartPainter extends CustomPainter {
 
   void _drawLabels(Canvas canvas, Size size) {
     final textStyle = TextStyle(
-      color: color.withOpacity(0.4),
+      color: color.withValues(alpha: 0.4),
       fontSize: 8,
       fontWeight: FontWeight.bold,
       letterSpacing: 1,
@@ -246,6 +239,9 @@ class FftBarChartPainter extends CustomPainter {
            oldDelegate.snrValue != snrValue ||
            oldDelegate.minFreq != minFreq ||
            oldDelegate.maxFreq != maxFreq ||
+           oldDelegate.bandStart != bandStart ||
+           oldDelegate.bandEnd != bandEnd ||
+           oldDelegate.sampleRate != sampleRate ||
            oldDelegate.color != color ||
            oldDelegate.frequencySkew != frequencySkew;
   }

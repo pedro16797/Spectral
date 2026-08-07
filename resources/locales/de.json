@@ -4,28 +4,23 @@
     "code": "de-DE"
   },
   "app": {
-    "name": "Spectral",
-    "tagline": "Moderne Spektralvisualisierung"
+    "name": "Spectral"
   },
   "header": {
+    "title": "SPEKTRALANALYSE",
+    "live": "LIVE-SIGNAL",
+    "idle": "SIGNAL INAKTIV",
     "spectrum_view": "Spektrumansicht",
     "spectrum_view_rf": "Radioband wird angezeigt – tippen, um das demodulierte Audio zu analysieren",
     "spectrum_view_demodulated": "Demoduliertes Audio wird angezeigt – tippen, um das Radioband zu analysieren",
-    "spectrum_view_needs_demod": "Demodulationsmodus wählen, um das Audio zu analysieren"
-  },
-  "visualizations": {
-    "waveform": "Wellenform",
-    "fft": "FFT",
-    "waterfall": "Wasserfall"
+    "spectrum_view_needs_demod": "Demodulationsmodus wählen, um das Audio zu analysieren",
+    "focus_toggle": "Fokusmodus umschalten"
   },
   "settings": {
     "title": "Einstellungen",
     "theme": "Design",
     "language": "Sprache",
-    "range": "Bereich",
     "mode": "Modus",
-    "gain": "Verstärkung",
-    "sensitivity": "Empfindlichkeit",
     "signal_source": "Signalquelle",
     "center_frequency": "Mittenfrequenz (MHz)",
     "rf_bandwidth": "RF-Bandbreite (MHz)",
@@ -110,7 +105,9 @@
       "fft_window_size": "Auflösung der Spektralanalyse (Samples pro Frame).",
       "fft_window_type": "Mathematische Funktion zur Reduzierung von Spektrallecks.",
       "frequency_skew": "Visuelle Streckung oder Stauchung der Frequenzachse."
-    }
+    },
+    "sdr_config": "SDR-Konfiguration",
+    "close": "Einstellungen schließen"
   },
   "dials": {
     "gain": "GAIN",
@@ -124,13 +121,7 @@
     "focus": "FOKUS"
   },
   "common": {
-    "save": "Speichern",
-    "cancel": "Abbrechen",
-    "ok": "OK",
-    "error": "Fehler",
-    "loading": "Laden...",
     "start_capture": "Aufnahme starten",
-    "stop_capture": "Aufnahme stoppen",
-    "permission_denied": "Mikrofonberechtigung verweigert"
+    "stop_capture": "Aufnahme stoppen"
   }
 }

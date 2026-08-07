@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../core/settings_model.dart';
 import '../core/spectral_theme.dart';
 import '../utils/spectrum_bins.dart';
@@ -50,8 +49,6 @@ class WaterfallPainter extends CustomPainter {
       frequencySkew: frequencySkew,
     );
 
-    const double logScale = 1.0 / 4.0;
-
     // Reuse a single Paint across all cells; only the color changes per cell.
     // Allocating a Paint per cell would churn thousands of objects per frame.
     final paint = Paint()
@@ -68,13 +65,11 @@ class WaterfallPainter extends CustomPainter {
       for (var j = 0; j < binCount; j++) {
         // Peak across the covered bins, so a narrow carrier cannot fall
         // between columns and vanish.
-        final magnitude = mapper.peak(fftData, j);
-        // Use consistent scale with FftBarChartPainter
-        final normalized = (math.log(magnitude + 1) * logScale).clamp(0.0, 1.1);
+        final normalized = normalizeMagnitude(mapper.peak(fftData, j));
 
         if (normalized < 0.05) continue;
 
-        paint.color = SpectralTheme.waterfallColor(theme, normalized).withOpacity(ageFade * 0.4);
+        paint.color = SpectralTheme.waterfallColor(theme, normalized).withValues(alpha: ageFade * 0.4);
 
         final x = j * barWidth;
 

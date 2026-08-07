@@ -1,37 +1,18 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spectral/main.dart';
 import 'package:spectral/src/core/settings_model.dart';
 import 'package:spectral/src/utils/localization_helper.dart';
-import 'dart:convert';
-import 'package:flutter/services.dart';
 
-// A simple mock for rootBundle
-class MockAssetBundle extends CachingAssetBundle {
+/// Serves the real locale files from disk, so the test never drifts from the
+/// strings the app actually ships. Reads synchronously because widget tests
+/// run in a fake-async zone where real IO futures never complete.
+class FileAssetBundle extends CachingAssetBundle {
   @override
-  Future<String> loadString(String key, {bool cache = true}) async {
-    if (key == 'resources/locales/en.json') {
-      return json.encode({
-        "app": {"name": "Spectral"},
-        "dials": {
-          "gain": "GAIN",
-          "gain_long": "GAIN",
-          "speed": "SPEED",
-          "speed_long": "SPEED",
-          "sensitivity": "SENS",
-          "sensitivity_long": "SENSITIVITY",
-          "squish": "SQUISH",
-          "squish_long": "SQUISH",
-          "focus": "FOCUS"
-        },
-        "common": {
-          "start_capture": "Start Capture",
-          "stop_capture": "Stop Capture"
-        }
-      });
-    }
-    throw FlutterError('Asset not found');
-  }
+  Future<String> loadString(String key, {bool cache = true}) =>
+      SynchronousFuture(File(key).readAsStringSync());
 
   @override
   Future<ByteData> load(String key) async => throw UnimplementedError();
@@ -39,15 +20,10 @@ class MockAssetBundle extends CachingAssetBundle {
 
 void main() {
   testWidgets('Spectral app loads and shows title', (WidgetTester tester) async {
-    // Let's manually initialize it for the test environment.
-    await LocalizationHelper.load('en', MockAssetBundle());
+    await LocalizationHelper.load('en', FileAssetBundle());
 
-    // Provide the mock asset bundle to the widget tree
     await tester.pumpWidget(
-      DefaultAssetBundle(
-        bundle: MockAssetBundle(),
-        child: const SpectralApp(initialSettings: AppSettings()),
-      ),
+      const SpectralApp(initialSettings: AppSettings()),
     );
 
     // pumpAndSettle times out due to infinite rotation animation.

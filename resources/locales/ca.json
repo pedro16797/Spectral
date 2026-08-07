@@ -4,28 +4,23 @@
     "code": "ca-ES"
   },
   "app": {
-    "name": "Spectral",
-    "tagline": "Visualització Espectral Moderna"
+    "name": "Spectral"
   },
   "header": {
+    "title": "ANÀLISI ESPECTRAL",
+    "live": "SENYAL EN DIRECTE",
+    "idle": "SENYAL INACTIU",
     "spectrum_view": "Vista de l'espectre",
     "spectrum_view_rf": "Es mostra la banda de ràdio: toca per analitzar l'àudio demodulat",
     "spectrum_view_demodulated": "Es mostra l'àudio demodulat: toca per analitzar la banda de ràdio",
-    "spectrum_view_needs_demod": "Tria un mode de demodulació per analitzar l'àudio"
-  },
-  "visualizations": {
-    "waveform": "Forma d'ona",
-    "fft": "FFT",
-    "waterfall": "Cascada"
+    "spectrum_view_needs_demod": "Tria un mode de demodulació per analitzar l'àudio",
+    "focus_toggle": "Alterna el mode de focus"
   },
   "settings": {
     "title": "Ajustos",
     "theme": "Tema",
     "language": "Idioma",
-    "range": "Rang",
     "mode": "Mode",
-    "gain": "Guany",
-    "sensitivity": "Sensibilitat",
     "signal_source": "Font de senyal",
     "center_frequency": "Freqüència Central (MHz)",
     "rf_bandwidth": "Ample de Banda RF (MHz)",
@@ -110,7 +105,9 @@
       "fft_window_size": "Resolució de l'anàlisi espectral (mostres per fotograma).",
       "fft_window_type": "Funció matemàtica aplicada per reduir la fuga espectral.",
       "frequency_skew": "Estirament o compressió visual de l'eix de freqüència."
-    }
+    },
+    "sdr_config": "Configuració SDR",
+    "close": "Tanca la configuració"
   },
   "dials": {
     "gain": "GUANY",
@@ -124,13 +121,7 @@
     "focus": "FOCUS"
   },
   "common": {
-    "save": "Desar",
-    "cancel": "Cancel·lar",
-    "ok": "D'acord",
-    "error": "Error",
-    "loading": "Carregant...",
     "start_capture": "Iniciar Captura",
-    "stop_capture": "Aturar Captura",
-    "permission_denied": "Permís de micròfon denegat"
+    "stop_capture": "Aturar Captura"
   }
 }

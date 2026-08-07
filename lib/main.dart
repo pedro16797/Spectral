@@ -96,7 +96,7 @@ class _SpectralAppState extends State<SpectralApp> {
         colorScheme: ColorScheme.dark(
           primary: Colors.white,
           secondary: accentColor,
-          surface: const Color(0xFF1C1C1E),
+          surface: SpectralTheme.surface,
         ),
         useMaterial3: true,
       ),
@@ -202,7 +202,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
       playFile: Uri.base.queryParameters['play_file'],
     );
     _controller.addListener(_onControllerChanged);
-    _syncFullRange(widget.settings);
+    _syncFullRange();
     _squish = widget.settings.frequencySkew;
 
     _pulseController = AnimationController(
@@ -255,7 +255,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
     widget.onSettingsChanged(updated);
     _controller.updateSettings(updated);
-    setState(() => _syncFullRange(updated));
+    setState(_syncFullRange);
     unawaited(_controller.setupIntegratedDriver());
   }
 
@@ -266,7 +266,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     if (!mounted) return;
     // The captured span is only known once the source is up, which happens
     // asynchronously after construction.
-    _syncFullRange(widget.settings);
+    _syncFullRange();
     if (_controller.isCapturing) {
       if (!_pulseController.isAnimating) _pulseController.repeat(reverse: true);
     } else {
@@ -276,21 +276,14 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   }
 
   /// The full band currently on screen: the whole captured RF span, or the
-  /// audio band.
-  ///
-  /// The RF span comes from the controller rather than the settings, because
-  /// the hardware may deliver less than was asked for — the RTL2832U caps at
-  /// 3.2 MS/s. Labelling the axis with the requested width would spread the
-  /// captured signal across a window several times too wide, which reads as a
-  /// featureless smear rather than distinct stations.
-  RangeValues _fullRangeForSettings() {
+  /// audio band. Taken from the controller rather than the settings because
+  /// the hardware may deliver less than was asked for (the RTL2832U caps at
+  /// 3.2 MS/s), and derived on demand so the painters, the slider and the
+  /// tuned-channel plan cannot drift apart.
+  RangeValues get _fullRange {
     final band = _controller.analysisBandHz;
     return RangeValues(band.start, band.end);
   }
-
-  /// The full band currently on screen. Derived, so the painters, the slider
-  /// and the tuned-channel plan cannot drift apart.
-  RangeValues get _fullRange => _fullRangeForSettings();
 
   /// Span the visible axis was last built for, so the user's zoom selection is
   /// only reset when the underlying band actually changes.
@@ -298,8 +291,8 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   /// Rebuilds the axis if the captured band changed, preserving the user's
   /// selection otherwise. Also keeps the controller's tuned channel in step.
-  void _syncFullRange(AppSettings settings) {
-    final full = _fullRangeForSettings();
+  void _syncFullRange() {
+    final full = _fullRange;
     if (_lastFullRange != null &&
         (full.start - _lastFullRange!.start).abs() <= 1 &&
         (full.end - _lastFullRange!.end).abs() <= 1) {
@@ -334,54 +327,60 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     await _controller.toggleCapture();
   }
 
-  void _showSettings() {
-    try {
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: "Settings",
-        pageBuilder: (context, _, __) => SettingsView(
-          settings: widget.settings,
-          onSetupSdrDriver: _controller.setupIntegratedDriver,
-          onSettingsChanged: (newSettings) {
-            final oldSource = widget.settings.signalSource;
-            final oldFreq = widget.settings.centerFrequency;
-            final oldBw = widget.settings.rfBandwidth;
-            final oldPpm = widget.settings.ppmCorrection;
-            final oldSkew = widget.settings.frequencySkew;
+  /// Applies a settings change coming from any settings surface — the dialog
+  /// or the embedded tablet panel — so both stay in lockstep: persist, inform
+  /// the controller, rebuild the capture pipeline when a source-affecting
+  /// field changed, and resync the visible axis.
+  void _handleSettingsChanged(AppSettings newSettings) {
+    final old = widget.settings;
 
-            widget.onSettingsChanged(newSettings);
-            _controller.updateSettings(newSettings);
+    widget.onSettingsChanged(newSettings);
+    _controller.updateSettings(newSettings);
 
-            // Keep the live "squish" dial in sync if the skew setting changed.
-            if (oldSkew != newSettings.frequencySkew) {
-              setState(() => _squish = newSettings.frequencySkew);
-            }
-
-            if (oldSource != newSettings.signalSource ||
-                oldFreq != newSettings.centerFrequency ||
-                oldBw != newSettings.rfBandwidth ||
-                oldPpm != newSettings.ppmCorrection ||
-                widget.settings.rfSource != newSettings.rfSource ||
-                widget.settings.rtlTcpHost != newSettings.rtlTcpHost ||
-                widget.settings.rtlTcpPort != newSettings.rtlTcpPort) {
-              _controller.reconfigure(newSettings: newSettings);
-              setState(() => _syncFullRange(newSettings));
-            }
-
-            if (!newSettings.peakHoldEnabled) {
-              _controller.clearPeakHold();
-            }
-          },
-        ),
-      );
-    } catch (e) {
-      debugPrint("Error showing settings: $e");
+    // Keep the live "squish" dial in sync if the skew setting changed.
+    if (old.frequencySkew != newSettings.frequencySkew) {
+      _squish = newSettings.frequencySkew;
     }
+
+    if (old.signalSource != newSettings.signalSource ||
+        old.centerFrequency != newSettings.centerFrequency ||
+        old.rfBandwidth != newSettings.rfBandwidth ||
+        old.ppmCorrection != newSettings.ppmCorrection ||
+        old.rfSource != newSettings.rfSource ||
+        old.rtlTcpHost != newSettings.rtlTcpHost ||
+        old.rtlTcpPort != newSettings.rtlTcpPort) {
+      _controller.reconfigure(newSettings: newSettings);
+    }
+
+    if (!newSettings.peakHoldEnabled) {
+      _controller.clearPeakHold();
+    }
+
+    // Any change can move the analysis band (source, demodulation mode,
+    // spectrum view…); _syncFullRange is a no-op when the band is unchanged.
+    setState(_syncFullRange);
+  }
+
+  void _showSettings() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: LocalizationHelper.get('settings.title'),
+      pageBuilder: (context, _, __) => SettingsView(
+        settings: widget.settings,
+        onSetupSdrDriver: _controller.setupIntegratedDriver,
+        onSettingsChanged: _handleSettingsChanged,
+      ),
+    );
   }
 
   void _handleFftTap(Offset localOffset, Size size) {
-    final freq = _screenOffsetToFreq(localOffset.dx, size.width);
+    // The painter is inset by the glass card's padding, so map the tap into
+    // the painter's coordinate space before converting to a frequency.
+    final double width = size.width - 2 * _cardPadding;
+    if (width <= 0) return;
+    final double x = (localOffset.dx - _cardPadding).clamp(0.0, width);
+    final freq = _screenOffsetToFreq(x, width);
     setState(() {
       // Find and remove if close (within a small frequency epsilon or visual range)
       final double epsilon = (_freqRange.end - _freqRange.start) * 0.02;
@@ -410,6 +409,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   @override
   void dispose() {
+    _squishPersistTimer?.cancel();
     _driverStateSubscription?.cancel();
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
@@ -475,7 +475,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.05),
+                      Colors.black.withValues(alpha: 0.05),
                       Colors.transparent,
                     ],
                     stops: const [0, 0.5, 1],
@@ -493,132 +493,88 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                   flex: 2,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    child: Builder(
-                      builder: (context) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Top Minimalist Header
-                            _buildMinimalHeader(isLandscape),
-                            SizedBox(height: isLandscape ? 12 : 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Top Minimalist Header
+                        _buildMinimalHeader(isLandscape, useTabletLayout),
+                        SizedBox(height: isLandscape ? 12 : 20),
 
-                            if (_waterfallFocusMode) const Spacer(),
+                        if (_waterfallFocusMode) const Spacer(),
 
-                            // Visualizations
-                            if (!_waterfallFocusMode)
-                              Expanded(
-                                flex: 5,
-                                child: isLandscape
-                                    ? Row(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: [
-                                          Expanded(
-                                            child: _buildGlassCard(
-                                              child: SizedBox.expand(
-                                                child: RepaintBoundary(
-                                                  child: AnimatedBuilder(
-                                                    animation: _controller.frame,
-                                                    builder: (context, _) => CustomPaint(
-                                                      size: Size.infinite,
-                                                      painter: WaveformPainter(
-                                                        audioData: _controller.currentAudioData,
-                                                        history: _controller.audioHistory,
-                                                        color: Colors.white.withOpacity(0.8),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: _buildFftCard(accentColor),
-                                          ),
-                                        ],
-                                      )
-                                    : Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: [
-                                          Expanded(
-                                            flex: 2,
-                                            child: _buildGlassCard(
-                                              child: SizedBox.expand(
-                                                child: RepaintBoundary(
-                                                  child: AnimatedBuilder(
-                                                    animation: _controller.frame,
-                                                    builder: (context, _) => CustomPaint(
-                                                      size: Size.infinite,
-                                                      painter: WaveformPainter(
-                                                        audioData: _controller.currentAudioData,
-                                                        history: _controller.audioHistory,
-                                                        color: Colors.white.withOpacity(0.8),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Expanded(
-                                            flex: 3,
-                                            child: _buildFftCard(accentColor),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            if (!_waterfallFocusMode) SizedBox(height: isLandscape ? 12 : 16),
+                        // Visualizations
+                        if (!_waterfallFocusMode)
+                          Expanded(
+                            flex: 5,
+                            child: isLandscape
+                                ? Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(child: _buildWaveformCard()),
+                                      const SizedBox(width: 16),
+                                      Expanded(child: _buildFftCard(accentColor)),
+                                    ],
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(flex: 2, child: _buildWaveformCard()),
+                                      const SizedBox(height: 16),
+                                      Expanded(flex: 3, child: _buildFftCard(accentColor)),
+                                    ],
+                                  ),
+                          ),
+                        if (!_waterfallFocusMode) SizedBox(height: isLandscape ? 12 : 16),
 
-                            // Frequency Focus Card & Interaction Bar
-                            if (isLandscape && !_waterfallFocusMode)
-                              Row(
+                        // Frequency Focus Card & Interaction Bar
+                        if (isLandscape && !_waterfallFocusMode)
+                          Row(
+                            children: [
+                              // Gain/Speed stacked (left edge style).
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Gain/Speed stacked (left edge style).
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _buildDialTriggerFor(_DialKind.gain),
-                                      const SizedBox(height: 10),
-                                      _buildDialTriggerFor(_DialKind.speed),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(child: _buildGlassCard(child: _buildFrequencyFocusSlider())),
-                                  const SizedBox(width: 16),
-                                  // Squish/Sensitivity stacked (right edge style).
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _buildDialTriggerFor(_DialKind.squish),
-                                      const SizedBox(height: 10),
-                                      _buildDialTriggerFor(_DialKind.sensitivity),
-                                    ],
-                                  ),
+                                  _buildDialTriggerFor(_DialKind.gain),
+                                  const SizedBox(height: 10),
+                                  _buildDialTriggerFor(_DialKind.speed),
                                 ],
-                              )
-                            else ...[
-                              _buildGlassCard(child: _buildFrequencyFocusSlider()),
-                              if (!_waterfallFocusMode) ...[
-                                const SizedBox(height: 16),
-                                _buildInteractionBar(),
-                              ],
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(child: _buildGlassCard(child: _buildFrequencyFocusSlider())),
+                              const SizedBox(width: 16),
+                              // Squish/Sensitivity stacked (right edge style).
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildDialTriggerFor(_DialKind.squish),
+                                  const SizedBox(height: 10),
+                                  _buildDialTriggerFor(_DialKind.sensitivity),
+                                ],
+                              ),
                             ],
+                          )
+                        else ...[
+                          _buildGlassCard(child: _buildFrequencyFocusSlider()),
+                          if (!_waterfallFocusMode) ...[
+                            const SizedBox(height: 16),
+                            _buildInteractionBar(),
                           ],
-                        );
-                      },
+                        ],
+                      ],
                     ),
                   ),
                 ),
                 if (useTabletLayout)
-                  Container(
-                    width: 350,
-                    margin: const EdgeInsets.only(right: 20, top: 10, bottom: 10),
-                    child: _buildGlassCard(
-                      child: SettingsContent(
-                        settings: widget.settings,
-                        onSettingsChanged: widget.onSettingsChanged,
-                        onSetupSdrDriver: _controller.setupIntegratedDriver,
+                  Padding(
+                    padding: const EdgeInsets.only(right: 20, top: 10, bottom: 10),
+                    child: SizedBox(
+                      width: 350,
+                      child: _buildGlassCard(
+                        child: SettingsContent(
+                          settings: widget.settings,
+                          onSettingsChanged: _handleSettingsChanged,
+                          onSetupSdrDriver: _controller.setupIntegratedDriver,
+                        ),
                       ),
                     ),
                   ),
@@ -637,6 +593,26 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               onChanged: (v) => _setDialValue(_activeDial!, v),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWaveformCard() {
+    return _buildGlassCard(
+      child: SizedBox.expand(
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _controller.frame,
+            builder: (context, _) => CustomPaint(
+              size: Size.infinite,
+              painter: WaveformPainter(
+                audioData: _controller.currentAudioData,
+                history: _controller.audioHistory,
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -701,29 +677,37 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     widget.onSettingsChanged(updated);
     // The controller must see the change before the axis is recomputed from it.
     _controller.updateSettings(updated);
-    setState(() => _syncFullRange(updated));
+    setState(_syncFullRange);
   }
 
-  Widget _buildMinimalHeader(bool isLandscape) {
+  /// Accessibility label for the capture control, reflecting its action.
+  String get _captureLabel => LocalizationHelper.get(
+      _controller.isCapturing ? 'common.stop_capture' : 'common.start_capture');
+
+  Widget _buildMinimalHeader(bool isLandscape, bool useTabletLayout) {
     return Row(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "SPECTRAL ANALYSIS",
-              style: TextStyle(fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.w900, color: Colors.white24),
+            Text(
+              LocalizationHelper.get('header.title'),
+              style: const TextStyle(fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.w900, color: Colors.white24),
             ),
             Text(
-              _controller.isCapturing ? "LIVE SIGNAL" : "SIGNAL IDLE",
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.8)),
+              LocalizationHelper.get(
+                  _controller.isCapturing ? 'header.live' : 'header.idle'),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.8)),
             ),
           ],
         ),
         const Spacer(),
-        if (isLandscape) ...[
+        // In portrait the capture button lives in the interaction bar — except
+        // in waterfall-focus mode, where that bar is hidden and this header
+        // button is the only capture control.
+        if (isLandscape || _waterfallFocusMode) ...[
           Semantics(
-            label: "Capture Toggle",
+            label: _captureLabel,
             button: true,
             child: _buildHeaderAction(
               icon: _controller.isCapturing ? Icons.stop_rounded : Icons.play_arrow_rounded,
@@ -755,15 +739,16 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           ),
           const SizedBox(width: 12),
         ],
-        if (!isLandscape || MediaQuery.of(context).size.shortestSide < 600)
+        // Tablets in landscape embed the settings panel, so no dialog button.
+        if (!useTabletLayout)
           Semantics(
-            label: "Settings",
+            label: LocalizationHelper.get('settings.title'),
             button: true,
             child: _buildHeaderAction(icon: Icons.tune_rounded, onPressed: _showSettings),
           ),
         const SizedBox(width: 12),
         Semantics(
-          label: "Toggle Focus",
+          label: LocalizationHelper.get('header.focus_toggle'),
           button: true,
           child: _buildHeaderAction(
             icon: _waterfallFocusMode ? Icons.layers : Icons.layers_outlined,
@@ -786,9 +771,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: IconButton(
             icon: Icon(
@@ -808,6 +793,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
+  /// Inner padding of [_buildGlassCard]; tap handlers over card-hosted
+  /// painters must subtract it to reach painter coordinates.
+  static const double _cardPadding = 16;
+
   Widget _buildGlassCard({required Widget child}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -815,11 +804,11 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
+            color: Colors.white.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(_cardPadding),
           child: child,
         ),
       ),
@@ -970,6 +959,10 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     }
   }
 
+  /// Debounces persisting the squish dial, so dragging does not hammer
+  /// storage with a write per pointer move.
+  Timer? _squishPersistTimer;
+
   void _setDialValue(_DialKind d, double v) {
     setState(() {
       switch (d) {
@@ -984,6 +977,12 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           break;
         case _DialKind.squish:
           _squish = v;
+          _squishPersistTimer?.cancel();
+          _squishPersistTimer = Timer(const Duration(milliseconds: 400), () {
+            if (!mounted) return;
+            widget.onSettingsChanged(
+                widget.settings.copyWith(frequencySkew: _squish));
+          });
           break;
       }
     });
@@ -1008,7 +1007,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     return GestureDetector(
       onTap: _toggleCapture,
       child: Semantics(
-        label: "Capture Toggle",
+        label: _captureLabel,
         button: true,
         child: AnimatedBuilder(
           animation: _pulseController,
@@ -1018,11 +1017,11 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _controller.isCapturing ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
-                border: Border.all(color: _controller.isCapturing ? Colors.red.withOpacity(0.5) : Colors.white24, width: 2),
+                color: _controller.isCapturing ? Colors.red.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
+                border: Border.all(color: _controller.isCapturing ? Colors.red.withValues(alpha: 0.5) : Colors.white24, width: 2),
                 boxShadow: [
                   if (_controller.isCapturing)
-                    BoxShadow(color: Colors.red.withOpacity(0.2), blurRadius: 10 + 10 * _pulseController.value)
+                    BoxShadow(color: Colors.red.withValues(alpha: 0.2), blurRadius: 10 + 10 * _pulseController.value)
                 ],
               ),
               child: Icon(

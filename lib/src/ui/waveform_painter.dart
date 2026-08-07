@@ -25,7 +25,7 @@ class WaveformPainter extends CustomPainter {
       final ghostData = history[i];
       final opacity = (1.0 - (i + 1) / (history.length + 1)) * 0.3;
       final ghostPaint = Paint()
-        ..color = color.withOpacity(opacity)
+        ..color = color.withValues(alpha: opacity)
         ..strokeWidth = 1.0
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
@@ -48,7 +48,7 @@ class WaveformPainter extends CustomPainter {
     // Add a soft organic glow to main wave
     if (audioData.isNotEmpty) {
       final glowPaint = Paint()
-        ..color = color.withOpacity(0.2)
+        ..color = color.withValues(alpha: 0.2)
         ..strokeWidth = 4.0
         ..style = PaintingStyle.stroke
         ..isAntiAlias = true
@@ -58,14 +58,16 @@ class WaveformPainter extends CustomPainter {
   }
 
   void _drawWave(Canvas canvas, Float64List data, Paint paint, double width, double height, double centerY) {
-    if (data.isEmpty) return;
+    if (data.length < 2) return;
     final path = Path();
 
     final sampleCount = data.length;
     const maxSamplesToDraw = 800;
     final skip = (sampleCount / maxSamplesToDraw).ceil();
-    final actualPoints = (sampleCount / skip).floor();
-    final step = width / (actualPoints - 1);
+    // Number of points the loop below actually draws.
+    final pointCount = ((sampleCount - 1) ~/ skip) + 1;
+    if (pointCount < 2) return;
+    final step = width / (pointCount - 1);
 
     for (var i = 0; i < sampleCount; i += skip) {
       final normalizedSample = data[i];

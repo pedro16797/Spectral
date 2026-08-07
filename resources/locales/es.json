@@ -4,28 +4,23 @@
     "code": "es-ES"
   },
   "app": {
-    "name": "Spectral",
-    "tagline": "Visualización Espectral Moderna"
+    "name": "Spectral"
   },
   "header": {
+    "title": "ANÁLISIS ESPECTRAL",
+    "live": "SEÑAL EN VIVO",
+    "idle": "SEÑAL INACTIVA",
     "spectrum_view": "Vista del espectro",
     "spectrum_view_rf": "Mostrando la banda de radio: toca para analizar el audio demodulado",
     "spectrum_view_demodulated": "Mostrando el audio demodulado: toca para analizar la banda de radio",
-    "spectrum_view_needs_demod": "Elige un modo de demodulación para analizar el audio"
-  },
-  "visualizations": {
-    "waveform": "Forma de onda",
-    "fft": "FFT",
-    "waterfall": "Cascada"
+    "spectrum_view_needs_demod": "Elige un modo de demodulación para analizar el audio",
+    "focus_toggle": "Alternar modo de enfoque"
   },
   "settings": {
     "title": "Ajustes",
     "theme": "Tema",
     "language": "Idioma",
-    "range": "Rango",
     "mode": "Modo",
-    "gain": "Ganancia",
-    "sensitivity": "Sensibilidad",
     "signal_source": "Fuente de señal",
     "center_frequency": "Frecuencia Central (MHz)",
     "rf_bandwidth": "Ancho de Banda RF (MHz)",
@@ -110,7 +105,9 @@
       "fft_window_size": "Resolución del análisis espectral (muestras por trama).",
       "fft_window_type": "Función matemática aplicada para reducir la fuga espectral.",
       "frequency_skew": "Estiramiento o compresión visual del eje de frecuencia."
-    }
+    },
+    "sdr_config": "Configuración SDR",
+    "close": "Cerrar ajustes"
   },
   "dials": {
     "gain": "GAN.",
@@ -124,13 +121,7 @@
     "focus": "FOCO"
   },
   "common": {
-    "save": "Guardar",
-    "cancel": "Cancelar",
-    "ok": "Aceptar",
-    "error": "Error",
-    "loading": "Cargando...",
     "start_capture": "Iniciar Captura",
-    "stop_capture": "Detener Captura",
-    "permission_denied": "Permiso de micrófono denegado"
+    "stop_capture": "Detener Captura"
   }
 }

@@ -4,28 +4,23 @@
     "code": "fr-FR"
   },
   "app": {
-    "name": "Spectral",
-    "tagline": "Visualisation Spectrale Moderne"
+    "name": "Spectral"
   },
   "header": {
+    "title": "ANALYSE SPECTRALE",
+    "live": "SIGNAL EN DIRECT",
+    "idle": "SIGNAL INACTIF",
     "spectrum_view": "Vue du spectre",
     "spectrum_view_rf": "Bande radio affichée — touchez pour analyser l'audio démodulé",
     "spectrum_view_demodulated": "Audio démodulé affiché — touchez pour analyser la bande radio",
-    "spectrum_view_needs_demod": "Choisissez un mode de démodulation pour analyser l'audio"
-  },
-  "visualizations": {
-    "waveform": "Forme d'onde",
-    "fft": "FFT",
-    "waterfall": "Cascade"
+    "spectrum_view_needs_demod": "Choisissez un mode de démodulation pour analyser l'audio",
+    "focus_toggle": "Basculer le mode focus"
   },
   "settings": {
     "title": "Paramètres",
     "theme": "Thème",
     "language": "Langue",
-    "range": "Plage",
     "mode": "Mode",
-    "gain": "Gain",
-    "sensitivity": "Sensibilité",
     "signal_source": "Source du Signal",
     "center_frequency": "Fréquence Centrale (MHz)",
     "rf_bandwidth": "Bande Passante RF (MHz)",
@@ -110,7 +105,9 @@
       "fft_window_size": "Résolution de l'analyse spectrale (échantillons par image).",
       "fft_window_type": "Fonction mathématique appliquée pour réduire les fuites spectrales.",
       "frequency_skew": "Étirement ou compression visuelle de l'axe des fréquences."
-    }
+    },
+    "sdr_config": "Configuration SDR",
+    "close": "Fermer les réglages"
   },
   "dials": {
     "gain": "GAIN",
@@ -124,13 +121,7 @@
     "focus": "FOCUS"
   },
   "common": {
-    "save": "Enregistrer",
-    "cancel": "Annuler",
-    "ok": "OK",
-    "error": "Erreur",
-    "loading": "Chargement...",
     "start_capture": "Démarrer la Capture",
-    "stop_capture": "Arrêter la Capture",
-    "permission_denied": "Permission microphone refusée"
+    "stop_capture": "Arrêter la Capture"
   }
 }
