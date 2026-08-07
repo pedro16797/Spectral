@@ -167,17 +167,15 @@ class SignalController extends ChangeNotifier {
     if (isShowingDemodulated) {
       return (start: 0, end: analysisSampleRate / 2);
     }
-    if (_hasSource && _signalSource.isComplex) {
+    if ((_hasSource && _signalSource.isComplex) ||
+        _settings.signalSource == SignalSourceType.rf) {
       final double centre = _settings.centerFrequency * 1e6;
       final double half = rfSpanHz / 2;
       return (start: centre - half, end: centre + half);
     }
-    if (_settings.signalSource == SignalSourceType.rf) {
-      final double centre = _settings.centerFrequency * 1e6;
-      final double half = rfSpanHz / 2;
-      return (start: centre - half, end: centre + half);
-    }
-    return (start: 0, end: 22050);
+    // Audio spectrum: 0..Nyquist of the actual capture rate (a nominal
+    // placeholder before the source exists).
+    return (start: 0, end: _hasSource ? _signalSource.sampleRate / 2 : 22050);
   }
 
   /// The slice currently being demodulated, if one has been chosen.
@@ -218,9 +216,11 @@ class SignalController extends ChangeNotifier {
   double? _lastQ;
 
   // Audio-output conditioning (applied to the playback path only, not the
-  // visualization): DC removal + FM de-emphasis before decimation.
+  // visualization): DC removal + FM de-emphasis before rate conversion.
   final DcBlocker _dcBlocker = DcBlocker();
-  final Deemphasis _deemphasis = Deemphasis(sampleRate: 44100);
+  final Deemphasis _deemphasis =
+      Deemphasis(sampleRate: kAudioOutputRate.toDouble());
+  final LinearResampler _outputResampler = LinearResampler();
 
   // ---- Processing inputs set directly by the UI (no notification needed) ----
   double gain = 1.0;
@@ -241,11 +241,10 @@ class SignalController extends ChangeNotifier {
   // Single-flight guard for asynchronous reconfiguration.
   bool _isReconfiguring = false;
   bool _reconfigureQueued = false;
-  AppSettings? _queuedSettings;
 
   // ---- Pass-throughs the UI needs ----
-  int get sampleRate => _signalSource.sampleRate;
-  bool get isComplex => _signalSource.isComplex;
+  int get sampleRate => _hasSource ? _signalSource.sampleRate : 0;
+  bool get isComplex => _hasSource && _signalSource.isComplex;
   List<double>? get peakHoldBuffer => _fftService.peakHoldBuffer;
 
   /// Updates the settings used for subsequent processing without rebuilding the
@@ -271,18 +270,14 @@ class SignalController extends ChangeNotifier {
   void clearPeakHold() => _fftService.clearPeakHold();
 
   /// Reconfigures the active signal source. Concurrent invocations are
-  /// serialized: if a reconfiguration is already running, the latest requested
-  /// settings are queued and applied once the in-flight one completes.
+  /// serialized: if a reconfiguration is already running, one rerun is queued
+  /// and executes against whatever `_settings` holds by then — never a stale
+  /// snapshot, so a settings change made mid-flight cannot be reverted.
   Future<void> reconfigure({AppSettings? newSettings}) async {
-    // Always reflect the latest requested settings in `_settings` immediately.
-    // The queue below relies on this: when a queued reconfigure carries no new
-    // settings, falling back to the current `_settings` is correct because the
-    // most recent non-null settings were already stored here.
     if (newSettings != null) _settings = newSettings;
 
     if (_isReconfiguring) {
       _reconfigureQueued = true;
-      _queuedSettings = newSettings;
       return;
     }
 
@@ -291,9 +286,6 @@ class SignalController extends ChangeNotifier {
       await _performInitialization();
       while (_reconfigureQueued) {
         _reconfigureQueued = false;
-        final queued = _queuedSettings;
-        _queuedSettings = null;
-        if (queued != null) _settings = queued;
         await _performInitialization();
       }
     } finally {
@@ -368,13 +360,19 @@ class SignalController extends ChangeNotifier {
               );
               audioRate = audioRate / plan.decimation;
             }
-            // De-emphasis is rate-dependent, so retune it when the user
-            // changes the channel width.
+            // The audio chain state is rate-dependent, so retune it when the
+            // user changes the channel width. The FM demodulator's phase
+            // memory also belongs to the old channel plan — carrying it over
+            // would compute one phase difference across two different signals
+            // and click.
             if (audioRate != _audioChainRate) {
               _audioChainRate = audioRate;
               _deemphasis.configure(sampleRate: audioRate);
               _deemphasis.reset();
               _dcBlocker.reset();
+              _outputResampler.reset();
+              _lastI = null;
+              _lastQ = null;
             }
           }
 
@@ -390,16 +388,27 @@ class SignalController extends ChangeNotifier {
               _deemphasis.processInPlace(audioForOutput);
             }
 
-            // Decimate from the channel rate — not the capture rate — to the
-            // ~44.1 kHz the output expects.
-            final int decimationFactor = (audioRate / 44100).round().clamp(1, 100);
+            // Bring the channel rate down to the output's 44.1 kHz in two
+            // steps: an integer averaged decimation (which also anti-aliases),
+            // then a fractional resample for the remainder. Integer-only
+            // decimation used to leave up to ~10% rate error, which played
+            // audio sharp or flat and steadily drifted the output buffer.
+            final int decimationFactor =
+                (audioRate / kAudioOutputRate).floor().clamp(1, 100);
+            Float64List conditioned = audioForOutput;
             if (decimationFactor > 1) {
-              decimationBuffer =
-                  AudioUtils.decimateAveraged(audioForOutput, decimationFactor, target: decimationBuffer);
-              _audioOutputService.push(decimationBuffer!);
-            } else {
-              _audioOutputService.push(audioForOutput);
+              decimationBuffer = AudioUtils.decimateAveraged(
+                  conditioned, decimationFactor, target: decimationBuffer);
+              conditioned = decimationBuffer!;
             }
+            final double intermediateRate = audioRate / decimationFactor;
+            if (intermediateRate != kAudioOutputRate) {
+              _outputResampler.configure(
+                  inputRate: intermediateRate,
+                  outputRate: kAudioOutputRate.toDouble());
+              conditioned = _outputResampler.process(conditioned);
+            }
+            _audioOutputService.push(conditioned);
           }
 
           // Which signal the spectrum describes is the user's choice. RF is the
@@ -408,18 +417,10 @@ class SignalController extends ChangeNotifier {
           // peak hold — at the recovered audio.
           final bool analyseDemodulated = isShowingDemodulated;
           final bool fftIsComplex = isComplex && !analyseDemodulated;
-
-          final fft = _fftService.processSignalData(
+          _analyseFrame(
             analyseDemodulated ? audio : (isComplex ? data : audio),
-            windowSize: _settings.fftWindowSize,
-            windowType: _settings.fftWindowType,
             isComplex: fftIsComplex,
-            peakHoldEnabled: _settings.peakHoldEnabled,
-            averagingMode: _settings.fftAveragingMode,
-            averagingCount: _settings.fftAveragingCount,
           );
-          _processFftFrame(fft, isComplex: fftIsComplex);
-          frame.tick();
         } catch (e) {
           debugPrint("Signal processing error: $e");
         }
@@ -501,27 +502,41 @@ class SignalController extends ChangeNotifier {
     }
 
     currentFftData = adjustedFft;
-    // Tone detection is only meaningful for real-valued signals.
-    // Tone detection needs the rate of the signal actually analysed, which in
-    // the demodulated view is the tuned channel's rate, not the capture rate.
+    // Tone detection is only meaningful for real-valued signals, and needs
+    // the rate of the signal actually analysed — in the demodulated view that
+    // is the tuned channel's rate, not the capture rate.
     detectedTone = isComplex
         ? null
         : _fftService.detectPrimaryTone(adjustedFft, analysisSampleRate.round());
     snr = _fftService.calculateSNR(adjustedFft);
 
-    if (adjustedFft.isNotEmpty) {
-      // Commit a waterfall row only every Nth frame, where N is set by the
-      // waterfall speed dial (higher speed -> more rows -> faster fall).
-      _waterfallFrameCounter++;
-      final int interval = (4.0 / waterfallSpeed).round().clamp(1, 50);
-      if (_waterfallFrameCounter >= interval) {
-        _waterfallFrameCounter = 0;
-        fftHistory.insert(0, adjustedFft);
-        if (fftHistory.length > _maxHistory) {
-          fftHistory.removeLast();
-        }
+    // Commit a waterfall row only every Nth frame, where N is set by the
+    // waterfall speed dial (higher speed -> more rows -> faster fall).
+    _waterfallFrameCounter++;
+    final int interval = (4.0 / waterfallSpeed).round().clamp(1, 50);
+    if (_waterfallFrameCounter >= interval) {
+      _waterfallFrameCounter = 0;
+      fftHistory.insert(0, adjustedFft);
+      if (fftHistory.length > _maxHistory) {
+        fftHistory.removeLast();
       }
     }
+  }
+
+  /// Shared tail of the analysis chain: FFT the given frame with the current
+  /// settings, update the visualization state, and repaint the live layers.
+  void _analyseFrame(Float64List samples, {required bool isComplex}) {
+    final fft = _fftService.processSignalData(
+      samples,
+      windowSize: _settings.fftWindowSize,
+      windowType: _settings.fftWindowType,
+      isComplex: isComplex,
+      peakHoldEnabled: _settings.peakHoldEnabled,
+      averagingMode: _settings.fftAveragingMode,
+      averagingCount: _settings.fftAveragingCount,
+    );
+    _processFftFrame(fft, isComplex: isComplex);
+    frame.tick();
   }
 
   void _startDemoData() {
@@ -545,23 +560,14 @@ class SignalController extends ChangeNotifier {
       }
       if (_disposed) return;
       _updateAudioData(samples, useDemod: false);
-
-      final fft = _fftService.processSignalData(
-        samples,
-        windowSize: _settings.fftWindowSize,
-        windowType: _settings.fftWindowType,
-        isComplex: false,
-        peakHoldEnabled: _settings.peakHoldEnabled,
-        averagingMode: _settings.fftAveragingMode,
-        averagingCount: _settings.fftAveragingCount,
-      );
-      _processFftFrame(fft, isComplex: false);
-      frame.tick();
+      _analyseFrame(samples, isComplex: false);
     });
   }
 
   /// Toggles capture on/off. Notifies listeners when [isCapturing] changes.
   Future<void> toggleCapture() async {
+    // The source may not exist if its factory threw during initialization.
+    if (!isDemoMode && !_hasSource) return;
     try {
       if (_isCapturing) {
         if (isDemoMode) {
@@ -677,7 +683,7 @@ class SignalController extends ChangeNotifier {
     _driverStateSubscription?.cancel();
     _demoTimer?.cancel();
     frame.dispose();
-    _signalSource.dispose();
+    if (_hasSource) _signalSource.dispose();
     _audioOutputService.dispose();
     super.dispose();
   }

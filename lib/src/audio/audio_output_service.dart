@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:mp_audio_stream/mp_audio_stream.dart';
 
+/// Sample rate the playback stream runs at; everything pushed into
+/// [AudioOutputService] must already be at this rate.
+const int kAudioOutputRate = 44100;
+
 /// Service to handle real-time PCM audio playback using `mp_audio_stream`.
 class AudioOutputService {
   late final AudioStream _audioStream;
@@ -12,7 +16,7 @@ class AudioOutputService {
   }
 
   /// Initializes the audio stream with the given configuration.
-  void init({int sampleRate = 44100, int channels = 1}) {
+  void init({int sampleRate = kAudioOutputRate, int channels = 1}) {
     if (_isInitialized) return;
     try {
       _audioStream.init(sampleRate: sampleRate, channels: channels);

@@ -406,7 +406,7 @@ class _SettingsContentState extends State<SettingsContent> {
             label: LocalizationHelper.get('settings.fft_window_size'),
             tooltip: LocalizationHelper.get('settings.tooltips.fft_window_size'),
             value: widget.settings.fftWindowSize,
-            items: [512, 1024, 2048, 4096],
+            items: kFftWindowSizes,
             onChanged: (val) {
               if (val != null) _updateSettings(widget.settings.copyWith(fftWindowSize: val));
             },

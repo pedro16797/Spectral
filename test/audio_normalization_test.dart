@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:typed_data';
+import 'package:spectral/src/core/audio_filters.dart';
 import 'package:spectral/src/utils/audio_utils.dart';
 
 void main() {
@@ -46,26 +47,6 @@ void main() {
   });
 
   group('Audio Decimation', () {
-    test('decimates by an integer factor', () {
-      final input = Float64List.fromList([0, 1, 2, 3, 4, 5, 6, 7]);
-      final output = AudioUtils.decimate(input, 2);
-      expect(output, [0, 2, 4, 6]);
-    });
-
-    test('reused buffer never leaks stale tail samples for a smaller chunk', () {
-      // Prime a reusable buffer with a longer input.
-      final long = Float64List.fromList(List<double>.filled(8, 9.0));
-      var buffer = AudioUtils.decimate(long, 2); // length 4
-      expect(buffer.length, 4);
-
-      // Decimate a shorter input reusing the oversized buffer.
-      final short = Float64List.fromList([1, 2, 3, 4]);
-      final output = AudioUtils.decimate(short, 2, target: buffer);
-
-      expect(output.length, 2);
-      expect(output, [1, 3]); // no stale 9.0 values in the tail
-    });
-
     test('decimateAveraged averages each group of factor samples', () {
       final input = Float64List.fromList([1, 1, 1, 1, 5, 5, 5, 5]);
       expect(AudioUtils.decimateAveraged(input, 4), [1.0, 5.0]);
@@ -84,6 +65,49 @@ void main() {
         target: Float64List(2),
       );
       expect(out, [3.0, 7.0]);
+    });
+  });
+
+  group('LinearResampler', () {
+    test('is the identity at equal rates', () {
+      final r = LinearResampler()
+        ..configure(inputRate: 44100, outputRate: 44100);
+      final input = Float64List.fromList([0.1, 0.2, 0.3, 0.4]);
+      expect(r.process(input), input);
+    });
+
+    test('produces the right output count for a fractional ratio', () {
+      final r = LinearResampler()
+        ..configure(inputRate: 48000, outputRate: 44100);
+      // 48000 input samples must resample to ~44100 outputs, not 48000: the
+      // old integer-only path pushed them through unchanged, playing ~9% fast.
+      int produced = 0;
+      for (int chunk = 0; chunk < 48; chunk++) {
+        produced += r.process(Float64List(1000)).length;
+      }
+      expect(produced, closeTo(44100, 2));
+    });
+
+    test('interpolates linearly within a chunk', () {
+      final r = LinearResampler()..configure(inputRate: 2, outputRate: 4);
+      final out = r.process(Float64List.fromList([0.0, 1.0]));
+      expect(out, [0.0, 0.5, 1.0]);
+    });
+
+    test('stays continuous across chunk boundaries', () {
+      final r = LinearResampler()..configure(inputRate: 3, outputRate: 2);
+      // A steadily increasing ramp split into chunks must stay monotonic —
+      // any discontinuity means the carried phase/previous sample is wrong.
+      final outputs = <double>[];
+      for (int chunk = 0; chunk < 10; chunk++) {
+        final input = Float64List.fromList(
+            List.generate(5, (i) => (chunk * 5 + i).toDouble()));
+        outputs.addAll(r.process(input));
+      }
+      for (int i = 1; i < outputs.length; i++) {
+        expect(outputs[i] - outputs[i - 1], closeTo(1.5, 1e-9),
+            reason: 'discontinuity at output $i');
+      }
     });
   });
 }

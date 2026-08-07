@@ -55,7 +55,7 @@ class ChannelExtractor {
 
   /// Number of output I/Q pairs [process] would produce for [inputPairs],
   /// given the accumulator state carried in from previous frames.
-  int outputPairsFor(int inputPairs, int decimation) =>
+  int _outputPairsFor(int inputPairs, int decimation) =>
       (inputPairs + _accCount) ~/ decimation;
 
   /// Mixes [iq] — interleaved I/Q sampled at [sampleRate] — down by
@@ -81,7 +81,7 @@ class ChannelExtractor {
     }
 
     final int pairs = iq.length ~/ 2;
-    final int outPairs = outputPairsFor(pairs, decimation);
+    final int outPairs = _outputPairsFor(pairs, decimation);
     final out = Float64List(outPairs * 2);
     if (pairs == 0) return out;
 

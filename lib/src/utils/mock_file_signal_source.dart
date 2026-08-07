@@ -52,6 +52,12 @@ class MockFileSignalSource implements SignalSource {
 
       if (_offset + bytesToRead > _rawData!.length) {
         _offset = assetPath.endsWith('.wav') ? 44 : 0;
+        // A file shorter than one chunk can never fill a frame; keep quiet
+        // instead of overrunning the buffer on every tick.
+        if (_offset + bytesToRead > _rawData!.length) {
+          timer.cancel();
+          return;
+        }
       }
 
       final samples = Float64List(isComplex ? samplesToRead * 2 : samplesToRead);
