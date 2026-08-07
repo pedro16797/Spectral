@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import '../audio/audio_capture_service.dart';
 import '../audio/audio_output_service.dart';
-import '../rf/rf_capture_service.dart';
+import '../rf/simulated_rf_capture_service.dart';
 import '../rf/rtl_tcp_capture_service.dart'
     if (dart.library.html) '../rf/rtl_tcp_capture_service_stub.dart';
 import '../rf/integrated_rf_capture_service.dart';
@@ -56,7 +56,7 @@ SignalSource defaultSignalSourceFactory(AppSettings settings, String? playFile) 
           ppmCorrection: settings.ppmCorrection,
         );
       case RfSourceType.mock:
-        return RfCaptureService(
+        return SimulatedRfCaptureService(
           centerFrequency: settings.centerFrequency * 1e6,
           bandwidth: settings.rfBandwidth * 1e6,
         );
@@ -424,6 +424,8 @@ class SignalController extends ChangeNotifier {
         } catch (e) {
           debugPrint("Signal processing error: $e");
         }
+      }, onError: (Object e) {
+        debugPrint("Signal stream error: $e");
       });
 
       if (wasCapturing) {

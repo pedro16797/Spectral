@@ -20,9 +20,6 @@ import 'dart:typed_data';
 class RtlUsbIds {
   RtlUsbIds._();
 
-  /// Realtek Semiconductor Corp.
-  static const int vendorRealtek = 0x0bda;
-
   /// (vendorId, productId) pairs known to contain an RTL2832U.
   static const List<(int, int)> knownDevices = [
     (0x0bda, 0x2831), // RTL2831U
@@ -36,9 +33,6 @@ class RtlUsbIds {
     (0x1b80, 0xd3a4), // Twintech UT-40
     (0x1f4d, 0xb803), // GTek T803
   ];
-
-  /// Product IDs used by Realtek-branded dongles.
-  static const List<int> knownProductIds = [0x2831, 0x2832, 0x2834, 0x2837, 0x2838];
 
   /// Returns true if [vendorId]/[productId] looks like a supported dongle.
   static bool isKnownDongle(int vendorId, int productId) =>
@@ -77,16 +71,6 @@ enum RtlTuner {
   }
 }
 
-/// Reference crystal frequency (Hz) used for both the RTL2832U resampler and
-/// the tuner PLL on standard dongles.
-const int kRtlCrystalHz = 28800000;
-
-/// The IF the RTL2832U is programmed to when paired with an R82xx tuner.
-const int kR82xxIfFreqHz = 3570000;
-
-/// Sample-stream bulk endpoint on the RTL2832U.
-const int kBulkEndpoint = 0x81;
-
 /// Sample rates the RTL2832U resampler cannot produce. Anything outside
 /// (225 kHz, 300 kHz] ∪ (900 kHz, 3.2 MHz] is rejected by the hardware.
 bool isSupportedRtlSampleRate(int rateHz) {
@@ -118,4 +102,40 @@ Float64List rtlIqBytesToDouble(Uint8List data, int offset, int length) {
     out[i] = (data[offset + i] - 127.5) / 127.5;
   }
   return out;
+}
+
+/// Reassembles RTL2832U byte chunks into whole normalized I/Q pairs.
+///
+/// TCP segments and USB transfers can split mid-sample; emitting an
+/// odd-length chunk as-is would swap I and Q for the rest of the stream. This
+/// carries the odd trailing byte into the next chunk instead, so pairs never
+/// drift. Shared by the rtl_tcp and integrated capture paths.
+class RtlIqChunker {
+  int? _pendingByte;
+
+  /// Forget any carried byte. Call when a new stream starts.
+  void reset() => _pendingByte = null;
+
+  /// Converts [chunk] (from [offset] on), prepending any byte carried from
+  /// the previous call. Returns null when no whole pair is available yet.
+  Float64List? process(Uint8List chunk, {int offset = 0}) {
+    final int length = chunk.length - offset;
+    if (length <= 0) return null;
+
+    final int? pending = _pendingByte;
+    final int total = length + (pending == null ? 0 : 1);
+    final int usable = total - (total % 2);
+    _pendingByte = total.isOdd ? chunk[chunk.length - 1] : null;
+    if (usable == 0) return null;
+
+    final out = Float64List(usable);
+    int written = 0;
+    if (pending != null) {
+      out[written++] = (pending - 127.5) / 127.5;
+    }
+    for (int i = offset; written < usable; i++) {
+      out[written++] = (chunk[i] - 127.5) / 127.5;
+    }
+    return out;
+  }
 }

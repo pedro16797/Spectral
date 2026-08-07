@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 
 import 'rtl2832u.dart';
 
@@ -157,13 +158,13 @@ class NativeSdrDriver implements NativeSdrDriverInterface {
       (s) {
         if (!_stateController.isClosed) _stateController.add(s);
       },
-      onError: (Object _) {},
+      onError: (Object e) => debugPrint('NativeSdrDriver state error: $e'),
     );
     _sampleSub = delegate.samples.listen(
       (chunk) {
         if (!_sampleController.isClosed) _sampleController.add(chunk);
       },
-      onError: (Object _) {},
+      onError: (Object e) => debugPrint('NativeSdrDriver sample error: $e'),
     );
   }
 
@@ -240,5 +241,7 @@ class NativeSdrDriver implements NativeSdrDriverInterface {
     _sampleSub?.cancel();
     _sampleSub = null;
     _delegate?.dispose();
+    _stateController.close();
+    _sampleController.close();
   }
 }

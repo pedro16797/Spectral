@@ -38,9 +38,8 @@ class IntegratedRfCaptureService implements SignalSource {
   StreamSubscription<Uint8List>? _sampleSubscription;
   bool _isCapturing = false;
 
-  /// Holds a trailing odd byte between chunks so I/Q pairs never drift out of
-  /// phase if a transfer ever splits mid-sample.
-  int? _pendingByte;
+  /// Keeps I/Q pairs aligned across chunks that split mid-sample.
+  final RtlIqChunker _chunker = RtlIqChunker();
 
   @override
   Stream<Float64List> get dataStream => _dataController.stream;
@@ -51,73 +50,68 @@ class IntegratedRfCaptureService implements SignalSource {
   @override
   bool get isComplex => true;
 
+  // Always true so callers proceed to [startCapture], which brings the dongle
+  // up on demand and reports a real error if it cannot. Answering with the
+  // driver state here made the capture button silently do nothing whenever
+  // the dongle was plugged in but not yet opened.
   @override
-  Future<bool> checkPermission() async => _driver.isInitialized;
+  Future<bool> checkPermission() async => true;
 
   @override
   Future<void> startCapture() async {
     if (_isCapturing) return;
-
-    if (!_driver.isInitialized) {
-      // Try to bring the dongle up on demand — the user may have plugged it in
-      // (or granted permission) after this source was created.
-      final opened = await _driver.initialize(
-        sampleRate: _sampleRate,
-        frequency: centerFrequency.toInt(),
-        ppm: ppmCorrection.round(),
-        tunerGainTenthsDb: tunerGainTenthsDb,
-      );
-      if (!opened) {
-        throw StateError(
-          _driver.lastError ?? 'The RTL-SDR dongle is not ready.',
-        );
-      }
-    } else {
-      // Already open: re-apply this source's settings.
-      await _driver.setSampleRate(_sampleRate);
-      await _driver.setPpm(ppmCorrection.round());
-      await _driver.setFrequency(centerFrequency.toInt());
-      if (tunerGainTenthsDb == null) {
-        await _driver.setAgc(true);
-      } else {
-        await _driver.setTunerGain(tunerGainTenthsDb!);
-      }
-    }
-
-    _pendingByte = null;
-    _sampleSubscription = _driver.samples.listen(
-      _onSamples,
-      onError: (Object e) => debugPrint('IntegratedRfCaptureService: $e'),
-    );
-
-    if (!await _driver.startStream()) {
-      await _sampleSubscription?.cancel();
-      _sampleSubscription = null;
-      throw StateError('Could not start the RTL-SDR sample stream.');
-    }
+    // Claim the flag before awaiting, so an overlapping call cannot subscribe
+    // to the sample stream twice and double every chunk.
     _isCapturing = true;
+
+    try {
+      if (!_driver.isInitialized) {
+        // Try to bring the dongle up on demand — the user may have plugged it
+        // in (or granted permission) after this source was created.
+        final opened = await _driver.initialize(
+          sampleRate: _sampleRate,
+          frequency: centerFrequency.toInt(),
+          ppm: ppmCorrection.round(),
+          tunerGainTenthsDb: tunerGainTenthsDb,
+        );
+        if (!opened) {
+          throw StateError(
+            _driver.lastError ?? 'The RTL-SDR dongle is not ready.',
+          );
+        }
+      } else {
+        // Already open: re-apply this source's settings.
+        await _driver.setSampleRate(_sampleRate);
+        await _driver.setPpm(ppmCorrection.round());
+        await _driver.setFrequency(centerFrequency.toInt());
+        if (tunerGainTenthsDb == null) {
+          await _driver.setAgc(true);
+        } else {
+          await _driver.setTunerGain(tunerGainTenthsDb!);
+        }
+      }
+
+      _chunker.reset();
+      _sampleSubscription = _driver.samples.listen(
+        _onSamples,
+        onError: (Object e) => debugPrint('IntegratedRfCaptureService: $e'),
+      );
+
+      if (!await _driver.startStream()) {
+        await _sampleSubscription?.cancel();
+        _sampleSubscription = null;
+        throw StateError('Could not start the RTL-SDR sample stream.');
+      }
+    } catch (e) {
+      _isCapturing = false;
+      rethrow;
+    }
   }
 
   void _onSamples(Uint8List chunk) {
-    if (_dataController.isClosed || chunk.isEmpty) return;
-
-    final pending = _pendingByte;
-    Uint8List data;
-    if (pending == null) {
-      data = chunk;
-    } else {
-      data = Uint8List(chunk.length + 1)
-        ..[0] = pending
-        ..setRange(1, chunk.length + 1, chunk);
-      _pendingByte = null;
-    }
-
-    // Emit whole I/Q pairs only; carry any odd trailing byte to the next chunk.
-    final usable = data.length - (data.length % 2);
-    if (usable < data.length) _pendingByte = data[data.length - 1];
-    if (usable == 0) return;
-
-    _dataController.add(rtlIqBytesToDouble(data, 0, usable));
+    if (_dataController.isClosed) return;
+    final samples = _chunker.process(chunk);
+    if (samples != null) _dataController.add(samples);
   }
 
   @override

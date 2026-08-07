@@ -7,7 +7,7 @@ import 'rtl2832u.dart';
 
 // The RTL sample conversion is shared with the integrated USB path; re-exported
 // so callers (and tests) of this service can keep importing it from here.
-export 'rtl2832u.dart' show rtlIqBytesToDouble;
+export 'rtl2832u.dart' show rtlIqBytesToDouble, RtlIqChunker;
 
 /// rtl_tcp control command opcodes (see librtlsdr's rtl_tcp).
 class RtlTcpCommand {
@@ -53,10 +53,13 @@ class RtlTcpCaptureService implements SignalSource {
   final int? _tunerGainTenthsDb;
 
   Socket? _socket;
+  StreamSubscription<Uint8List>? _subscription;
   final _dataController = StreamController<Float64List>.broadcast();
+  final RtlIqChunker _chunker = RtlIqChunker();
   bool _isCapturing = false;
-  bool _headerSkipped = false;
   final List<int> _headerBuffer = [];
+
+  static const int _headerLength = 12;
 
   RtlTcpCaptureService({
     this.host = '127.0.0.1',
@@ -85,19 +88,23 @@ class RtlTcpCaptureService implements SignalSource {
   @override
   Future<void> startCapture() async {
     if (_isCapturing) return;
+    // Claim the flag before awaiting, so an overlapping call cannot open a
+    // second socket and leak the first.
+    _isCapturing = true;
 
     try {
-      _socket = await Socket.connect(host, port, timeout: const Duration(seconds: 5));
-      _isCapturing = true;
-      _headerSkipped = false;
+      final socket = await Socket.connect(host, port,
+          timeout: const Duration(seconds: 5));
+      _socket = socket;
       _headerBuffer.clear();
+      _chunker.reset();
 
       _configureDevice();
 
-      _socket!.listen(
+      _subscription = socket.listen(
         _processRawData,
         onDone: stopCapture,
-        onError: (e) {
+        onError: (Object e) {
           debugPrint("RTL_TCP Socket Error: $e");
           stopCapture();
         },
@@ -106,7 +113,7 @@ class RtlTcpCaptureService implements SignalSource {
     } catch (e) {
       debugPrint("Failed to connect to rtl_tcp at $host:$port: $e");
       _isCapturing = false;
-      await _socket?.close();
+      _socket?.destroy();
       _socket = null;
       rethrow;
     }
@@ -135,24 +142,34 @@ class RtlTcpCaptureService implements SignalSource {
 
   void _processRawData(Uint8List data) {
     int offset = 0;
-    if (!_headerSkipped) {
+    if (_headerBuffer.length < _headerLength) {
       // rtl_tcp prefixes the stream with a 12-byte header ('RTL0' + caps).
-      final int toCopy = math.min(12 - _headerBuffer.length, data.length);
+      final int toCopy =
+          math.min(_headerLength - _headerBuffer.length, data.length);
       _headerBuffer.addAll(data.sublist(0, toCopy));
       offset = toCopy;
 
-      if (_headerBuffer.length == 12) {
-        _headerSkipped = true;
-        _headerBuffer.clear();
-      } else {
+      if (_headerBuffer.length < _headerLength) {
         return; // Wait for the rest of the header.
+      }
+
+      // Anything that does not open with the 'RTL0' magic is not an rtl_tcp
+      // server (wrong port, wrong service, or a hostile endpoint) — drop the
+      // connection rather than render its bytes as RF samples.
+      if (_headerBuffer[0] != 0x52 || // R
+          _headerBuffer[1] != 0x54 || // T
+          _headerBuffer[2] != 0x4C || // L
+          _headerBuffer[3] != 0x30) { // 0
+        debugPrint("rtl_tcp: $host:$port did not send an RTL0 header; "
+            "disconnecting.");
+        unawaited(stopCapture());
+        return;
       }
     }
 
-    final remaining = data.length - offset;
-    if (remaining <= 0) return;
     if (_dataController.isClosed) return;
-    _dataController.add(rtlIqBytesToDouble(data, offset, remaining));
+    final samples = _chunker.process(data, offset: offset);
+    if (samples != null) _dataController.add(samples);
   }
 
   void _sendCommand(int cmd, int arg) {
@@ -165,7 +182,12 @@ class RtlTcpCaptureService implements SignalSource {
   Future<void> stopCapture() async {
     if (!_isCapturing) return;
     _isCapturing = false;
-    await _socket?.close();
+    await _subscription?.cancel();
+    _subscription = null;
+    // destroy() tears down both directions immediately. close() alone only
+    // shuts the write side, so the server would keep streaming samples into a
+    // subscription nobody wants — and a quick restart would read them.
+    _socket?.destroy();
     _socket = null;
   }
 

@@ -95,6 +95,8 @@ class AudioCaptureService implements SignalSource {
   @override
   void dispose() {
     debugPrint("AudioCaptureService: Disposing...");
+    _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
     _audioDataController.close();
     _audioRecorder.dispose();
   }

@@ -4,7 +4,9 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import '../core/signal_source.dart';
 
-class RfCaptureService implements SignalSource {
+/// Simulated RF source: synthesizes a plausible I/Q band for demos and
+/// development without any hardware attached.
+class SimulatedRfCaptureService implements SignalSource {
   final _dataController = StreamController<Float64List>.broadcast();
   final math.Random _rng = math.Random();
   Timer? _timer;
@@ -14,7 +16,7 @@ class RfCaptureService implements SignalSource {
   final double centerFrequency; // Hz
   final double bandwidth; // Hz
 
-  RfCaptureService({
+  SimulatedRfCaptureService({
     this.centerFrequency = 100000000, // 100 MHz
     this.bandwidth = 2000000, // 2 MHz
   });

@@ -92,7 +92,11 @@ class NativeSdrDriverDelegate implements NativeSdrDriverInterface {
     if (event is! Map) return;
     final type = event['type']?.toString();
     final deviceMap = event['device'];
-    final info = deviceMap is Map ? SdrDeviceInfo.fromMap(deviceMap) : null;
+    // A payload with no device name is a placeholder (e.g. a permission
+    // broadcast that lost its UsbDevice extra); never let it replace a real
+    // device record.
+    final parsed = deviceMap is Map ? SdrDeviceInfo.fromMap(deviceMap) : null;
+    final info = (parsed != null && parsed.deviceName.isNotEmpty) ? parsed : null;
 
     switch (type) {
       case 'attached':
@@ -104,6 +108,13 @@ class NativeSdrDriverDelegate implements NativeSdrDriverInterface {
             : SdrDriverState.needsPermission);
         break;
       case 'detached':
+        // Only react if the detached dongle is the one we are tracking —
+        // another device leaving must not tear this one down.
+        if (info != null &&
+            _device != null &&
+            info.deviceName != _device!.deviceName) {
+          break;
+        }
         _isOpen = false;
         _device = null;
         _setState(SdrDriverState.noDevice);
@@ -230,18 +241,9 @@ class NativeSdrDriverDelegate implements NativeSdrDriverInterface {
         return false;
       }
 
-      final opened = SdrDeviceInfo.fromMap(result);
-      _device = opened;
-      if (!opened.tuner.isSupported) {
-        _isOpen = false;
-        _setState(
-          SdrDriverState.error,
-          error: 'Unsupported tuner (${opened.tuner.name}). '
-              'This driver supports R820T/R820T2/R828D dongles.',
-        );
-        return false;
-      }
-
+      // An unsupported tuner never gets this far: the Kotlin driver fails
+      // bring-up with a descriptive error, which the branch above surfaces.
+      _device = SdrDeviceInfo.fromMap(result);
       _isOpen = true;
       _setState(SdrDriverState.open);
       return true;
