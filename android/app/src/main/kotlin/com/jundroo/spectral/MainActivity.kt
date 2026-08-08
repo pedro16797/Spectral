@@ -1,7 +1,7 @@
-package com.example.spectral
+package com.jundroo.spectral
 
 import android.content.Intent
-import com.example.spectral.usb.SpectralUsbBridge
+import com.jundroo.spectral.usb.SpectralUsbBridge
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 

@@ -36,12 +36,13 @@ To generate a complete set of distribution artifacts (APKs, Web Zip, and Screens
 
 ## 3. Publishing to Google Play Store (Android)
 
-> **⚠️ Before first publish — currently blocking:** `android/app/build.gradle.kts`
-> still uses the placeholder application ID `com.example.spectral` (Play
-> rejects `com.example.*`) and signs release builds with the debug key.
-> Choose a permanent application ID (this also moves the Kotlin package and
-> the USB permission action string) and configure a real signing config via
-> `key.properties` first. Both are one-way doors for installed users.
+> **⚠️ Before first publish:** create `android/key.properties` (gitignored;
+> see the comment in `android/app/build.gradle.kts`) with a real upload
+> keystore. Without it release builds fall back to the **debug key**, which
+> the Play Store rejects and which would leave any sideloaded installs
+> un-updatable by a properly signed release. The application ID is
+> `com.jundroo.spectral` — it becomes permanent with the first published
+> or installed build.
 
 ### Prerequisites
 - A Google Play Developer Account.

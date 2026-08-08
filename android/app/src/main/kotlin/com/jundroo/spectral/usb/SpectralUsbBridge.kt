@@ -1,4 +1,4 @@
-package com.example.spectral.usb
+package com.jundroo.spectral.usb
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -40,7 +40,7 @@ class SpectralUsbBridge(
         private const val EVENT_CHANNEL = "spectral/sdr/events"
         private const val SAMPLE_CHANNEL = "spectral/sdr/samples"
 
-        private const val ACTION_USB_PERMISSION = "com.example.spectral.USB_PERMISSION"
+        private const val ACTION_USB_PERMISSION = "com.jundroo.spectral.USB_PERMISSION"
 
         /** Bulk read size. Must be a multiple of the 512-byte USB packet. */
         private const val BULK_BUFFER_BYTES = 16384

@@ -1,4 +1,4 @@
-package com.example.spectral.usb
+package com.jundroo.spectral.usb
 
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
