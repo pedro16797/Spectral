@@ -1,4 +1,4 @@
-package com.jundroo.spectral.usb
+package gal.lendas.spectral.usb
 
 import android.util.Log
 

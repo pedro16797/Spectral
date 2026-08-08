@@ -82,8 +82,10 @@ is a thin **view** that observes the controller:
 - **`scripts/`**: Tooling — `build.sh <android|web|ios>` (release builds),
   `package_distribution.sh`, `sync_version.sh`, `generate_screenshots.py`,
   `generate_samples.py`, `generate_placeholder_icon.py`.
-- **`.github/workflows/`**: CI (tests, analysis, and per-platform builds via
-  `scripts/build.sh`).
+- **`.github/workflows/`**: CI — `pr-checks.yml` (tests, analysis, debug
+  builds on pull requests) and `release-build.yml` (release-signed App
+  Bundle/APKs, web, and unsigned iOS builds on pushes to `main`), both via
+  `scripts/build.sh`.
 - **`android/` `ios/` `web/` `linux/` `macos/` `windows/`**: Flutter platform
   runners. The register-level USB driver lives in
   `android/app/src/main/kotlin/com/example/spectral/usb/`.

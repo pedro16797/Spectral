@@ -17,8 +17,9 @@ mkdir -p "$DIST_DIR/android/phone" "$DIST_DIR/android/tablet" \
          "$DIST_DIR/web" "$DIST_DIR/metadata"
 
 # 2. Android build
-echo "🤖 Building Android APKs..."
+echo "🤖 Building Android App Bundle + APKs..."
 bash scripts/build.sh android
+cp build/app/outputs/bundle/release/app-release.aab "$DIST_DIR/android/spectral-${VERSION}.aab"
 cp build/app/outputs/flutter-apk/app-*-release.apk "$DIST_DIR/android/"
 
 # 3. Web build

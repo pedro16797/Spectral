@@ -34,26 +34,67 @@ To generate a complete set of distribution artifacts (APKs, Web Zip, and Screens
 
 ---
 
-## 3. Publishing to Google Play Store (Android)
+## 3. Continuous Integration (two paths)
 
-> **⚠️ Before first publish:** create `android/key.properties` (gitignored;
-> see the comment in `android/app/build.gradle.kts`) with a real upload
-> keystore. Without it release builds fall back to the **debug key**, which
-> the Play Store rejects and which would leave any sideloaded installs
-> un-updatable by a properly signed release. The application ID is
-> `com.jundroo.spectral` — it becomes permanent with the first published
-> or installed build.
+CI is split so nothing debug-signed can ever come out of the release path:
+
+- **`pr-checks.yml`** — every pull request: tests, analysis, a debug APK
+  artifact for QA sideloads, and a web build. Needs no secrets, so fork PRs
+  work.
+- **`release-build.yml`** — every push to `main`: syncs the version from
+  `VERSION`, then builds the release-signed **App Bundle** (what the Play
+  Store takes) and per-ABI APKs, the release web bundle, an unsigned iOS
+  build, and the deobfuscation symbols for Play crash reports. The Android
+  job **fails** if the signing secrets below are missing.
+
+### One-time signing setup
+
+1. Generate an upload keystore (keep it and its passwords somewhere safe —
+   losing it means losing the ability to update the app unless Play App
+   Signing holds the app key):
+   ```bash
+   keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA \
+     -keysize 2048 -validity 10000 -alias upload
+   ```
+2. Add four repository secrets (**Settings → Secrets and variables →
+   Actions**):
+   | Secret | Value |
+   |---|---|
+   | `ANDROID_KEYSTORE_BASE64` | `base64 -w0 upload-keystore.jks` |
+   | `ANDROID_KEYSTORE_PASSWORD` | keystore password |
+   | `ANDROID_KEY_ALIAS` | `upload` (or your alias) |
+   | `ANDROID_KEY_PASSWORD` | key password |
+3. For local release builds, create `android/key.properties` (gitignored;
+   format documented in `android/app/build.gradle.kts`). Without it, local
+   release builds fall back to the **debug key** so `flutter run --release`
+   works — never distribute those.
+
+## 4. Publishing to Google Play Store (Android)
+
+> The application ID is `gal.lendas.spectral` — it becomes permanent with
+> the first published or installed build. Enroll in **Play App Signing** at
+> app creation: Google then holds the app signing key and your keystore is
+> only the upload key, which Play can reset if lost.
 
 ### Prerequisites
 - A Google Play Developer Account.
-- A signed release build (configured in `android/app/build.gradle.kts`).
+- The signing setup above (CI produces the signed `.aab` on every push to `main`).
 
 ### Uploading Artifacts
 1. Go to the [Google Play Console](https://play.google.com/console/).
 2. Select your app and go to **Production** > **Create new release**.
-3. Upload the APKs from `distribution/v<VERSION>/android/*.apk`.
-   *Note: Using Google Play App Signing is recommended.*
+3. Upload the App Bundle: `android-appbundle-release` artifact from the
+   latest `main` CI run (or `distribution/v<VERSION>/android/*.aab` from
+   `package_distribution.sh`). Also upload the `android-debug-symbols`
+   artifact under **App bundle explorer → Downloads → native debug symbols**
+   so crash reports deobfuscate.
 4. In the **Graphics** section, upload screenshots from `distribution/v<VERSION>/android/phone/` and `tablet/`.
+
+> **Hands-off upload (optional next step):** once a Play service account
+> exists, a final workflow job can push the `.aab` to the internal track
+> automatically on every `main` push (e.g. the `r0adkll/upload-google-play`
+> action with a `PLAY_SERVICE_ACCOUNT_JSON` secret). Left out until the Play
+> app and service account are created.
 
 ### Store Listing
 - Copy content from `docs/app_store_listing.md`.
@@ -61,7 +102,7 @@ To generate a complete set of distribution artifacts (APKs, Web Zip, and Screens
 
 ---
 
-## 4. Publishing to Apple App Store (iOS)
+## 5. Publishing to Apple App Store (iOS)
 
 ### Prerequisites
 - An Apple Developer Program membership.
@@ -80,7 +121,7 @@ To generate a complete set of distribution artifacts (APKs, Web Zip, and Screens
 
 ---
 
-## 5. Web Distribution
+## 6. Web Distribution
 
 Spectral can also be hosted as a static web application.
 

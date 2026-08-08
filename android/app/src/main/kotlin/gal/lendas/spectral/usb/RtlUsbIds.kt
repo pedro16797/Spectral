@@ -1,4 +1,4 @@
-package com.jundroo.spectral.usb
+package gal.lendas.spectral.usb
 
 /**
  * USB vendor/product IDs of RTL2832U-based dongles.
