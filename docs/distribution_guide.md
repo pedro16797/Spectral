@@ -12,7 +12,13 @@ Spectral uses a single source of truth for versioning.
   ```bash
   ./scripts/sync_version.sh
   ```
-  This script updates the `version` field in `pubspec.yaml` and should be run before any build or distribution.
+  This script updates the `version` field in `pubspec.yaml` and should be run before any build or distribution (CI release builds run it automatically).
+
+> **Every Play upload needs a higher build number.** The `+N` part becomes
+> Android's `versionCode`, and the Play Console rejects an `.aab` whose
+> `versionCode` it has already seen — including rejected or discarded
+> uploads. Bump `+N` in `VERSION` before merging anything meant for the
+> store.
 
 ## 2. Automated Distribution Bundle
 
@@ -79,6 +85,50 @@ CI is split so nothing debug-signed can ever come out of the release path:
 ### Prerequisites
 - A Google Play Developer Account.
 - The signing setup above (CI produces the signed `.aab` on every push to `main`).
+
+### App content requirements (Play Console blocks release on these)
+
+These are filled in the Play Console under **App content** and the store
+listing; none of them come from the build:
+
+- **Privacy policy URL** — required for every app. Host one under
+  lendas.gal; the honest content for Spectral is short: audio is captured
+  only on user action, processed on-device, and never transmitted or
+  stored; the app sends no data anywhere (the only network use is the
+  user-configured rtl_tcp connection to their own server).
+- **Permission declarations** — the microphone (`RECORD_AUDIO`) usage must
+  match the listing description; "real-time audio spectrum visualization"
+  is the declared purpose. No sensitive-permission form is needed (mic is
+  not in Play's restricted list), but reviewers do check consistency.
+- **Data safety form** — declare "no data collected, no data shared"
+  (accurate as long as the above holds; revisit if analytics or crash
+  reporting are ever added).
+- **Content rating questionnaire (IARC)** — utility app, no user content;
+  rates "Everyone".
+- **App access** — declare that all functionality is available without
+  credentials (there is no login).
+- **Ads declaration** — no ads.
+- **Target audience** — 18+ or 13+ is simplest; selecting children's age
+  groups triggers the much stricter Families policy for no benefit here.
+
+### Store graphic assets
+
+- **Hi-res icon, 512×512 PNG:** downscale `resources/icon.png` (1024×1024).
+- **Feature graphic, 1024×500 PNG/JPG:** required for the listing; nothing
+  in the repo produces this — design one once (app name + a waterfall
+  shot works) and keep it with the store assets.
+- **Screenshots:** minimum 2 per form factor; `package_distribution.sh`
+  produces compliant phone (1242×2208) and tablet (2048×2732 / 2732×2048)
+  sets.
+
+### Testing-track gate for new developer accounts
+
+**Personal** developer accounts created after Nov 2023 must run a closed
+test with **at least 12 testers opted in for 14 continuous days** before
+Google unlocks production access. **Organization** accounts are exempt. If
+publishing under a personal account, start the closed track (the CI `.aab`
+works for it) well before the intended launch date. Recommended order
+regardless: internal testing → closed testing → production.
 
 ### Uploading Artifacts
 1. Go to the [Google Play Console](https://play.google.com/console/).
