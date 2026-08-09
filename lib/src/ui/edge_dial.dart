@@ -65,9 +65,9 @@ class DialTrigger extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Text(
               value.toStringAsFixed(2),
@@ -127,11 +127,11 @@ class EdgeDial extends StatelessWidget {
           height: dialSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.black.withOpacity(0.8),
-            border: Border.all(color: color.withOpacity(0.3), width: 4),
+            color: Colors.black.withValues(alpha: 0.8),
+            border: Border.all(color: color.withValues(alpha: 0.3), width: 4),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.2),
+                color: color.withValues(alpha: 0.2),
                 blurRadius: 30,
                 spreadRadius: 10,
               )
@@ -191,10 +191,10 @@ class DialArcPainter extends CustomPainter {
     final radius = (size.width / 2) - 12; // Avoid clipping at widget bounds
 
     const totalVisibleSweep = 1.2;
-    final progressSweep = (value / 5.0) * totalVisibleSweep;
+    final progressSweep = (value / kDialMax) * totalVisibleSweep;
 
     final basePaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = Colors.white.withValues(alpha: 0.05)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4;
 
@@ -245,5 +245,7 @@ class DialArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant DialArcPainter oldDelegate) =>
-      oldDelegate.value != value || oldDelegate.color != color;
+      oldDelegate.value != value ||
+      oldDelegate.isLeft != isLeft ||
+      oldDelegate.color != color;
 }

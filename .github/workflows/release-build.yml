@@ -1,0 +1,210 @@
+name: Release Build (Production)
+
+# Production artifacts from every push to main: a Play-Store-ready App Bundle
+# and per-ABI APKs signed with the release keystore, plus the release web
+# bundle and an unsigned iOS build. The version is synced from the VERSION
+# file, so pubspec.yaml can never drift in a shipped artifact.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64    the upload keystore, base64-encoded
+#   ANDROID_KEYSTORE_PASSWORD  keystore password
+#   ANDROID_KEY_ALIAS          key alias inside the keystore
+#   ANDROID_KEY_PASSWORD       key password
+# See docs/distribution_guide.md for how to generate them. The Android job
+# fails fast if they are missing — this path must never ship a
+# debug-signed artifact.
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  FLUTTER_VERSION: '3.41.2'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter Test
+        run: flutter test
+
+  analyze:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze project source
+        run: flutter analyze --no-fatal-infos
+
+  build-android:
+    name: Build Android Release (AAB + APKs)
+    needs: [test, analyze]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Sync version from VERSION file
+        run: bash scripts/sync_version.sh
+
+      - name: Set up release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::Release signing secrets are not configured. Add ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD (see docs/distribution_guide.md). Refusing to build a debug-signed 'release'."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+
+      - name: Strip sample files for production build
+        # Belt-and-braces: the samples are not in pubspec assets, but removing
+        # them guarantees a future pubspec change cannot bloat release builds.
+        run: rm -rf resources/samples/
+
+      - name: Build App Bundle + APKs (Release)
+        run: bash scripts/build.sh android
+
+      - name: Upload App Bundle (Play Store)
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-appbundle-release
+          path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload arm64-v8a APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-apk-arm64-v8a
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+      - name: Upload armeabi-v7a APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-apk-armeabi-v7a
+          path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+
+      - name: Upload x86_64 APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-apk-x86_64
+          path: build/app/outputs/flutter-apk/app-x86_64-release.apk
+
+      - name: Upload debug symbols
+        # Needed to deobfuscate Play Console crash reports for this build.
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-debug-symbols
+          path: |
+            build/app/outputs/debug-info
+            build/app/outputs/debug-info-aab
+
+  build-web:
+    name: Build Web App
+    needs: [test, analyze]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Sync version from VERSION file
+        run: bash scripts/sync_version.sh
+
+      - name: Strip sample files for production build
+        run: rm -rf resources/samples/
+
+      - name: Build Web (Release)
+        run: bash scripts/build.sh web
+
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v6
+        with:
+          name: web-build
+          path: build/web/
+
+  build-ios:
+    name: Build iOS App (Unsigned)
+    needs: [test, analyze]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Sync version from VERSION file
+        run: bash scripts/sync_version.sh
+
+      - name: Strip sample files for production build
+        run: rm -rf resources/samples/
+
+      - name: Build iOS (No-Codesign)
+        # Signed .ipa generation needs Apple Developer certificates; this
+        # verifies the iOS build stays green until that is set up.
+        run: bash scripts/build.sh ios
+
+      - name: Upload iOS App Bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-app-bundle
+          path: build/ios/iphoneos/Runner.app

@@ -29,30 +29,12 @@ class AudioUtils {
     return samples;
   }
 
-  /// Decimates (downsamples) audio data by an integer factor.
-  ///
-  /// The returned list always has length exactly [input.length ~/ factor].
-  /// [target] is only reused when its length matches exactly; otherwise a new
-  /// buffer is allocated. This avoids pushing stale trailing samples when an
-  /// oversized buffer is reused for a smaller chunk.
-  static Float64List decimate(Float64List input, int factor, {Float64List? target}) {
-    if (factor <= 1) return input;
-    final int targetLength = input.length ~/ factor;
-    final output = (target != null && target.length == targetLength) ? target : Float64List(targetLength);
-
-    for (int i = 0; i < targetLength; i++) {
-      output[i] = input[i * factor];
-    }
-    return output;
-  }
-
   /// Decimates by averaging each group of [factor] input samples — a simple
-  /// boxcar (moving-average) anti-alias low-pass before downsampling. This
-  /// reduces the aliasing that plain sample-dropping ([decimate]) folds back
-  /// into the audible band when the input is wideband (e.g. an SDR stream).
+  /// boxcar (moving-average) anti-alias low-pass before downsampling, which
+  /// keeps wideband noise from folding back into the audible band.
   ///
   /// The returned list has length exactly [input.length ~/ factor]; [target]
-  /// is reused only on an exact length match.
+  /// is reused only on an exact length match (see [convertPcmToDouble]).
   static Float64List decimateAveraged(Float64List input, int factor, {Float64List? target}) {
     if (factor <= 1) return input;
     final int targetLength = input.length ~/ factor;

@@ -4,28 +4,23 @@
     "code": "eu-ES"
   },
   "app": {
-    "name": "Spectral",
-    "tagline": "Espektro Bistaratze Modernoa"
+    "name": "Spectral"
   },
   "header": {
+    "title": "ANALISI ESPEKTRALA",
+    "live": "SEINALEA ZUZENEAN",
+    "idle": "SEINALEA GELDI",
     "spectrum_view": "Espektroaren ikuspegia",
     "spectrum_view_rf": "Irrati-banda erakusten: sakatu demodulatutako audioa aztertzeko",
     "spectrum_view_demodulated": "Demodulatutako audioa erakusten: sakatu irrati-banda aztertzeko",
-    "spectrum_view_needs_demod": "Ezarri demodulazio-modu bat audioa aztertzeko"
-  },
-  "visualizations": {
-    "waveform": "Uhin-forma",
-    "fft": "FFT",
-    "waterfall": "Ur-jauzia"
+    "spectrum_view_needs_demod": "Ezarri demodulazio-modu bat audioa aztertzeko",
+    "focus_toggle": "Txandakatu foku modua"
   },
   "settings": {
     "title": "Ezarpenak",
     "theme": "Gaia",
     "language": "Hizkuntza",
-    "range": "Barrutia",
     "mode": "Modua",
-    "gain": "Irabazia",
-    "sensitivity": "Sentsibilitatea",
     "signal_source": "Seinale Iturria",
     "center_frequency": "Maiztasun Zentrala (MHz)",
     "rf_bandwidth": "RF Banda-zabalera (MHz)",
@@ -110,7 +105,9 @@
       "fft_window_size": "Analisi espektralaren bereizmena (laginak fotograma bakoitzeko).",
       "fft_window_type": "Ihes espektrala murrizteko aplikatutako funtzio matematikoa.",
       "frequency_skew": "Maiztasun-ardatzaren luzatze edo konpresio bisuala."
-    }
+    },
+    "sdr_config": "SDR konfigurazioa",
+    "close": "Itxi ezarpenak"
   },
   "dials": {
     "gain": "IRAB.",
@@ -124,13 +121,7 @@
     "focus": "FOKUA"
   },
   "common": {
-    "save": "Gorde",
-    "cancel": "Utzi",
-    "ok": "Ados",
-    "error": "Errorea",
-    "loading": "Kargatzen...",
     "start_capture": "Hasi Captura",
-    "stop_capture": "Gelditu Captura",
-    "permission_denied": "Mikrofono baimena ukatuta"
+    "stop_capture": "Gelditu Captura"
   }
 }

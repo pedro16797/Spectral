@@ -140,10 +140,10 @@ class FftService {
       if (isComplex) {
         // Complex FFT (I/Q data)
         for (int i = 0; i < windowSize; i++) {
-          // Read from circular buffer backwards from current write position
-          int idxI = (_bufferWritePos - requiredSamples + i * 2) % _kMaxBufferSize;
-          if (idxI < 0) idxI += _kMaxBufferSize;
-          int idxQ = (idxI + 1) % _kMaxBufferSize;
+          // Read from circular buffer backwards from current write position.
+          // (Dart's % always yields a non-negative result here.)
+          final int idxI = (_bufferWritePos - requiredSamples + i * 2) % _kMaxBufferSize;
+          final int idxQ = (idxI + 1) % _kMaxBufferSize;
 
           final iVal = _buffer[idxI] * _cachedWindow![i];
           final qVal = _buffer[idxQ] * _cachedWindow![i];
@@ -164,8 +164,7 @@ class FftService {
       } else {
         // Real FFT
         for (int i = 0; i < windowSize; i++) {
-          int idx = (_bufferWritePos - requiredSamples + i) % _kMaxBufferSize;
-          if (idx < 0) idx += _kMaxBufferSize;
+          final int idx = (_bufferWritePos - requiredSamples + i) % _kMaxBufferSize;
           _realWorkBuffer![i] = _buffer[idx] * _cachedWindow![i];
         }
 
@@ -197,6 +196,12 @@ class FftService {
     }
 
     if (mode == FftAveragingMode.linear) {
+      // A length change (e.g. a real<->complex flip at the same window size)
+      // invalidates the accumulated frames; averaging across it would throw.
+      if (_averagingBuffer.isNotEmpty &&
+          _averagingBuffer.first.length != magnitudes.length) {
+        _averagingBuffer.clear();
+      }
       _averagingBuffer.add(List<double>.from(magnitudes));
       if (_averagingBuffer.length > count) {
         _averagingBuffer.removeAt(0);
@@ -283,20 +288,25 @@ class FftService {
 
   /// Detects the primary tone and its harmonics.
   ToneInfo? detectPrimaryTone(List<double> magnitudes, int sampleRate) {
-    if (magnitudes.isEmpty) return null;
+    if (magnitudes.length < 2) return null;
 
     // Find the peak, skipping DC (index 0) for real signals
     double maxMag = 0;
+    double sum = 0;
     int peakIndex = -1;
     for (int i = 1; i < magnitudes.length; i++) {
+      sum += magnitudes[i];
       if (magnitudes[i] > maxMag) {
         maxMag = magnitudes[i];
         peakIndex = i;
       }
     }
 
-    // Threshold to avoid detecting noise as a tone
-    if (peakIndex == -1 || maxMag < 0.5) return null;
+    // A tone must stand well clear of the frame's average level, or broadband
+    // noise gets reported as one. The test is relative so it survives the
+    // sensitivity dial scaling every bin (an absolute threshold would not).
+    final double mean = sum / (magnitudes.length - 1);
+    if (peakIndex == -1 || maxMag <= 0 || maxMag < mean * 6) return null;
 
     // Calculate fundamental frequency
     // N is (magnitudes.length - 1) * 2 for real signals

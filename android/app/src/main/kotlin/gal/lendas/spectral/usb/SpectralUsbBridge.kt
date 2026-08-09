@@ -1,4 +1,4 @@
-package com.example.spectral.usb
+package gal.lendas.spectral.usb
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -19,6 +19,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Bridges the RTL-SDR USB driver to Dart.
@@ -39,11 +40,18 @@ class SpectralUsbBridge(
         private const val EVENT_CHANNEL = "spectral/sdr/events"
         private const val SAMPLE_CHANNEL = "spectral/sdr/samples"
 
-        private const val ACTION_USB_PERMISSION = "com.example.spectral.USB_PERMISSION"
+        private const val ACTION_USB_PERMISSION = "gal.lendas.spectral.USB_PERMISSION"
 
         /** Bulk read size. Must be a multiple of the 512-byte USB packet. */
         private const val BULK_BUFFER_BYTES = 16384
         private const val BULK_TIMEOUT_MS = 1000
+
+        /**
+         * Maximum sample chunks queued to the platform thread before new ones
+         * are dropped. Without a bound, main-thread jank lets the queue (and
+         * heap) grow without limit at ~250 chunks/s.
+         */
+        private const val MAX_PENDING_CHUNKS = 8
     }
 
     private val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
@@ -61,9 +69,18 @@ class SpectralUsbBridge(
     private var eventSink: EventChannel.EventSink? = null
     private var sampleSink: EventChannel.EventSink? = null
 
+    @Volatile
     private var driver: Rtl2832u? = null
     private var streamThread: Thread? = null
-    private val streaming = AtomicBoolean(false)
+
+    /**
+     * Stop token owned by the *current* stream thread. Each thread gets its
+     * own token so a stop that times out can never be undone by a subsequent
+     * start (a shared flag allowed two readers on the same endpoint), and a
+     * dying old thread cannot stop the new one.
+     */
+    @Volatile
+    private var streaming = AtomicBoolean(false)
 
     /** Pending Dart result for an in-flight permission request. */
     private var pendingPermission: MethodChannel.Result? = null
@@ -73,8 +90,11 @@ class SpectralUsbBridge(
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
             if (intent.action != ACTION_USB_PERMISSION) return
-            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
             val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+            // Never trust the broadcast extra: pre-33 the unprotected action is
+            // spoofable, and the extra can be missing entirely. The USB service
+            // is the authority on whether we actually hold permission.
+            val granted = device != null && usbManager.hasPermission(device)
             Log.i(TAG, "USB permission ${if (granted) "granted" else "denied"} for ${device?.deviceName}")
             pendingPermission?.success(granted)
             pendingPermission = null
@@ -82,7 +102,7 @@ class SpectralUsbBridge(
                 mapOf(
                     "type" to "permission",
                     "granted" to granted,
-                    "device" to (device?.let { describe(it) } ?: emptyMap<String, Any>()),
+                    "device" to (device?.let { describe(it) }),
                 )
             )
         }
@@ -136,9 +156,14 @@ class SpectralUsbBridge(
     }
 
     fun stop() {
-        stopStreaming()
-        closeDevice()
-        ioExecutor.shutdownNow()
+        // Tear the device down on the I/O thread — close() performs blocking
+        // control transfers, and the executor already serializes all other
+        // device access. shutdown() (not shutdownNow) lets it run first.
+        ioExecutor.execute {
+            stopStreaming()
+            closeDevice()
+        }
+        ioExecutor.shutdown()
         methodChannel.setMethodCallHandler(null)
         eventChannel.setStreamHandler(null)
         sampleChannel.setStreamHandler(null)
@@ -185,8 +210,12 @@ class SpectralUsbBridge(
     private fun onDeviceDetached(device: UsbDevice) {
         if (!RtlUsbIds.isKnownDongle(device.vendorId, device.productId)) return
         if (driver?.deviceName == device.deviceName) {
-            stopStreaming()
-            closeDevice()
+            // On the I/O thread: teardown blocks (join + control transfers)
+            // and must not race an in-flight open/tune on that executor.
+            ioExecutor.execute {
+                stopStreaming()
+                closeDevice()
+            }
         }
         emitEvent(
             mapOf(
@@ -196,7 +225,7 @@ class SpectralUsbBridge(
         )
     }
 
-    private fun emitEvent(payload: Map<String, Any>) {
+    private fun emitEvent(payload: Map<String, Any?>) {
         mainHandler.post { eventSink?.success(payload) }
     }
 
@@ -209,16 +238,11 @@ class SpectralUsbBridge(
         when (method) {
             // Cheap, non-blocking: answer straight from the USB service.
             "listDevices" -> result.success(listDevices())
-            "hasPermission" -> {
-                val device = findDevice(map["deviceName"] as? String)
-                result.success(device != null && usbManager.hasPermission(device))
-            }
             // Completes when the system permission broadcast arrives.
             "requestPermission" -> requestPermission(map["deviceName"] as? String, result)
 
-            // Everything below performs blocking USB control transfers — the
-            // tuner bring-up alone sleeps ~250 ms — so it must not run on the
-            // platform thread.
+            // Everything below performs blocking USB control transfers, so it
+            // must not run on the platform thread.
             "open" -> runOnIo(method, result) { openDevice(map) }
             "close" -> runOnIo(method, result) {
                 stopStreaming()
@@ -302,13 +326,17 @@ class SpectralUsbBridge(
         pendingPermission?.success(false)
         pendingPermission = result
 
+        // The PendingIntent must be MUTABLE: UsbManager delivers its result by
+        // filling in EXTRA_DEVICE/EXTRA_PERMISSION_GRANTED, which an immutable
+        // intent silently discards — the grant then looks like a denial on
+        // Android 12+. setPackage() below is the required mitigation.
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         } else {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
         // Scoping the intent to this package keeps the NOT_EXPORTED receiver
-        // reachable on Android 13+.
+        // reachable on Android 13+ and stops other apps from receiving it.
         val intent = Intent(ACTION_USB_PERMISSION).setPackage(context.packageName)
         val pending = PendingIntent.getBroadcast(context, 0, intent, flags)
         usbManager.requestPermission(device, pending)
@@ -387,14 +415,18 @@ class SpectralUsbBridge(
 
     private fun startStreaming(): Boolean {
         val rtl = driver ?: return false
-        if (streaming.get()) return true
+        if (streaming.get() && streamThread?.isAlive == true) return true
+        // Make sure any previous reader is fully gone before starting another.
+        stopStreaming()
 
         rtl.resetBuffer()
-        streaming.set(true)
+        val active = AtomicBoolean(true)
+        streaming = active
+        val pendingChunks = AtomicInteger(0)
         val thread = Thread({
             val buffer = ByteArray(BULK_BUFFER_BYTES)
             var consecutiveErrors = 0
-            while (streaming.get()) {
+            while (active.get()) {
                 val read = rtl.readSamples(buffer, BULK_TIMEOUT_MS)
                 if (read <= 0) {
                     // A dropped read is normal at startup; a run of them means
@@ -409,10 +441,17 @@ class SpectralUsbBridge(
                     continue
                 }
                 consecutiveErrors = 0
+                // Drop chunks when the platform thread falls behind rather
+                // than queueing unbounded work against it.
+                if (pendingChunks.get() >= MAX_PENDING_CHUNKS) continue
+                pendingChunks.incrementAndGet()
                 val chunk = buffer.copyOf(read)
-                mainHandler.post { sampleSink?.success(chunk) }
+                mainHandler.post {
+                    pendingChunks.decrementAndGet()
+                    sampleSink?.success(chunk)
+                }
             }
-            streaming.set(false)
+            active.set(false)
         }, "rtl-sdr-bulk")
         thread.priority = Thread.MAX_PRIORITY
         thread.start()
@@ -422,7 +461,9 @@ class SpectralUsbBridge(
 
     private fun stopStreaming() {
         streaming.set(false)
-        streamThread?.join(500)
+        // Wait at least one full bulk timeout: a shorter join can return while
+        // the old thread is still blocked in readSamples.
+        streamThread?.join(BULK_TIMEOUT_MS + 500L)
         streamThread = null
     }
 }

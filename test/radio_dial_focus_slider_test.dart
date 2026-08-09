@@ -19,6 +19,7 @@ void main() {
                     values: currentValues,
                     min: 0,
                     max: 10000,
+                    accentColor: Colors.blue,
                     onChanged: (values) {
                       setState(() {
                         currentValues = values;
@@ -39,8 +40,6 @@ void main() {
 
     final center = tester.getCenter(find.byType(RadioDialFocusSlider));
     final topLeft = tester.getTopLeft(find.byType(RadioDialFocusSlider));
-
-    debugPrint('TopLeft: $topLeft, Center: $center');
 
     // Drag center (move)
     // 1000-5000 range. Center is 3000 (0.3 of 10000). 0.3 * 400 = 120.

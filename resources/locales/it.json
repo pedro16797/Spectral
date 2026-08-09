@@ -4,28 +4,23 @@
     "code": "it-IT"
   },
   "app": {
-    "name": "Spectral",
-    "tagline": "Visualizzazione Spettrale Moderna"
+    "name": "Spectral"
   },
   "header": {
+    "title": "ANALISI SPETTRALE",
+    "live": "SEGNALE IN DIRETTA",
+    "idle": "SEGNALE INATTIVO",
     "spectrum_view": "Vista dello spettro",
     "spectrum_view_rf": "Banda radio visualizzata — tocca per analizzare l'audio demodulato",
     "spectrum_view_demodulated": "Audio demodulato visualizzato — tocca per analizzare la banda radio",
-    "spectrum_view_needs_demod": "Imposta una modalità di demodulazione per analizzare l'audio"
-  },
-  "visualizations": {
-    "waveform": "Forma d'onda",
-    "fft": "FFT",
-    "waterfall": "Cascata"
+    "spectrum_view_needs_demod": "Imposta una modalità di demodulazione per analizzare l'audio",
+    "focus_toggle": "Attiva/disattiva modalità focus"
   },
   "settings": {
     "title": "Impostazioni",
     "theme": "Tema",
     "language": "Lingua",
-    "range": "Intervallo",
     "mode": "Modalità",
-    "gain": "Guadagno",
-    "sensitivity": "Sensibilità",
     "signal_source": "Sorgente Segnale",
     "center_frequency": "Frequenza Centrale (MHz)",
     "rf_bandwidth": "Larghezza di Banda RF (MHz)",
@@ -110,7 +105,9 @@
       "fft_window_size": "Risoluzione dell'analisi spettrale (campioni per fotogramma).",
       "fft_window_type": "Funzione matematica applicata per ridurre la perdita spettrale.",
       "frequency_skew": "Stiramento o compressione visiva dell'asse delle frequenze."
-    }
+    },
+    "sdr_config": "Configurazione SDR",
+    "close": "Chiudi impostazioni"
   },
   "dials": {
     "gain": "GUAD.",
@@ -124,13 +121,7 @@
     "focus": "FUOCO"
   },
   "common": {
-    "save": "Salva",
-    "cancel": "Annulla",
-    "ok": "OK",
-    "error": "Errore",
-    "loading": "Caricamento...",
     "start_capture": "Avvia Cattura",
-    "stop_capture": "Ferma Cattura",
-    "permission_denied": "Permesso microfono negato"
+    "stop_capture": "Ferma Cattura"
   }
 }

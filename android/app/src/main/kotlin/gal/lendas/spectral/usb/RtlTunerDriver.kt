@@ -1,4 +1,4 @@
-package com.example.spectral.usb
+package gal.lendas.spectral.usb
 
 /**
  * A tuner chip hanging off the RTL2832U's I2C bus.

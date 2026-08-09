@@ -4,9 +4,7 @@ import 'dart:math' as math;
 /// under a power-law skew, used to zoom/emphasize parts of the spectrum.
 ///
 /// Both inputs and outputs are in the range [0, 1]. A [skew] of 1.0 is linear
-/// (identity). This logic was previously duplicated across the FFT chart,
-/// waterfall, and frequency-tap handling; centralizing it keeps the forward and
-/// inverse transforms in sync.
+/// (identity).
 class FrequencyScale {
   const FrequencyScale._();
 

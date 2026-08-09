@@ -36,7 +36,7 @@ Spectral is a powerful and elegant tool for real-time visualization of signals a
 ### **Technical Specs**
 - Configurable FFT Window Sizes (up to 4096).
 - Multiple Window Types (Hanning, Hamming, Blackman, etc.).
-- Multiple Visual Themes (Frost, Inferno, Monochrome, Emerald).
+- Multiple Visual Themes (Frost, Magma, Gray, Emerald, Rainbow).
 - Support for complex I/Q signal processing.
 
 ---

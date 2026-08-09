@@ -3,12 +3,15 @@ import 'settings_model.dart';
 
 /// Centralized visual identity for each [AppTheme]: the accent color, the
 /// background base color, and the waterfall magnitude→color ramp.
-///
-/// Previously this knowledge was spread across `main.dart` (accent/background
-/// switches) and `WaterfallPainter` (five private ramp functions). Keeping it
-/// in one place ensures the themes stay consistent across surfaces.
 class SpectralTheme {
   const SpectralTheme._();
+
+  /// Elevated surface color shared by dialogs, dropdowns, and the app's
+  /// color scheme.
+  static const Color surface = Color(0xFF1C1C1E);
+
+  /// Slightly lighter surface used for floating overlays such as tooltips.
+  static const Color surfaceLight = Color(0xFF2C2C2E);
 
   /// Primary accent color used for highlights, active controls, and the FFT.
   static Color accent(AppTheme theme) {
@@ -42,9 +45,10 @@ class SpectralTheme {
     }
   }
 
-  /// Maps a normalized magnitude (roughly [0, 1.1]) to a color on the theme's
-  /// waterfall ramp.
+  /// Maps a normalized magnitude to a color on the theme's waterfall ramp.
+  /// Input is clamped to [0, 1]; the ramps are only defined on that range.
   static Color waterfallColor(AppTheme theme, double value) {
+    value = value.clamp(0.0, 1.0);
     switch (theme) {
       case AppTheme.frost:
         return _frost(value);

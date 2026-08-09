@@ -36,7 +36,7 @@ Flutter automatically removes unused icons from the Material Icons font, reducin
 To generate optimized builds, use the provided script:
 
 ```bash
-./scripts/build_android.sh
+bash scripts/build.sh android
 ```
 
 ## 📦 QA Delivery Recommendation

@@ -1,25 +1,22 @@
 #!/bin/bash
+# Syncs the version in pubspec.yaml from the root VERSION file.
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
-# Exit on error
-set -e
+VERSION=$(tr -d '[:space:]' < VERSION)
 
-# Read the version from the VERSION file
-VERSION=$(cat VERSION | tr -d '[:space:]')
-
-if [ -z "$VERSION" ]; then
-  echo "❌ Error: VERSION file is empty or missing."
+# Validate before feeding it to sed: a malformed VERSION would otherwise
+# corrupt pubspec.yaml silently.
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?$ ]]; then
+  echo "❌ Error: VERSION must look like 1.2.3+4 (got: '$VERSION')." >&2
   exit 1
 fi
 
 echo "🔄 Syncing version $VERSION to pubspec.yaml..."
 
-# Update the version in pubspec.yaml
-# Uses a robust regex to find the 'version: ' line and replace the value
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  # macOS sed
   sed -i '' "s/^version: .*/version: $VERSION/" pubspec.yaml
 else
-  # Linux sed
   sed -i "s/^version: .*/version: $VERSION/" pubspec.yaml
 fi
 

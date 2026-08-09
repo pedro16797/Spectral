@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../utils/frequency_formatter.dart';
@@ -15,7 +16,7 @@ class RadioDialFocusSlider extends StatefulWidget {
     required this.min,
     required this.max,
     required this.onChanged,
-    this.accentColor = const Color(0xFF007AFF),
+    required this.accentColor,
   });
 
   @override
@@ -48,17 +49,22 @@ class _RadioDialFocusSliderState extends State<RadioDialFocusSlider>
     final double width = constraints.maxWidth;
     if (width <= 0) return;
 
-    final double delta = (details.delta.dx) / width * (widget.max - widget.min);
+    final double band = widget.max - widget.min;
+    final double delta = (details.delta.dx) / width * band;
 
     double start = widget.values.start;
     double end = widget.values.end;
-    const double minSpan = 500.0;
+    // Smallest selectable window: 500 Hz is comfortable on an audio band, but
+    // scale down proportionally so a narrow band never locks the handles.
+    final double minSpan = math.min(500.0, band * 0.1);
     const int tickCount = 80;
-    final double tickThreshold = (widget.max - widget.min) / tickCount;
+    final double tickThreshold = band / tickCount;
 
     switch (_interactionType) {
       case _InteractionType.move:
-        double span = end - start;
+        // Clamp bounds defensively: the selection can transiently exceed the
+        // track while the captured band is shrinking under the user's finger.
+        double span = (end - start).clamp(0.0, band);
         double newStart = (start + delta).clamp(widget.min, widget.max - span);
         double newEnd = newStart + span;
         if ((start / tickThreshold).floor() != (newStart / tickThreshold).floor()) {
@@ -67,14 +73,16 @@ class _RadioDialFocusSliderState extends State<RadioDialFocusSlider>
         widget.onChanged(RangeValues(newStart, newEnd));
         break;
       case _InteractionType.resizeStart:
-        double newStart = (start + delta).clamp(widget.min, end - minSpan);
+        final double upper = math.max(widget.min, end - minSpan);
+        double newStart = (start + delta).clamp(widget.min, upper);
         if ((start / tickThreshold).floor() != (newStart / tickThreshold).floor()) {
           HapticFeedback.selectionClick();
         }
         widget.onChanged(RangeValues(newStart, end));
         break;
       case _InteractionType.resizeEnd:
-        double newEnd = (end + delta).clamp(start + minSpan, widget.max);
+        final double lower = math.min(widget.max, start + minSpan);
+        double newEnd = (end + delta).clamp(lower, widget.max);
         if ((end / tickThreshold).floor() != (newEnd / tickThreshold).floor()) {
           HapticFeedback.selectionClick();
         }
@@ -177,7 +185,7 @@ class RadioDialPainter extends CustomPainter {
     final double baseline = height * 0.8;
 
     final Paint linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.1 + 0.1 * activeFactor)
+      ..color = Colors.white.withValues(alpha: 0.1 + 0.1 * activeFactor)
       ..strokeWidth = 1.0;
 
     // 1. Draw Background Track
@@ -199,7 +207,7 @@ class RadioDialPainter extends CustomPainter {
         Offset(x, baseline),
         Offset(x, baseline - tickHeight),
         Paint()
-          ..color = Colors.white.withOpacity(opacity)
+          ..color = Colors.white.withValues(alpha: opacity)
           ..strokeWidth = isMajor ? 1.5 : 1.0,
       );
 
@@ -210,7 +218,7 @@ class RadioDialPainter extends CustomPainter {
           text: TextSpan(
             text: label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.3 * activeFactor),
+              color: Colors.white.withValues(alpha: 0.3 * activeFactor),
               fontSize: 8,
               fontWeight: FontWeight.bold,
             ),
@@ -232,8 +240,8 @@ class RadioDialPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          accentColor.withOpacity(0.05 + 0.1 * activeFactor),
-          accentColor.withOpacity(0.2 + 0.2 * activeFactor),
+          accentColor.withValues(alpha: 0.05 + 0.1 * activeFactor),
+          accentColor.withValues(alpha: 0.2 + 0.2 * activeFactor),
         ],
       ).createShader(windowRect);
 
@@ -243,7 +251,7 @@ class RadioDialPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4.0 * activeFactor)
-      ..color = accentColor.withOpacity(0.5 + 0.5 * activeFactor);
+      ..color = accentColor.withValues(alpha: 0.5 + 0.5 * activeFactor);
 
     canvas.drawLine(Offset(startX, height * 0.1), Offset(startX, baseline), glowPaint);
     canvas.drawLine(Offset(endX, height * 0.1), Offset(endX, baseline), glowPaint);
@@ -271,7 +279,7 @@ class RadioDialPainter extends CustomPainter {
     if (activeFactor > 0.2) {
       final double centerX = (startX + endX) / 2;
       final Paint needlePaint = Paint()
-        ..color = accentColor.withOpacity(activeFactor)
+        ..color = accentColor.withValues(alpha: activeFactor)
         ..strokeWidth = 2.0;
 
       canvas.drawLine(

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
 import '../utils/audio_utils.dart';
@@ -96,6 +95,8 @@ class AudioCaptureService implements SignalSource {
   @override
   void dispose() {
     debugPrint("AudioCaptureService: Disposing...");
+    _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
     _audioDataController.close();
     _audioRecorder.dispose();
   }

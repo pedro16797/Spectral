@@ -1,7 +1,7 @@
-package com.example.spectral
+package gal.lendas.spectral
 
 import android.content.Intent
-import com.example.spectral.usb.SpectralUsbBridge
+import gal.lendas.spectral.usb.SpectralUsbBridge
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 

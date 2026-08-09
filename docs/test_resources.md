@@ -21,10 +21,9 @@ A massive database of creative-commons licensed audio.
 - **Description:** Includes historic recordings, open-source music, and technical archives.
 
 ## Synthetic Test Signals
-For automated or programmatic testing, it is often better to generate signals. Use the `_startDemoData` method in `lib/main.dart` as a reference for:
-- **Sine Waves:** Pure frequencies for precision testing.
-- **Noise Floors:** Verifying SNR calculations.
-- **Sweeps:** Testing dynamic range and frequency response across the spectrum.
+For automated or programmatic testing, it is often better to generate signals:
+- `scripts/generate_samples.py` regenerates the bundled samples under `resources/samples/` (a 440+880 Hz sine WAV and a multi-carrier I/Q file).
+- The app plays them via the `?play_file=<asset path>` URL parameter on web, and `?demo=true` runs a built-in synthesized tone (see `SignalController`).
 
 ## SDR/RF Sample Repositories
 For RF mode testing without hardware:

@@ -50,6 +50,11 @@ enum DemodulationMode {
   fm,
 }
 
+/// FFT window sizes the app supports; persisted values are snapped to this
+/// set because `FFT(windowSize)` throws on anything else, which would kill
+/// the spectrum on every frame.
+const List<int> kFftWindowSizes = [512, 1024, 2048, 4096];
+
 class AppSettings {
   final AppTheme theme;
   final SignalSourceType signalSource;
@@ -168,47 +173,35 @@ class AppSettings {
 
   factory AppSettings.fromMap(Map<String, dynamic> map) {
     return AppSettings(
-      theme: AppTheme.values.firstWhere(
-        (e) => e.name == map['theme'],
-        orElse: () => AppTheme.frost,
-      ),
-      signalSource: SignalSourceType.values.firstWhere(
-        (e) => e.name == (map['signalSource'] ?? 'audio'),
-        orElse: () => SignalSourceType.audio,
-      ),
-      rfSource: RfSourceType.values.firstWhere(
-        (e) => e.name == (map['rfSource'] ?? 'integrated'),
-        orElse: () => RfSourceType.integrated,
-      ),
+      theme: _asEnum(map['theme'], AppTheme.values, AppTheme.frost),
+      signalSource: _asEnum(
+          map['signalSource'], SignalSourceType.values, SignalSourceType.audio),
+      rfSource: _asEnum(
+          map['rfSource'], RfSourceType.values, RfSourceType.integrated),
       rtlTcpHost: _asString(map['rtlTcpHost'], '127.0.0.1'),
-      rtlTcpPort: _asInt(map['rtlTcpPort'], 1234),
-      centerFrequency: _asDouble(map['centerFrequency'], 100.0),
-      rfBandwidth: _asDouble(map['rfBandwidth'], 2.0),
-      fftWindowSize: _asInt(map['fftWindowSize'], 1024),
-      fftWindowType: FftWindowType.values.firstWhere(
-        (e) => e.name == map['fftWindowType'],
-        orElse: () => FftWindowType.hanning,
-      ),
+      rtlTcpPort: _asInt(map['rtlTcpPort'], 1234, min: 1, max: 65535),
+      centerFrequency:
+          _asDouble(map['centerFrequency'], 100.0, min: 0.001, max: 6000.0),
+      rfBandwidth: _asDouble(map['rfBandwidth'], 2.0, min: 0.01, max: 100.0),
+      fftWindowSize: _asWindowSize(map['fftWindowSize']),
+      fftWindowType: _asEnum(
+          map['fftWindowType'], FftWindowType.values, FftWindowType.hanning),
       language: _asString(map['language'], 'en'),
-      frequencySkew: _asDouble(map['frequencySkew'], 1.0),
+      // Bounds match the SQUISH dial / frequency-skew slider range.
+      frequencySkew: _asDouble(map['frequencySkew'], 1.0, min: 0.1, max: 5.0),
       peakHoldEnabled: _asBool(map['peakHoldEnabled'], false),
-      fftAveragingMode: FftAveragingMode.values.firstWhere(
-        (e) => e.name == (map['fftAveragingMode'] ?? 'none'),
-        orElse: () => FftAveragingMode.none,
-      ),
-      fftAveragingCount: _asInt(map['fftAveragingCount'], 5),
-      ppmCorrection: _asDouble(map['ppmCorrection'], 0.0),
+      fftAveragingMode: _asEnum(map['fftAveragingMode'],
+          FftAveragingMode.values, FftAveragingMode.none),
+      fftAveragingCount: _asInt(map['fftAveragingCount'], 5, min: 1, max: 100),
+      ppmCorrection:
+          _asDouble(map['ppmCorrection'], 0.0, min: -1000.0, max: 1000.0),
       showHarmonics: _asBool(map['showHarmonics'], false),
       showSnr: _asBool(map['showSnr'], false),
-      demodulationMode: DemodulationMode.values.firstWhere(
-        (e) => e.name == (map['demodulationMode'] ?? 'none'),
-        orElse: () => DemodulationMode.none,
-      ),
+      demodulationMode: _asEnum(map['demodulationMode'],
+          DemodulationMode.values, DemodulationMode.none),
       audioOutputEnabled: _asBool(map['audioOutputEnabled'], false),
-      spectrumView: SpectrumView.values.firstWhere(
-        (e) => e.name == (map['spectrumView'] ?? 'rf'),
-        orElse: () => SpectrumView.rf,
-      ),
+      spectrumView:
+          _asEnum(map['spectrumView'], SpectrumView.values, SpectrumView.rf),
     );
   }
 }
@@ -216,20 +209,43 @@ class AppSettings {
 // ---- Lenient coercion helpers for AppSettings.fromMap ----
 // Persisted/injected settings may carry values of an unexpected runtime type
 // (e.g. a number stored as a JSON string, or an int where a double is
-// expected). These coerce where sensible and fall back otherwise, so a single
-// malformed field never throws and discards the whole settings blob.
+// expected) or out of the usable range. These coerce and clamp where sensible
+// and fall back otherwise, so a single malformed field never throws, discards
+// the whole settings blob, or (like a zero FFT window size) breaks the
+// processing pipeline on every frame.
 
-int _asInt(dynamic v, int fallback) {
-  if (v is int) return v;
-  if (v is num) return v.toInt();
-  if (v is String) return int.tryParse(v) ?? fallback;
+T _asEnum<T extends Enum>(dynamic v, List<T> values, T fallback) {
+  for (final e in values) {
+    if (e.name == v) return e;
+  }
   return fallback;
 }
 
-double _asDouble(dynamic v, double fallback) {
-  if (v is num) return v.toDouble();
-  if (v is String) return double.tryParse(v) ?? fallback;
-  return fallback;
+int _asInt(dynamic v, int fallback, {int? min, int? max}) {
+  int result = fallback;
+  if (v is int) {
+    result = v;
+  } else if (v is num) {
+    result = v.isFinite ? v.toInt() : fallback;
+  } else if (v is String) {
+    result = int.tryParse(v) ?? fallback;
+  }
+  if (min != null && result < min) return min;
+  if (max != null && result > max) return max;
+  return result;
+}
+
+double _asDouble(dynamic v, double fallback, {double? min, double? max}) {
+  double result = fallback;
+  if (v is num && v.isFinite) {
+    result = v.toDouble();
+  } else if (v is String) {
+    final parsed = double.tryParse(v);
+    if (parsed != null && parsed.isFinite) result = parsed;
+  }
+  if (min != null && result < min) return min;
+  if (max != null && result > max) return max;
+  return result;
 }
 
 bool _asBool(dynamic v, bool fallback) {
@@ -240,3 +256,8 @@ bool _asBool(dynamic v, bool fallback) {
 }
 
 String _asString(dynamic v, String fallback) => v is String ? v : fallback;
+
+int _asWindowSize(dynamic v) {
+  final size = _asInt(v, 1024);
+  return kFftWindowSizes.contains(size) ? size : 1024;
+}

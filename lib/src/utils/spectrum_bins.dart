@@ -1,6 +1,14 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'frequency_scale.dart';
+
+/// Compresses a raw FFT magnitude into [0, 1] for display.
+///
+/// Shared by the spectrum painters so the bar chart and the waterfall render
+/// the same signal at the same intensity.
+double normalizeMagnitude(double magnitude) =>
+    (math.log(magnitude + 1) / 4.5).clamp(0.0, 1.0);
 
 /// Maps display columns onto FFT bins for the spectrum and waterfall painters.
 ///

@@ -2,9 +2,27 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/settings_model.dart';
+import '../core/spectral_theme.dart';
 import '../rf/native_sdr_driver.dart';
 import '../rf/rtl2832u.dart';
 import '../utils/localization_helper.dart';
+import 'edge_dial.dart' show kDialMin, kDialMax;
+
+/// Native-language display names for the bundled locales
+/// (resources/locales/*.json). Keep in sync when adding a locale file.
+const Map<String, String> _languageNames = {
+  'en': 'English',
+  'zh': '中文 (Chinese)',
+  'ja': '日本語 (Japanese)',
+  'fr': 'Français (French)',
+  'de': 'Deutsch (German)',
+  'it': 'Italiano (Italian)',
+  'es': 'Español (Spanish)',
+  'gl': 'Galego (Galician)',
+  'pt': 'Português (Portuguese)',
+  'ca': 'Català (Catalan)',
+  'eu': 'Euskara (Basque)',
+};
 
 class SettingsView extends StatefulWidget {
   final AppSettings settings;
@@ -59,7 +77,7 @@ class _SettingsViewState extends State<SettingsView> {
             },
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(color: Colors.black.withOpacity(0.4)),
+              child: Container(color: Colors.black.withValues(alpha: 0.4)),
             ),
           ),
 
@@ -75,12 +93,12 @@ class _SettingsViewState extends State<SettingsView> {
                     : MediaQuery.of(context).size.height * 0.75,
               ),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 40,
                     spreadRadius: 10,
                   )
@@ -137,6 +155,7 @@ class _SettingsContentState extends State<SettingsContent> {
   late final TextEditingController _rtlHostController;
   late final TextEditingController _rtlPortController;
   late final TextEditingController _ppmController;
+  final Map<TextEditingController, FocusNode> _focusNodes = {};
 
   @override
   void initState() {
@@ -148,24 +167,25 @@ class _SettingsContentState extends State<SettingsContent> {
     _ppmController = TextEditingController(text: widget.settings.ppmCorrection.toString());
   }
 
+  FocusNode _focusNodeFor(TextEditingController controller) =>
+      _focusNodes.putIfAbsent(controller, FocusNode.new);
+
+  /// Reflects an externally-changed setting into its text field — but never
+  /// while the user is editing that field, or the rebuild would clobber the
+  /// in-progress (possibly not-yet-parseable) text.
+  void _syncController(TextEditingController controller, String value) {
+    final focused = _focusNodes[controller]?.hasFocus ?? false;
+    if (!focused && controller.text != value) controller.text = value;
+  }
+
   @override
   void didUpdateWidget(SettingsContent oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.settings.centerFrequency != double.tryParse(_freqController.text)) {
-      _freqController.text = widget.settings.centerFrequency.toString();
-    }
-    if (widget.settings.rfBandwidth != double.tryParse(_bwController.text)) {
-      _bwController.text = widget.settings.rfBandwidth.toString();
-    }
-    if (widget.settings.rtlTcpHost != _rtlHostController.text) {
-      _rtlHostController.text = widget.settings.rtlTcpHost;
-    }
-    if (widget.settings.rtlTcpPort != int.tryParse(_rtlPortController.text)) {
-      _rtlPortController.text = widget.settings.rtlTcpPort.toString();
-    }
-    if (widget.settings.ppmCorrection != double.tryParse(_ppmController.text)) {
-      _ppmController.text = widget.settings.ppmCorrection.toString();
-    }
+    _syncController(_freqController, widget.settings.centerFrequency.toString());
+    _syncController(_bwController, widget.settings.rfBandwidth.toString());
+    _syncController(_rtlHostController, widget.settings.rtlTcpHost);
+    _syncController(_rtlPortController, widget.settings.rtlTcpPort.toString());
+    _syncController(_ppmController, widget.settings.ppmCorrection.toString());
   }
 
   @override
@@ -175,6 +195,9 @@ class _SettingsContentState extends State<SettingsContent> {
     _rtlHostController.dispose();
     _rtlPortController.dispose();
     _ppmController.dispose();
+    for (final node in _focusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -214,23 +237,8 @@ class _SettingsContentState extends State<SettingsContent> {
             label: LocalizationHelper.get('settings.language'),
             tooltip: LocalizationHelper.get('settings.tooltips.language'),
             value: widget.settings.language,
-            items: ['en', 'zh', 'ja', 'fr', 'de', 'it', 'es', 'gl', 'pt', 'ca', 'eu'],
-            itemLabel: (lang) {
-              switch (lang) {
-                case 'en': return 'English';
-                case 'zh': return '中文 (Chinese)';
-                case 'ja': return '日本語 (Japanese)';
-                case 'fr': return 'Français (French)';
-                case 'de': return 'Deutsch (German)';
-                case 'it': return 'Italiano (Italian)';
-                case 'es': return 'Español (Spanish)';
-                case 'gl': return 'Galego (Galician)';
-                case 'pt': return 'Português (Portuguese)';
-                case 'ca': return 'Català (Catalan)';
-                case 'eu': return 'Euskara (Basque)';
-                default: return lang;
-              }
-            },
+            items: _languageNames.keys.toList(),
+            itemLabel: (lang) => _languageNames[lang] ?? lang,
             onChanged: (val) async {
               if (val != null) {
                 await LocalizationHelper.load(val);
@@ -244,13 +252,11 @@ class _SettingsContentState extends State<SettingsContent> {
           _buildSectionTitle(LocalizationHelper.get('settings.theme')),
           const SizedBox(height: 12),
           _buildThemeSelector(),
-          // Add a tooltip helper for themes if needed, but theme selector is a wrap of buttons.
-          // The prompt says "various settings", so we'll skip theme selector for now unless it's easy.
 
           // SDR Specific Settings (Only visible in RF mode)
           if (widget.settings.signalSource == SignalSourceType.rf) ...[
             const SizedBox(height: 32),
-            _buildSectionTitle("SDR CONFIGURATION"),
+            _buildSectionTitle(LocalizationHelper.get('settings.sdr_config')),
             const SizedBox(height: 16),
             _buildDropdown<RfSourceType>(
               label: LocalizationHelper.get('settings.rf_source'),
@@ -290,6 +296,8 @@ class _SettingsContentState extends State<SettingsContent> {
                 label: LocalizationHelper.get('settings.rtl_tcp_host'),
                 tooltip: LocalizationHelper.get('settings.tooltips.rtl_tcp_host'),
                 controller: _rtlHostController,
+                // A hostname needs a full keyboard, not the numeric pad.
+                keyboardType: TextInputType.text,
                 onChanged: (val) {
                   _updateSettings(widget.settings.copyWith(rtlTcpHost: val));
                 },
@@ -398,7 +406,7 @@ class _SettingsContentState extends State<SettingsContent> {
             label: LocalizationHelper.get('settings.fft_window_size'),
             tooltip: LocalizationHelper.get('settings.tooltips.fft_window_size'),
             value: widget.settings.fftWindowSize,
-            items: [512, 1024, 2048, 4096],
+            items: kFftWindowSizes,
             onChanged: (val) {
               if (val != null) _updateSettings(widget.settings.copyWith(fftWindowSize: val));
             },
@@ -419,8 +427,10 @@ class _SettingsContentState extends State<SettingsContent> {
             label: LocalizationHelper.get('settings.frequency_skew'),
             tooltip: LocalizationHelper.get('settings.tooltips.frequency_skew'),
             value: widget.settings.frequencySkew,
-            min: 0.2,
-            max: 3.0,
+            // Same range as the SQUISH edge dial, so neither control can
+            // produce a value the other cannot represent.
+            min: kDialMin,
+            max: kDialMax,
             onChanged: (val) => _updateSettings(widget.settings.copyWith(frequencySkew: val)),
           ),
           const SizedBox(height: 40),
@@ -449,7 +459,7 @@ class _SettingsContentState extends State<SettingsContent> {
         if (widget.showCloseButton) ...[
           const Spacer(),
           Semantics(
-            label: "Close Settings",
+            label: LocalizationHelper.get('settings.close'),
             button: true,
             child: IconButton(
               icon: const Icon(Icons.close_rounded, color: Colors.white54),
@@ -485,10 +495,10 @@ class _SettingsContentState extends State<SettingsContent> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+              color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.05),
+                color: isSelected ? Colors.white.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
               ),
             ),
               child: Text(
@@ -577,9 +587,9 @@ class _SettingsContentState extends State<SettingsContent> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: base.withOpacity(0.1),
+            color: base.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: base.withOpacity(0.3)),
+            border: Border.all(color: base.withValues(alpha: 0.3)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -689,12 +699,12 @@ class _SettingsContentState extends State<SettingsContent> {
             showDuration: const Duration(seconds: 3),
             preferBelow: false,
             decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2E).withOpacity(0.95),
+              color: SpectralTheme.surfaceLight.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 10,
                   spreadRadius: 2,
                 )
@@ -708,10 +718,34 @@ class _SettingsContentState extends State<SettingsContent> {
             child: Icon(
               Icons.info_outline_rounded,
               size: 14,
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
             ),
           ),
         ],
+      ],
+    );
+  }
+
+  /// Shared label + decorated-container wrapper for dropdowns and text fields.
+  Widget _buildFieldContainer({
+    required String label,
+    String? tooltip,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabelWithTooltip(label, tooltip),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          child: child,
+        ),
       ],
     );
   }
@@ -724,38 +758,27 @@ class _SettingsContentState extends State<SettingsContent> {
     required ValueChanged<T?> onChanged,
     String? tooltip,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildLabelWithTooltip(label, tooltip),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<T>(
-              value: value,
-              items: items.map((item) {
-                return DropdownMenuItem<T>(
-                  value: item,
-                  child: Text(
-                    itemLabel?.call(item) ?? item.toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                  ),
-                );
-              }).toList(),
-              onChanged: onChanged,
-              dropdownColor: const Color(0xFF1C1C1E),
-              icon: const Icon(Icons.expand_more_rounded, color: Colors.white54),
-              isExpanded: true,
-            ),
-          ),
+    return _buildFieldContainer(
+      label: label,
+      tooltip: tooltip,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          items: items.map((item) {
+            return DropdownMenuItem<T>(
+              value: item,
+              child: Text(
+                itemLabel?.call(item) ?? item.toString(),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+          dropdownColor: SpectralTheme.surface,
+          icon: const Icon(Icons.expand_more_rounded, color: Colors.white54),
+          isExpanded: true,
         ),
-      ],
+      ),
     );
   }
 
@@ -764,28 +787,20 @@ class _SettingsContentState extends State<SettingsContent> {
     required TextEditingController controller,
     required ValueChanged<String> onChanged,
     String? tooltip,
+    TextInputType keyboardType =
+        const TextInputType.numberWithOptions(decimal: true, signed: true),
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildLabelWithTooltip(label, tooltip),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
-          ),
-          child: TextField(
-            controller: controller,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: const InputDecoration(border: InputBorder.none),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onSubmitted: onChanged,
-          ),
-        ),
-      ],
+    return _buildFieldContainer(
+      label: label,
+      tooltip: tooltip,
+      child: TextField(
+        controller: controller,
+        focusNode: _focusNodeFor(controller),
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: const InputDecoration(border: InputBorder.none),
+        keyboardType: keyboardType,
+        onSubmitted: onChanged,
+      ),
     );
   }
 
@@ -818,7 +833,7 @@ class _SettingsContentState extends State<SettingsContent> {
             onChanged(val);
           },
           activeColor: Theme.of(context).colorScheme.secondary,
-          inactiveColor: Colors.white.withOpacity(0.05),
+          inactiveColor: Colors.white.withValues(alpha: 0.05),
         ),
       ],
     );
@@ -837,7 +852,7 @@ class _SettingsContentState extends State<SettingsContent> {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: Theme.of(context).colorScheme.secondary,
+          activeThumbColor: Theme.of(context).colorScheme.secondary,
         ),
       ],
     );

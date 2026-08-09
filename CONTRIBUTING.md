@@ -28,17 +28,13 @@ We value stability and performance. Changes should be tightly scoped and well-te
 Maintaining up-to-date visual documentation is critical for Spectral. When introducing new features or modifying the UI, it is **imperative** to evaluate whether new screenshots are needed or if existing ones must be updated.
 
 ### Generating Screenshots
-We use an automated script to capture consistent screenshots of the app. This requires [Playwright](https://playwright.dev/python/).
+We use an automated script to capture consistent screenshots of the app. This requires [Playwright](https://playwright.dev/python/). The script's docstring in `scripts/generate_screenshots.py` is the authoritative reference for its prerequisites (build with `flutter build web --release --no-web-resources-cdn`, temporarily bundle `resources/samples/`), then run:
 
-1.  **Build the Web App:**
-    ```bash
-    flutter build web --profile
-    ```
-2.  **Run the Screenshot Script:**
-    ```bash
-    python3 scripts/generate_screenshots.py
-    ```
-    Generated images are saved to `resources/screenshots/`.
+```bash
+python3 scripts/generate_screenshots.py
+```
+
+Generated images are saved to `resources/screenshots/` by default. `scripts/package_distribution.sh` automates the whole sequence for store screenshots. Note that the images embedded in the docs (`resources/screenshots/*.png`) use stable descriptive filenames — when refreshing them, rename the numbered captures to the existing filenames so doc links stay valid.
 
 Contributors are expected to include updated screenshots in their PRs if their changes impact the visual state of the application.
 

@@ -44,4 +44,45 @@ void main() {
       expect(out[1], closeTo(1.0, 1e-9));
     });
   });
+
+  group('RtlIqChunker', () {
+    double sample(int byte) => (byte - 127.5) / 127.5;
+
+    test('passes whole pairs straight through', () {
+      final chunker = RtlIqChunker();
+      final out = chunker.process(Uint8List.fromList([10, 20, 30, 40]));
+      expect(out, [sample(10), sample(20), sample(30), sample(40)]);
+    });
+
+    test('carries an odd trailing byte so I/Q pairs never swap', () {
+      // TCP has no message boundaries: an odd split mid-pair must not shift
+      // every subsequent Q into an I slot.
+      final chunker = RtlIqChunker();
+      final first = chunker.process(Uint8List.fromList([1, 2, 3]));
+      expect(first, [sample(1), sample(2)]);
+
+      final second = chunker.process(Uint8List.fromList([4, 5, 6]));
+      expect(second, [sample(3), sample(4), sample(5), sample(6)]);
+    });
+
+    test('returns null until a whole pair is available', () {
+      final chunker = RtlIqChunker();
+      expect(chunker.process(Uint8List.fromList([7])), isNull);
+      expect(chunker.process(Uint8List.fromList([8])), [sample(7), sample(8)]);
+    });
+
+    test('honors the offset used to skip the rtl_tcp header', () {
+      final chunker = RtlIqChunker();
+      final out = chunker.process(Uint8List.fromList([9, 9, 1, 2]), offset: 2);
+      expect(out, [sample(1), sample(2)]);
+    });
+
+    test('reset drops a carried byte', () {
+      final chunker = RtlIqChunker();
+      chunker.process(Uint8List.fromList([1]));
+      chunker.reset();
+      expect(chunker.process(Uint8List.fromList([2, 3])),
+          [sample(2), sample(3)]);
+    });
+  });
 }

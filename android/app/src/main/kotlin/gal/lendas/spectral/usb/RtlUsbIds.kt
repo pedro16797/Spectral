@@ -1,4 +1,4 @@
-package com.example.spectral.usb
+package gal.lendas.spectral.usb
 
 /**
  * USB vendor/product IDs of RTL2832U-based dongles.
@@ -8,8 +8,6 @@ package com.example.spectral.usb
  * `lib/src/rf/rtl2832u.dart`.
  */
 object RtlUsbIds {
-    const val VENDOR_REALTEK = 0x0bda
-
     /** (vendorId, productId) pairs known to contain an RTL2832U. */
     val KNOWN_DEVICES: List<Pair<Int, Int>> = listOf(
         0x0bda to 0x2831, // RTL2831U

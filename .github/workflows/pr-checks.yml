@@ -1,0 +1,105 @@
+name: PR Checks (Debug)
+
+# Fast feedback on every pull request: tests, analysis, a debug-signed APK
+# for QA sideloads, and a web build to catch web-only breakage (conditional
+# imports). No secrets are needed, so fork PRs work too. Production builds
+# happen only on main — see release-build.yml.
+
+on:
+  pull_request:
+    branches: [ main ]
+
+env:
+  FLUTTER_VERSION: '3.41.2'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter Test
+        run: flutter test
+
+  analyze:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze project source
+        # Fails on analyzer warnings/errors (unused imports, dead code, type
+        # issues); style-lint infos and SDK deprecations do not block CI.
+        run: flutter analyze --no-fatal-infos
+
+  build-android-debug:
+    name: Build Debug APK
+    needs: [test, analyze]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Build APK (Debug)
+        run: bash scripts/build.sh android-debug
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-apk-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+  build-web:
+    name: Build Web App
+    needs: [test, analyze]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Build Web
+        run: bash scripts/build.sh web
