@@ -81,7 +81,8 @@ is a thin **view** that observes the controller:
     - **`screenshots/`**: Marketing/store screenshots.
 - **`scripts/`**: Tooling — `build.sh <android|web|ios>` (release builds),
   `package_distribution.sh`, `sync_version.sh`, `generate_screenshots.py`,
-  `generate_samples.py`, `generate_placeholder_icon.py`.
+  `generate_samples.py`, `generate_icons.py` (regenerates every platform
+  icon from the master vector `resources/icon.svg`).
 - **`.github/workflows/`**: CI — `pr-checks.yml` (tests, analysis, debug
   builds on pull requests) and `release-build.yml` (release-signed App
   Bundle/APKs, web, and unsigned iOS builds on pushes to `main`), both via

@@ -1,4 +1,52 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1024" height="1024" rx="200" fill="#2196F3"/>
-  <path d="M200 512L350 300L500 700L650 400L824 512" stroke="white" stroke-width="60" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!--
+    Spectral app mark.
+    A scanning ring (radio dial / radar sweep of the world around you) broken by an
+    orbiting tuner blip, crossed by a signal trace with a central resonance peak
+    (audio waveform meets a tuned RF spike). Frost palette on the app's dark navy.
+    Full-bleed square master: platforms apply their own corner masks.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#13233C"/>
+      <stop offset="1" stop-color="#05080F"/>
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="0.5" cy="0.46" r="0.55">
+      <stop offset="0" stop-color="#007AFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#007AFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1C5FAE"/>
+      <stop offset="1" stop-color="#4AA8F0"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1E7BEA"/>
+      <stop offset="0.32" stop-color="#4AA8F0"/>
+      <stop offset="0.5" stop-color="#D8F1FF"/>
+      <stop offset="0.68" stop-color="#4AA8F0"/>
+      <stop offset="1" stop-color="#1E7BEA"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="17"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#bgGlow)"/>
+
+  <!-- soft halo behind the mark -->
+  <g filter="url(#glow)" opacity="0.55">
+    <path d="M783.9 385.2 A300 300 0 1 1 638.8 240.1" fill="none" stroke="#2E86E0" stroke-width="34" stroke-linecap="round"/>
+    <path d="M250 512 C285 512 305 462 340 462 C375 462 395 562 430 562 C468 562 478 345 512 345 C546 345 556 562 594 562 C629 562 649 462 684 462 C719 462 739 512 774 512"
+          fill="none" stroke="#5AC8FA" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="724.1" cy="299.9" r="27" fill="#5AC8FA"/>
+  </g>
+
+  <!-- scanning ring with tuner gap -->
+  <path d="M783.9 385.2 A300 300 0 1 1 638.8 240.1" fill="none" stroke="url(#ring)" stroke-width="34" stroke-linecap="round"/>
+  <!-- tuner blip -->
+  <circle cx="724.1" cy="299.9" r="27" fill="#AEE2FF"/>
+  <!-- signal trace: audio wave with a tuned resonance peak -->
+  <path d="M250 512 C285 512 305 462 340 462 C375 462 395 562 430 562 C468 562 478 345 512 345 C546 345 556 562 594 562 C629 562 649 462 684 462 C719 462 739 512 774 512"
+        fill="none" stroke="url(#wave)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
