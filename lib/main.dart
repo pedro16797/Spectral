@@ -15,6 +15,7 @@ import 'src/ui/waterfall_painter.dart';
 import 'src/ui/radio_dial_focus_slider.dart';
 import 'src/ui/edge_dial.dart';
 import 'src/ui/settings_view.dart';
+import 'src/ui/splash_screen.dart';
 import 'src/utils/localization_helper.dart';
 import 'src/services/settings_service.dart';
 import 'src/utils/frequency_formatter.dart';
@@ -100,10 +101,16 @@ class _SpectralAppState extends State<SpectralApp> {
         ),
         useMaterial3: true,
       ),
-      home: SpectralHomePage(
-        settings: _settings,
-        onSettingsChanged: _updateSettings,
-        backgroundColor: backgroundColor,
+      home: Stack(
+        children: [
+          SpectralHomePage(
+            settings: _settings,
+            onSettingsChanged: _updateSettings,
+            backgroundColor: backgroundColor,
+          ),
+          // Animated welcome mark; plays once on launch, then removes itself.
+          const SplashOverlay(),
+        ],
       ),
     );
   }
