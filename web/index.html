@@ -18,21 +18,53 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Real-time visualization of the audio and RF spectrum around you.">
+  <meta name="theme-color" content="#05080F">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="spectral">
+  <meta name="apple-mobile-web-app-title" content="Spectral">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>spectral</title>
+  <title>Spectral</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body { background: #05080F; }
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(60% 60% at 50% 46%, rgba(0, 122, 255, 0.14), transparent 70%),
+        linear-gradient(135deg, #13233C, #05080F);
+      transition: opacity 0.35s ease;
+      z-index: 9999;
+    }
+    #splash img {
+      width: min(64vmin, 420px);
+      height: auto;
+    }
+  </style>
 </head>
 <body>
+  <div id="splash"><img src="splash.svg" alt="Spectral"></div>
+  <script>
+    // Fade the animated splash out once Flutter renders its first frame.
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('splash');
+      if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(function () { splash.remove(); }, 400);
+      }
+    });
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

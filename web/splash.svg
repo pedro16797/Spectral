@@ -1,0 +1,112 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Spectral animated splash mark (transparent background; the page supplies the
+    dark navy ground). Choreography: the scanning ring sweeps in, the signal
+    trace draws across it, the tuner blip pops in — then a looping live state:
+    a pulse travels along the trace and a ping radiates from the blip.
+    CSS animations only, so it plays inside an <img> tag.
+  -->
+  <defs>
+    <linearGradient id="ring" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1C5FAE"/>
+      <stop offset="1" stop-color="#4AA8F0"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1E7BEA"/>
+      <stop offset="0.32" stop-color="#4AA8F0"/>
+      <stop offset="0.5" stop-color="#D8F1FF"/>
+      <stop offset="0.68" stop-color="#4AA8F0"/>
+      <stop offset="1" stop-color="#1E7BEA"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="17"/>
+    </filter>
+  </defs>
+
+  <style>
+    .ring, .wave {
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: draw 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    }
+    .ring { animation-delay: 0.05s; }
+    .wave { animation-delay: 0.35s; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    .blip {
+      opacity: 0;
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.78s forwards;
+    }
+    @keyframes pop {
+      from { opacity: 0; transform: scale(0.2); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .ping {
+      opacity: 0;
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: ping 1.6s cubic-bezier(0.2, 0.6, 0.36, 1) 2.5s infinite;
+    }
+    @keyframes ping {
+      0%        { opacity: 0.75; transform: scale(0.5); }
+      70%, 100% { opacity: 0;    transform: scale(2.4); }
+    }
+
+    .pulse {
+      stroke-dasharray: 0.16 0.84;
+      stroke-dashoffset: 0.16;
+      opacity: 0;
+      animation: fadein 0.3s linear 1.15s forwards,
+                 travel 1.6s linear 1.15s infinite;
+    }
+    @keyframes fadein { to { opacity: 0.9; } }
+    @keyframes travel {
+      from { stroke-dashoffset: 0.16; }
+      to   { stroke-dashoffset: -0.84; }
+    }
+
+    .word {
+      opacity: 0;
+      animation: rise 0.5s ease-out 0.9s forwards;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 0.85; transform: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+      .ring, .wave { stroke-dashoffset: 0; }
+      .blip { opacity: 1; }
+      .word { opacity: 0.85; }
+      .ping, .pulse { opacity: 0; }
+    }
+  </style>
+
+  <!-- soft halo (draws in sync with the crisp strokes above it) -->
+  <g filter="url(#glow)" opacity="0.55">
+    <path class="ring" pathLength="1" d="M783.9 385.2 A300 300 0 1 1 638.8 240.1" fill="none" stroke="#2E86E0" stroke-width="34" stroke-linecap="round"/>
+    <path class="wave" pathLength="1" d="M250 512 C285 512 305 462 340 462 C375 462 395 562 430 562 C468 562 478 345 512 345 C546 345 556 562 594 562 C629 562 649 462 684 462 C719 462 739 512 774 512"
+          fill="none" stroke="#5AC8FA" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle class="blip" cx="724.1" cy="299.9" r="27" fill="#5AC8FA"/>
+  </g>
+
+  <!-- scanning ring with tuner gap -->
+  <path class="ring" pathLength="1" d="M783.9 385.2 A300 300 0 1 1 638.8 240.1" fill="none" stroke="url(#ring)" stroke-width="34" stroke-linecap="round"/>
+  <!-- ping ripple radiating from the blip -->
+  <circle class="ping" cx="724.1" cy="299.9" r="27" fill="none" stroke="#8FD5FF" stroke-width="7"/>
+  <!-- tuner blip -->
+  <circle class="blip" cx="724.1" cy="299.9" r="27" fill="#AEE2FF"/>
+  <!-- signal trace -->
+  <path class="wave" pathLength="1" d="M250 512 C285 512 305 462 340 462 C375 462 395 562 430 562 C468 562 478 345 512 345 C546 345 556 562 594 562 C629 562 649 462 684 462 C719 462 739 512 774 512"
+        fill="none" stroke="url(#wave)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live pulse traveling along the trace -->
+  <path class="pulse" pathLength="1" d="M250 512 C285 512 305 462 340 462 C375 462 395 562 430 562 C468 562 478 345 512 345 C546 345 556 562 594 562 C629 562 649 462 684 462 C719 462 739 512 774 512"
+        fill="none" stroke="#EAF7FF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text class="word" x="524" y="948" text-anchor="middle" fill="#A9C7E8" font-size="58" font-weight="500" letter-spacing="26"
+        font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif">SPECTRAL</text>
+</svg>
