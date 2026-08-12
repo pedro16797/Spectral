@@ -27,18 +27,6 @@ Ranked by importance to the product and estimated implementation complexity.
 | **Data recording, playback & export (CSV / raw I/Q)** | High | Medium | The natural next analysis tool; replaying saved captures also removes the need for live hardware when developing and testing. |
 | **Expanded hardware support (SDR front-ends beyond RTL-SDR)** | Medium | High | Each front-end (Airspy, HackRF, SDRplay, …) needs its own native driver or bridge protocol. |
 
-### Descoped
-
-Considered and dropped as out of scope for a mobile spectral-visualization app:
-
-- **Automated protocol identification (DMR, AIS, ADS-B):** per-protocol
-  decoders are a different product domain from spectrum visualization.
-- **Remote SDR clusters (multiple simultaneous `rtl_tcp` nodes):** multi-node
-  aggregation is infrastructure tooling; a single remote `rtl_tcp` source is
-  already supported.
-- **Spectrum archiving with indexing:** the useful kernel — saving and
-  replaying captures — is covered by recording & export above.
-
 ---
 
 ## Completed Milestones
