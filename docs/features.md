@@ -57,7 +57,9 @@ return to the radio band.
 
 ## 📊 Advanced Spectral Analysis
 
-Sprint 4.2 introduced professional-grade tools for deep signal analysis.
+Professional-grade tools for deep signal analysis. Peak hold, averaging, SNR,
+and harmonics are toggled under **Settings → Signal Analysis**; markers are
+placed directly on the chart.
 
 ### Peak Hold
 - **Function:** Retains the maximum magnitude of every frequency bin over time.
@@ -76,9 +78,9 @@ Sprint 4.2 introduced professional-grade tools for deep signal analysis.
 - **Utility:** Helps assess the quality of the incoming signal relative to the background noise floor.
 
 ### Interactive Markers
-- **Interaction:** Tap anywhere on the FFT bar chart to place up to 3 frequency markers.
-- **Display:** Vertical markers with exact frequency labels.
-- **Delta Measurement:** Used for measuring precise center frequencies and identifying spectral components.
+- **Interaction:** Tap anywhere on the FFT bar chart to place up to 3 frequency markers. Tapping on (or near) an existing marker removes it; placing a fourth replaces the oldest.
+- **Display:** Vertical lines with exact frequency labels.
+- **Use Case:** Pinning the frequencies of spectral components so they can be compared as the signal changes.
 
 ### Harmonic Overlays
 - **Function:** Automatically identifies and highlights integer multiples of a detected fundamental frequency.
@@ -113,7 +115,7 @@ Spectral supports real-world RF spectral analysis using external SDR (Software D
 ![SDR Settings](../resources/screenshots/sdr_settings.png)
 
 - **Real Hardware via rtl_tcp:** Drive a standard RTL-SDR dongle through an `rtl_tcp` bridge (an Android driver app, or the desktop/Pi `rtl_tcp` binary), with frequency, sample-rate, PPM-correction, and automatic-gain control.
-- **Integrated USB driver (Android):** Plug an RTL-SDR into the phone over USB OTG and Spectral offers to open it directly — no bridge app. The app claims the dongle, runs the RTL2832U + R820T/R828D bring-up in-process, and streams live I/Q. Hot-plug and unplug are handled while running. *Not yet validated against physical hardware; rtl_tcp remains the proven path.*
+- **Integrated USB driver (Android):** Plug an RTL-SDR into the phone over USB OTG and Spectral offers to open it directly — no bridge app. The app claims the dongle, runs the RTL2832U + R820T/R828D bring-up in-process, and streams live I/Q. Hot-plug and unplug are handled while running. *Hardware validation is still in progress; rtl_tcp remains the proven path.*
 - **PPM Correction:** Calibrate for hardware oscillator offsets to ensure frequency accuracy.
 - **Tune by dragging:** The waterfall shows the whole captured band; drag the frequency slider onto a peak and the audio follows. The selection drives a digital down-converter (mix to baseband, filter, decimate), so you hear only the selected slice — no hardware retune, no stream restart.
 - **Complex FFT Engine:** Specifically designed for RF I/Q signals with centered DC components.

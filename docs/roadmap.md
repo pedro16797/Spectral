@@ -3,8 +3,8 @@
 This document outlines the strategic plan for Spectral, from MVP to future iterations.
 
 ## Phase 4: Active Development
-- **Native SDR driver hardware validation:** the RTL2832U/R82xx/FC0013 bring-up is transcribed from librtlsdr but has not yet been validated against physical dongles (see `Rtl2832u.selfTest` and the notes in `docs/sdr_usage_guide.md`).
-- **Release signing:** generate an upload keystore and provide it via `android/key.properties` before any store publish (see `docs/distribution_guide.md`); the application ID is now `gal.lendas.spectral`.
+- **Native SDR driver hardware validation:** the bring-up is transcribed from librtlsdr. The RTL2832U layer has been confirmed on real hardware, but the tuner drivers have not — FC0013 PLL/gain is untested and R82xx is entirely unexercised (see the validation-status section of `docs/sdr_usage_guide.md`).
+- **Release signing:** generate an upload keystore and provide it via `android/key.properties` before any store publish (see `docs/distribution_guide.md`). The application ID is `gal.lendas.spectral`.
 
 ---
 

@@ -1,42 +1,36 @@
 # iOS & iPadOS Testing Guide
 
-Since physical iOS devices may not always be available during development, this guide outlines methods for testing the Spectral application on Apple platforms.
+Physical iOS devices are not always available during development. These are the
+ways to test Spectral on Apple platforms, roughly in order of fidelity per
+effort.
 
-## 1. Local iOS Simulator (macOS Only)
-If you have access to a machine running macOS, you can use the iOS Simulator included with Xcode.
+## 1. Local iOS Simulator (macOS only)
+1. **Install Xcode** from the Mac App Store.
+2. **Open Simulator:** `open -a Simulator`.
+3. **Run Spectral:** `flutter run` and select the simulator as the target device.
 
-1.  **Install Xcode** from the Mac App Store.
-2.  **Open Simulator:** `open -a Simulator`.
-3.  **Run Spectral:** `flutter run` and select the simulator as the target device.
+## 2. CI build verification (GitHub Actions)
+`.github/workflows/release-build.yml` builds an unsigned iOS app bundle on a
+`macos-latest` runner on every push to `main` (tests and analysis run on every
+PR via `pr-checks.yml`). This verifies build integrity but does not exercise
+the UI on a simulator; a future job could boot a simulator and run integration
+tests via `flutter drive`.
 
-## 2. Automated Testing in CI (GitHub Actions)
-Our GitHub Actions workflow (`.github/workflows/multi-platform-build.yml`) utilizes `macos-latest` runners to build the iOS application. While it doesn't currently run functional UI tests on a simulator, you can verify build integrity.
+## 3. Cloud device farms
+- **Firebase Test Lab:** upload the `.ipa`/app bundle; runs on real Apple
+  hardware and returns screenshots, videos, and logs. Supports XCTest-based UI
+  tests.
+- **BrowserStack / Sauce Labs:** interactive remote access to real iPhones and
+  iPads through the browser — best for manual exploratory testing across
+  screen sizes (e.g. iPad Pro vs. iPhone SE).
 
-To run tests on a simulator in CI, one can add a job that:
-- Starts a simulator.
-- Runs `flutter test` or integration tests using `drive`.
+## 4. Web build with iOS device emulation
+Not a substitute for the native environment, but quick for layout checks:
+build with `flutter build web --release`, open the app in Chrome, and use
+DevTools' device toolbar (`F12`) to emulate iPhone/iPad viewports. Safari on a
+Mac gets closer to WebKit behavior.
 
-## 3. Cloud Testing Services
-Cloud providers offer access to real iOS devices and simulators for remote testing.
-
-### Firebase Test Lab (Recommended)
-Firebase Test Lab supports iOS "Robo" tests and Game Loops, as well as XCTest-based UI tests.
-- **Process:** Upload the `.ipa` or `.zip` of the app bundle.
-- **Benefits:** Provides screenshots, videos, and logs from actual Apple hardware.
-
-### BrowserStack / Sauce Labs
-These services provide interactive remote access to real iPhones and iPads.
-- **Process:** Upload the built app to their platform and interact with it through your browser.
-- **Benefits:** Great for manual exploratory testing and verifying UI responsiveness on different screen sizes (e.g., iPad Pro vs. iPhone SE).
-
-## 4. Web-Based "iOS-Like" Testing
-While not a perfect substitute for the native environment, the Web build of Spectral can be tested in Safari or using Chrome DevTools' device emulation for iOS devices.
-
-1.  **Build Web:** `flutter build web --release`.
-2.  **DevTools Emulation:** Open the app in Chrome, press `F12`, and toggle the device toolbar. Select "iPhone" or "iPad" to test responsive layouts.
-
-## 5. TestFlight (Beta Testing)
-For testing on real devices without being in the same location:
-1.  Upload a build to **App Store Connect**.
-2.  Distribute to internal or external testers via **TestFlight**.
-3.  Testers can provide feedback and crash reports directly through the TestFlight app.
+## 5. TestFlight (beta testing on real devices)
+1. Upload a build to **App Store Connect**.
+2. Distribute to internal or external testers via **TestFlight**.
+3. Testers provide feedback and crash reports through the TestFlight app.

@@ -6,7 +6,7 @@ This document provides a list of high-quality, open-source or freely available a
 
 ### EBU SQAM (Sound Quality Assessment Material)
 The European Broadcasting Union (EBU) provides standardized material for subjective and objective audio testing.
-- **Link:** [SQAM - MIT Media Lab](https://sound.media.mit.edu/resources/mpeg4/audio/sqam/)
+- **Link:** [EBU Tech 3253 (SQAM CD)](https://tech.ebu.ch/publications/sqamcd) — mirror: [MIT Media Lab](https://sound.media.mit.edu/resources/mpeg4/audio/sqam/)
 - **Description:** Includes individual instruments (Glockenspiel, Trumpet, Harpsichord), speech (English, French), and complex tunes.
 - **Usage:** Ideal for verifying harmonic detection, tone mapping, and FFT clarity.
 

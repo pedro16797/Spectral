@@ -58,7 +58,7 @@ is a thin **view** that observes the controller:
           `native_sdr_driver_web.dart`: platform driver delegate (Android USB
           host via platform channels, unsupported on web). The register-level
           driver itself lives in
-          `android/app/src/main/kotlin/com/example/spectral/usb/`.
+          `android/app/src/main/kotlin/gal/lendas/spectral/usb/`.
     - **`ui/`**: Rendering and interaction.
         - `waveform_painter.dart`, `fft_bar_chart_painter.dart`,
           `waterfall_painter.dart`: `CustomPainter` visualizations.
@@ -66,6 +66,8 @@ is a thin **view** that observes the controller:
         - `edge_dial.dart`: the small dial-trigger chips and the large
           edge-mounted dial they expand into.
         - `settings_view.dart`: settings dialog and inline tablet panel.
+        - `splash_screen.dart`: animated launch splash (the web runner has an
+          equivalent HTML/CSS version in `web/`).
     - **`services/`**: `settings_service.dart` (persistence via
       `shared_preferences`).
     - **`utils/`**: Shared helpers — `audio_utils.dart` (PCM/decimation),
@@ -89,7 +91,7 @@ is a thin **view** that observes the controller:
   `scripts/build.sh`.
 - **`android/` `ios/` `web/` `linux/` `macos/` `windows/`**: Flutter platform
   runners. The register-level USB driver lives in
-  `android/app/src/main/kotlin/com/example/spectral/usb/`.
+  `android/app/src/main/kotlin/gal/lendas/spectral/usb/`.
 
 ## Root Files
 

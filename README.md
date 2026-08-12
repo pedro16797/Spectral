@@ -23,7 +23,7 @@ Spectral aims to provide users with a powerful yet user-friendly tool to observe
 
 For a deep dive into these features, see [docs/features.md](docs/features.md).
 
-## 🛠 Project Status
+## 📈 Project Status
 
 The core feature set — real-time visualization, SDR capture, demodulation, localization, and the distribution pipeline — is implemented. Current work focuses on validating the native USB driver against physical hardware; see [docs/roadmap.md](docs/roadmap.md).
 
