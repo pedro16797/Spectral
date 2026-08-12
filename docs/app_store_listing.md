@@ -20,7 +20,7 @@ This document contains a suggested title, description, and metadata for the App 
 Spectral is a powerful and elegant tool for real-time visualization of signals and wave data. Designed for both professional audio engineers and RF enthusiasts, Spectral transforms your device into a high-fidelity spectral analyzer.
 
 ### **Key Features**
-- **High-Fidelity Waveforms:** Smooth, real-time wave rendering with adjustable ghosting and persistence effects.
+- **High-Fidelity Waveforms:** Smooth, real-time wave rendering with ghosting persistence effects.
 - **Precision FFT Bar Charts:** High-performance frequency analysis with dynamic scaling and peak detection.
 - **Time-Frequency Waterfall:** Detect long-term signal patterns with a built-in waterfall display for tracking changes over time.
 - **SDR Integration (RF Support):** Plug in an RTL-SDR dongle over USB, or connect through `rtl_tcp`, and watch the live radio spectrum.
