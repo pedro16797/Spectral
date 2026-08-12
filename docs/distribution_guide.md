@@ -38,6 +38,12 @@ To generate a complete set of distribution artifacts (APKs, Web Zip, and Screens
    - **Tablet Landscape (12.9"):** For iPad Pro and Android tablets.
 5. Organizes all files into a structured `distribution/v<VERSION>/` directory.
 
+Android release builds produced by `scripts/build.sh` are size-optimized:
+R8 code/resource shrinking, per-ABI APK splits, and Dart obfuscation with
+`--split-debug-info` — the emitted symbols are the same `debug-info` bundle
+that Play crash-report deobfuscation consumes (uploaded in step 3 of the
+Play checklist below).
+
 ---
 
 ## 3. Continuous Integration (two paths)
