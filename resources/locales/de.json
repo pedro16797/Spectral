@@ -14,7 +14,9 @@
     "spectrum_view_rf": "Radioband wird angezeigt – tippen, um das demodulierte Audio zu analysieren",
     "spectrum_view_demodulated": "Demoduliertes Audio wird angezeigt – tippen, um das Radioband zu analysieren",
     "spectrum_view_needs_demod": "Demodulationsmodus wählen, um das Audio zu analysieren",
-    "focus_toggle": "Fokusmodus umschalten"
+    "focus_toggle": "Fokusmodus umschalten",
+    "recording": "MITSCHNITT",
+    "playback": "WIEDERGABE"
   },
   "settings": {
     "title": "Einstellungen",
@@ -123,5 +125,26 @@
   "common": {
     "start_capture": "Aufnahme starten",
     "stop_capture": "Aufnahme stoppen"
+  },
+  "recordings": {
+    "title": "Mitschnitte",
+    "start": "Mitschnitt starten",
+    "stop": "Mitschnitt beenden",
+    "needs_capture": "Zum Mitschneiden eine Live-Aufnahme starten.",
+    "export_csv": "Spektrum exportieren (CSV)",
+    "export_unavailable": "Nichts zu exportieren, solange das Spektrum kein Signal zeigt.",
+    "empty": "Noch keine Mitschnitte.",
+    "play": "Abspielen",
+    "stop_playback": "Wiedergabe beenden",
+    "share": "Teilen",
+    "delete": "Löschen",
+    "delete_confirm": "Diesen Mitschnitt löschen?",
+    "cancel": "Abbrechen",
+    "saved": "Mitschnitt gespeichert",
+    "exported": "Spektrum exportiert",
+    "error": "Datei konnte nicht gespeichert werden",
+    "kind_audio": "Audio",
+    "kind_iq": "I/Q",
+    "kind_csv": "Spektrum-CSV"
   }
 }

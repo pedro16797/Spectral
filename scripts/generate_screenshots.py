@@ -61,6 +61,12 @@ LAYOUT_WIDTHS = {
 # Coordinates below are expressed in this space, whatever the output size.
 CLICK_SPACE = (450, 800)
 
+# How long a capturing scene runs before the shot, so the waterfall has
+# filled. The sample player delivers 20 FFT frames/s; at the default speed a
+# row is committed every 4 frames, and the waterfall holds 160 rows:
+# 160 * 4 / 20 = 32 s, plus a little margin.
+WATERFALL_FILL_MS = 34000
+
 
 def _resize_exact(path, size):
     """Nudge a capture to the exact store resolution.
@@ -100,6 +106,7 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
 
     # Sample paths
     SINE_SAMPLE = "resources/samples/audio/sine_440_880.wav"
+    CHIRP_SAMPLE = "resources/samples/audio/chirp_sweep.wav"
     SDR_SAMPLE = "resources/samples/rf/fm_multi_signals.iq"
 
     # Default settings
@@ -168,7 +175,8 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                         lambda route: route.fulfill(path=fallback_font, content_type="font/ttf"),
                     )
 
-                def capture_state(name, settings, url_suffix="", clicks=()):
+                def capture_state(name, settings, url_suffix="", clicks=(),
+                                  run_for_ms=0):
                     page = context.new_page()
 
                     settings_copy = settings.copy()
@@ -193,6 +201,8 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                             cy * css_height / CLICK_SPACE[1],
                         )
                         page.wait_for_timeout(1500)
+                    if run_for_ms:
+                        page.wait_for_timeout(run_for_ms)
 
                     out_path = os.path.join(res_dir, f"{name}.png")
                     page.screenshot(path=out_path)
@@ -203,7 +213,8 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                 capture_state("01_home", default_settings)
 
                 # 2. Active Audio
-                capture_state("02_audio_active", default_settings, f"?play_file={SINE_SAMPLE}", [(225, 757)])
+                capture_state("02_audio_active", default_settings, f"?play_file={SINE_SAMPLE}", [(225, 757)],
+                              run_for_ms=WATERFALL_FILL_MS)
 
                 # 3. SDR Advanced
                 adv_settings = default_settings.copy()
@@ -215,7 +226,8 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                     "rfBandwidth": 2.0,
                     "fftAveragingMode": "exponential"
                 })
-                capture_state("03_sdr_advanced", adv_settings, f"?play_file={SDR_SAMPLE}", [(225, 757)])
+                capture_state("03_sdr_advanced", adv_settings, f"?play_file={SDR_SAMPLE}", [(225, 757)],
+                              run_for_ms=WATERFALL_FILL_MS)
 
                 # 4. Settings
                 capture_state("04_settings", default_settings, "", [(360, 45)])
@@ -232,7 +244,8 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                     "spectrumView": "rf",
                 })
                 capture_state("05_sdr_tuned_rf", tuned_settings,
-                              f"?play_file={SDR_SAMPLE}", [(225, 757)])
+                              f"?play_file={SDR_SAMPLE}", [(225, 757)],
+                              run_for_ms=WATERFALL_FILL_MS)
 
                 # 6. The same capture with the header toggle flipped, so the
                 # analysis chain describes the demodulated audio instead.
@@ -243,7 +256,8 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                     "showHarmonics": True,
                 })
                 capture_state("06_sdr_demodulated", demod_settings,
-                              f"?play_file={SDR_SAMPLE}", [(225, 757)])
+                              f"?play_file={SDR_SAMPLE}", [(225, 757)],
+                              run_for_ms=WATERFALL_FILL_MS)
 
                 # 7. SDR settings, including the driver status panel. The
                 # settings button keeps its position when the spectrum-view
@@ -255,6 +269,16 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
                     "demodulationMode": "fm",
                 })
                 capture_state("07_sdr_settings", sdr_settings, "", [(360, 45)])
+
+                # 8. Waterfall Focus Mode over a chirp sweeping across a steady
+                # tone. Capture starts from the interaction bar, which focus
+                # mode then hides; the focus toggle is the right-most header
+                # button (x=418 lands on it at both phone and tablet-portrait
+                # widths).
+                capture_state("08_waterfall_focus", default_settings,
+                              f"?play_file={CHIRP_SAMPLE}",
+                              [(225, 757), (418, 35)],
+                              run_for_ms=WATERFALL_FILL_MS)
 
             browser.close()
     except Exception as e:
@@ -271,6 +295,7 @@ def generate_screenshots(output_base_dir="resources/screenshots"):
     expected = [
         "01_home", "02_audio_active", "03_sdr_advanced", "04_settings",
         "05_sdr_tuned_rf", "06_sdr_demodulated", "07_sdr_settings",
+        "08_waterfall_focus",
     ]
     missing = [
         os.path.join(output_base_dir, res, f"{name}.png")

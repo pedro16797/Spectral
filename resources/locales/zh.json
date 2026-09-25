@@ -14,7 +14,9 @@
     "spectrum_view_rf": "正在显示射频频段 — 点按以分析解调音频",
     "spectrum_view_demodulated": "正在显示解调音频 — 点按以分析射频频段",
     "spectrum_view_needs_demod": "请先设置解调模式以分析音频",
-    "focus_toggle": "切换焦点模式"
+    "focus_toggle": "切换焦点模式",
+    "recording": "录制中",
+    "playback": "回放中"
   },
   "settings": {
     "title": "设置",
@@ -123,5 +125,26 @@
   "common": {
     "start_capture": "开始捕获",
     "stop_capture": "停止捕获"
+  },
+  "recordings": {
+    "title": "录制",
+    "start": "开始录制",
+    "stop": "停止录制",
+    "needs_capture": "开始实时捕获后即可录制。",
+    "export_csv": "导出频谱 (CSV)",
+    "export_unavailable": "频谱显示信号后才能导出。",
+    "empty": "暂无录制。",
+    "play": "播放",
+    "stop_playback": "停止播放",
+    "share": "分享",
+    "delete": "删除",
+    "delete_confirm": "删除此录制？",
+    "cancel": "取消",
+    "saved": "录制已保存",
+    "exported": "频谱已导出",
+    "error": "无法保存文件",
+    "kind_audio": "音频",
+    "kind_iq": "I/Q",
+    "kind_csv": "频谱 CSV"
   }
 }

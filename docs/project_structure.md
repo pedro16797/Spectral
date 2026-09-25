@@ -58,14 +58,33 @@ is a thin **view** that observes the controller:
           `native_sdr_driver_web.dart`: platform driver delegate (Android USB
           host via platform channels, unsupported on web). The register-level
           driver itself lives in
-          `android/app/src/main/kotlin/com/example/spectral/usb/`.
+          `android/app/src/main/kotlin/gal/lendas/spectral/usb/`.
     - **`ui/`**: Rendering and interaction.
-        - `waveform_painter.dart`, `fft_bar_chart_painter.dart`,
-          `waterfall_painter.dart`: `CustomPainter` visualizations.
+        - `waveform_painter.dart`, `fft_bar_chart_painter.dart`:
+          `CustomPainter` visualizations.
+        - `waterfall_painter.dart`: `WaterfallTexture` keeps the waterfall as
+          a 160×160 GPU texture. Each committed row copies the texture one row
+          down and draws only the new row, and the whole texture is redrawn
+          only when zoom, skew, or theme change. `WaterfallPainter` draws it
+          with the age fade and smooth scrolling between commits.
         - `radio_dial_focus_slider.dart`: frequency zoom/pan control.
         - `edge_dial.dart`: the small dial-trigger chips and the large
           edge-mounted dial they expand into.
         - `settings_view.dart`: settings dialog and inline tablet panel.
+        - `recordings_view.dart`: the recordings library dialog (record,
+          export CSV, play, share, delete).
+        - `splash_screen.dart`: animated launch splash (the web runner has an
+          equivalent HTML/CSS version in `web/`).
+    - **`recording/`**: The recordings library.
+        - `recording_format.dart`: Platform-free file formats: WAV and SigMF
+          encoding and parsing, int16 sample quantization, and spectrum CSV.
+        - `recording_store.dart`: `RecordingStore` / `RecordingSink`
+          interfaces the controller records and replays through.
+        - `recording_store_io.dart`: File-backed store in
+          `<app documents>/recordings/` (via `path_provider`), sharing via
+          `share_plus`, and `FileRecordingSource`, a real-time paced playback
+          source. It has a web stub (`recording_store_web.dart`) selected via
+          conditional import, so the web build does not pull in `dart:io`.
     - **`services/`**: `settings_service.dart` (persistence via
       `shared_preferences`).
     - **`utils/`**: Shared helpers — `audio_utils.dart` (PCM/decimation),
@@ -89,7 +108,7 @@ is a thin **view** that observes the controller:
   `scripts/build.sh`.
 - **`android/` `ios/` `web/` `linux/` `macos/` `windows/`**: Flutter platform
   runners. The register-level USB driver lives in
-  `android/app/src/main/kotlin/com/example/spectral/usb/`.
+  `android/app/src/main/kotlin/gal/lendas/spectral/usb/`.
 
 ## Root Files
 

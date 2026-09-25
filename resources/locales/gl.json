@@ -14,7 +14,9 @@
     "spectrum_view_rf": "Amosando a banda de radio: toca para analizar o audio demodulado",
     "spectrum_view_demodulated": "Amosando o audio demodulado: toca para analizar a banda de radio",
     "spectrum_view_needs_demod": "Escolle un modo de demodulación para analizar o audio",
-    "focus_toggle": "Alternar modo de foco"
+    "focus_toggle": "Alternar modo de foco",
+    "recording": "GRAVANDO",
+    "playback": "REPRODUCIÓN"
   },
   "settings": {
     "title": "Axustes",
@@ -123,5 +125,26 @@
   "common": {
     "start_capture": "Iniciar Captura",
     "stop_capture": "Deter Captura"
+  },
+  "recordings": {
+    "title": "Gravacións",
+    "start": "Iniciar gravación",
+    "stop": "Deter gravación",
+    "needs_capture": "Inicia unha captura en directo para gravala.",
+    "export_csv": "Exportar espectro (CSV)",
+    "export_unavailable": "Non hai nada que exportar ata que o espectro amose un sinal.",
+    "empty": "Aínda non hai gravacións.",
+    "play": "Reproducir",
+    "stop_playback": "Deter reprodución",
+    "share": "Compartir",
+    "delete": "Eliminar",
+    "delete_confirm": "Eliminar esta gravación?",
+    "cancel": "Cancelar",
+    "saved": "Gravación gardada",
+    "exported": "Espectro exportado",
+    "error": "Non se puido gardar o ficheiro",
+    "kind_audio": "Audio",
+    "kind_iq": "I/Q",
+    "kind_csv": "CSV do espectro"
   }
 }

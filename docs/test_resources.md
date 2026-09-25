@@ -6,7 +6,7 @@ This document provides a list of high-quality, open-source or freely available a
 
 ### EBU SQAM (Sound Quality Assessment Material)
 The European Broadcasting Union (EBU) provides standardized material for subjective and objective audio testing.
-- **Link:** [SQAM - MIT Media Lab](https://sound.media.mit.edu/resources/mpeg4/audio/sqam/)
+- **Link:** [EBU Tech 3253 (SQAM CD)](https://tech.ebu.ch/publications/sqamcd) — mirror: [MIT Media Lab](https://sound.media.mit.edu/resources/mpeg4/audio/sqam/)
 - **Description:** Includes individual instruments (Glockenspiel, Trumpet, Harpsichord), speech (English, French), and complex tunes.
 - **Usage:** Ideal for verifying harmonic detection, tone mapping, and FFT clarity.
 
@@ -22,7 +22,7 @@ A massive database of creative-commons licensed audio.
 
 ## Synthetic Test Signals
 For automated or programmatic testing, it is often better to generate signals:
-- `scripts/generate_samples.py` regenerates the bundled samples under `resources/samples/` (a 440+880 Hz sine WAV and a multi-carrier I/Q file).
+- `scripts/generate_samples.py` regenerates the bundled samples under `resources/samples/`: a 440+880 Hz sine WAV, a chirp WAV (500 Hz → 15 kHz and back over a steady 2 kHz tone, looping seamlessly) for exercising the waterfall, and a multi-carrier I/Q file.
 - The app plays them via the `?play_file=<asset path>` URL parameter on web, and `?demo=true` runs a built-in synthesized tone (see `SignalController`).
 
 ## SDR/RF Sample Repositories
