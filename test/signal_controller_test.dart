@@ -410,6 +410,21 @@ void main() {
     expect(slow, 0);
   });
 
+  test('the waterfall keeps a bounded number of rows', () async {
+    late FakeSignalSource src;
+    final c = makeController(const AppSettings(), (s) => src = s);
+    c.waterfallSpeed = 5.0; // One row per frame.
+    await settle();
+    final chunk = Float64List(2048)..fillRange(0, 2048, 0.5);
+    for (int f = 0; f < SignalController.maxWaterfallRows + 10; f++) {
+      src.emit(chunk);
+      await settle();
+    }
+    expect(c.fftHistory, hasLength(SignalController.maxWaterfallRows));
+    expect(SignalController.maxWaterfallRows, 80);
+    c.dispose();
+  });
+
   test('a waterfall row averages every frame in its slot', () async {
     late FakeSignalSource src;
     final c = makeController(const AppSettings(), (s) => src = s);

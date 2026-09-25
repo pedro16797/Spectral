@@ -238,7 +238,9 @@ class SignalController extends ChangeNotifier {
     );
   }
 
-  static const int _maxHistory = 40;
+  /// Waterfall rows kept on screen. Each is drawn at 1/[maxWaterfallRows] of
+  /// the height, so more rows means finer steps as the waterfall falls.
+  static const int maxWaterfallRows = 80;
   static const int _maxAudioHistory = 5;
 
   // ---- Visualization state (read by painters via [frame]) ----
@@ -593,7 +595,7 @@ class SignalController extends ChangeNotifier {
       final int count = _waterfallFrameCounter;
       fftHistory.insert(
           0, List<double>.generate(sum.length, (i) => sum![i] / count));
-      if (fftHistory.length > _maxHistory) {
+      if (fftHistory.length > maxWaterfallRows) {
         fftHistory.removeLast();
       }
       sum.fillRange(0, sum.length, 0);
