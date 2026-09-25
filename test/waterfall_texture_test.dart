@@ -191,4 +191,36 @@ void main() {
             image: texture.image, rows: 8, scrollProgress: 0.5)),
         isTrue);
   });
+
+  test('the painter scales cells up as crisp blocks, not blurred', () async {
+    final texture = WaterfallTexture(rows: 8);
+    addTearDown(texture.dispose);
+    texture.sync(history: [tone(256)], revision: 1, epoch: 0, view: view);
+    final lit = expectedColumns(tone(256)).first;
+
+    // 4 screen pixels per texel in both directions.
+    const scale = 4;
+    final recorder = ui.PictureRecorder();
+    WaterfallPainter(image: texture.image, rows: 8)
+        .paint(ui.Canvas(recorder), const ui.Size(160.0 * scale, 8.0 * scale));
+    final picture = recorder.endRecording();
+    final image = picture.toImageSync(160 * scale, 8 * scale);
+    picture.dispose();
+    addTearDown(image.dispose);
+    final px = await pixels(image);
+
+    const width = 160 * scale;
+    const y = 1; // Inside the newest row's block.
+    final left = lit * scale;
+    // Every pixel of the texel's block carries it at full strength...
+    final inside = [
+      for (int x = left; x < left + scale; x++) alphaAt(px, width, x, y)
+    ];
+    expect(inside.toSet(), hasLength(1), reason: 'one flat block: $inside');
+    expect(inside.first, greaterThan(0));
+    // ...and nothing bleeds into the pixel beside it, as bilinear would.
+    final right = expectedColumns(tone(256)).last * scale + scale;
+    expect(alphaAt(px, width, left - 1, y), 0);
+    expect(alphaAt(px, width, right, y), 0);
+  });
 }

@@ -224,9 +224,10 @@ class WaterfallPainter extends CustomPainter {
       image,
       Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
       Rect.fromLTWH(0, dy, size.width, size.height),
-      // Bilinear, so fractional scroll offsets move smoothly rather than
-      // snapping texel rows between screen pixels.
-      Paint()..filterQuality = FilterQuality.low,
+      // Nearest-neighbour: each cell is a crisp block, deliberately
+      // pixelated. Bilinear smeared the 160×160 texture into a blurry,
+      // low-res-looking background.
+      Paint()..filterQuality = FilterQuality.none,
     );
     canvas.drawRect(
       rect,
