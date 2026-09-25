@@ -14,6 +14,7 @@ import 'src/ui/fft_bar_chart_painter.dart';
 import 'src/ui/waterfall_painter.dart';
 import 'src/ui/radio_dial_focus_slider.dart';
 import 'src/ui/edge_dial.dart';
+import 'src/ui/recordings_view.dart';
 import 'src/ui/settings_view.dart';
 import 'src/ui/splash_screen.dart';
 import 'src/utils/localization_helper.dart';
@@ -381,6 +382,29 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     );
   }
 
+  void _showRecordings() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: LocalizationHelper.get('recordings.title'),
+      pageBuilder: (context, _, __) => RecordingsView(controller: _controller),
+    );
+  }
+
+  /// Whether the spectrum on screen is an RF band. A replayed recording is
+  /// whatever it was captured as, whichever source the settings select.
+  bool get _isRfBand {
+    final playback = _controller.playbackRecording;
+    if (playback != null) return playback.isComplex;
+    return widget.settings.signalSource == SignalSourceType.rf;
+  }
+
+  String get _statusKey {
+    if (_controller.isRecording) return 'header.recording';
+    if (_controller.playbackRecording != null) return 'header.playback';
+    return _controller.isCapturing ? 'header.live' : 'header.idle';
+  }
+
   void _handleFftTap(Offset localOffset, Size size) {
     // The painter is inset by the glass card's padding, so map the tap into
     // the painter's coordinate space before converting to a frequency.
@@ -694,21 +718,34 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
   Widget _buildMinimalHeader(bool isLandscape, bool useTabletLayout) {
     return Row(
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              LocalizationHelper.get('header.title'),
-              style: const TextStyle(fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.w900, color: Colors.white24),
+        // Scales down rather than overflowing when a narrow phone has to fit
+        // every header action beside it.
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  LocalizationHelper.get('header.title'),
+                  style: const TextStyle(fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.w900, color: Colors.white24),
+                ),
+                Text(
+                  LocalizationHelper.get(_statusKey),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: _controller.isRecording
+                        ? Colors.redAccent
+                        : Colors.white.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
             ),
-            Text(
-              LocalizationHelper.get(
-                  _controller.isCapturing ? 'header.live' : 'header.idle'),
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.8)),
-            ),
-          ],
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 12),
         // In portrait the capture button lives in the interaction bar — except
         // in waterfall-focus mode, where that bar is hidden and this header
         // button is the only capture control.
@@ -726,7 +763,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
           const SizedBox(width: 12),
         ],
         // Only meaningful for SDR: an audio source has just the one spectrum.
-        if (widget.settings.signalSource == SignalSourceType.rf) ...[
+        if (_isRfBand) ...[
           Semantics(
             label: LocalizationHelper.get('header.spectrum_view'),
             button: true,
@@ -742,6 +779,21 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
                 enabled: _canShowDemodulated,
                 onPressed: _toggleSpectrumView,
               ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
+        // The library needs a filesystem, so web builds go without it.
+        if (_controller.recordingStore.isSupported) ...[
+          Semantics(
+            label: LocalizationHelper.get('recordings.title'),
+            button: true,
+            child: _buildHeaderAction(
+              icon: _controller.isRecording
+                  ? Icons.fiber_manual_record_rounded
+                  : Icons.folder_open_rounded,
+              iconColor: _controller.isRecording ? Colors.redAccent : null,
+              onPressed: _showRecordings,
             ),
           ),
           const SizedBox(width: 12),
@@ -886,8 +938,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
     // Report the *selected* window rather than the whole band: on RF that is
     // the slice being demodulated, so it is the number the user is tuning.
-    final bool isRf = widget.settings.signalSource == SignalSourceType.rf;
-    final rangeText = isRf
+    final rangeText = _isRfBand
         ? "${FrequencyFormatter.format(_freqRange.start, precision: 3)} - "
             "${FrequencyFormatter.format(_freqRange.end, precision: 3)}"
         : "${FrequencyFormatter.format(_freqRange.start)} - "

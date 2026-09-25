@@ -14,7 +14,9 @@
     "spectrum_view_rf": "Es mostra la banda de ràdio: toca per analitzar l'àudio demodulat",
     "spectrum_view_demodulated": "Es mostra l'àudio demodulat: toca per analitzar la banda de ràdio",
     "spectrum_view_needs_demod": "Tria un mode de demodulació per analitzar l'àudio",
-    "focus_toggle": "Alterna el mode de focus"
+    "focus_toggle": "Alterna el mode de focus",
+    "recording": "ENREGISTRANT",
+    "playback": "REPRODUCCIÓ"
   },
   "settings": {
     "title": "Ajustos",
@@ -123,5 +125,26 @@
   "common": {
     "start_capture": "Iniciar Captura",
     "stop_capture": "Aturar Captura"
+  },
+  "recordings": {
+    "title": "Enregistraments",
+    "start": "Inicia l'enregistrament",
+    "stop": "Atura l'enregistrament",
+    "needs_capture": "Inicia una captura en directe per enregistrar-la.",
+    "export_csv": "Exporta l'espectre (CSV)",
+    "export_unavailable": "No hi ha res per exportar fins que l'espectre mostri un senyal.",
+    "empty": "Encara no hi ha enregistraments.",
+    "play": "Reprodueix",
+    "stop_playback": "Atura la reproducció",
+    "share": "Comparteix",
+    "delete": "Suprimeix",
+    "delete_confirm": "Vols suprimir aquest enregistrament?",
+    "cancel": "Cancel·la",
+    "saved": "Enregistrament desat",
+    "exported": "Espectre exportat",
+    "error": "No s'ha pogut desar el fitxer",
+    "kind_audio": "Àudio",
+    "kind_iq": "I/Q",
+    "kind_csv": "CSV de l'espectre"
   }
 }

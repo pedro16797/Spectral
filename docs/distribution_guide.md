@@ -98,17 +98,21 @@ These are filled in the Play Console under **App content** and the store
 listing; none of them come from the build:
 
 - **Privacy policy URL** — required for every app. Host one under
-  lendas.gal; the honest content for Spectral is short: audio is captured
-  only on user action, processed on-device, and never transmitted or
-  stored; the app sends no data anywhere (the only network use is the
-  user-configured rtl_tcp connection to their own server).
+  lendas.gal; the honest content for Spectral is short: audio and RF are
+  captured only on user action and processed on-device; they are stored
+  only when the user starts a recording, and those files stay on the
+  device unless the user shares them through the system share sheet. The
+  app sends no data anywhere (the only network use is the user-configured
+  rtl_tcp connection to their own server).
 - **Permission declarations** — the microphone (`RECORD_AUDIO`) usage must
   match the listing description; "real-time audio spectrum visualization"
   is the declared purpose. No sensitive-permission form is needed (mic is
   not in Play's restricted list), but reviewers do check consistency.
-- **Data safety form** — declare "no data collected, no data shared"
-  (accurate as long as the above holds; revisit if analytics or crash
-  reporting are ever added).
+- **Data safety form** — declare "no data collected, no data shared".
+  Recordings don't change this: Play counts data as collected only when it
+  leaves the device, and a transfer the user starts from the share sheet is
+  exempt from "shared". Revisit if analytics or crash reporting are ever
+  added.
 - **Content rating questionnaire (IARC)** — utility app, no user content;
   rates "Everyone".
 - **App access** — declare that all functionality is available without

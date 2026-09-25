@@ -66,8 +66,20 @@ is a thin **view** that observes the controller:
         - `edge_dial.dart`: the small dial-trigger chips and the large
           edge-mounted dial they expand into.
         - `settings_view.dart`: settings dialog and inline tablet panel.
+        - `recordings_view.dart`: the recordings library dialog (record,
+          export CSV, play, share, delete).
         - `splash_screen.dart`: animated launch splash (the web runner has an
           equivalent HTML/CSS version in `web/`).
+    - **`recording/`**: The recordings library.
+        - `recording_format.dart`: Platform-free file formats: WAV and SigMF
+          encoding and parsing, int16 sample quantization, and spectrum CSV.
+        - `recording_store.dart`: `RecordingStore` / `RecordingSink`
+          interfaces the controller records and replays through.
+        - `recording_store_io.dart`: File-backed store in
+          `<app documents>/recordings/` (via `path_provider`), sharing via
+          `share_plus`, and `FileRecordingSource`, a real-time paced playback
+          source. It has a web stub (`recording_store_web.dart`) selected via
+          conditional import, so the web build does not pull in `dart:io`.
     - **`services/`**: `settings_service.dart` (persistence via
       `shared_preferences`).
     - **`utils/`**: Shared helpers — `audio_utils.dart` (PCM/decimation),

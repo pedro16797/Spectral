@@ -9,6 +9,10 @@ import '../rf/rtl_tcp_capture_service.dart'
 import '../rf/integrated_rf_capture_service.dart';
 import '../rf/native_sdr_driver.dart';
 import '../rf/rtl2832u.dart';
+import '../recording/recording_format.dart' show buildSpectrumCsv;
+import '../recording/recording_store.dart';
+import '../recording/recording_store_io.dart'
+    if (dart.library.html) '../recording/recording_store_web.dart';
 import '../utils/audio_utils.dart';
 import '../utils/mock_file_signal_source.dart';
 import 'audio_filters.dart';
@@ -78,8 +82,10 @@ class SignalController extends ChangeNotifier {
     this.isDemoMode = false,
     this.playFile,
     SignalSourceFactory? sourceFactory,
+    RecordingStore? recordingStore,
   })  : _settings = settings,
-        _sourceFactory = sourceFactory ?? defaultSignalSourceFactory {
+        _sourceFactory = sourceFactory ?? defaultSignalSourceFactory,
+        recordingStore = recordingStore ?? createRecordingStore() {
     // The source is created once, inside reconfigure(), which runs synchronously
     // up to installing the stream subscription on this first (non-capturing) call.
     _audioOutputService.init();
@@ -93,6 +99,21 @@ class SignalController extends ChangeNotifier {
   final bool isDemoMode;
   final String? playFile;
   final SignalSourceFactory _sourceFactory;
+
+  /// Where recordings and CSV exports are kept.
+  final RecordingStore recordingStore;
+
+  /// The capture being written, if any. Fed the raw source stream.
+  RecordingSink? _recorder;
+
+  /// The recording being replayed in place of the live source, if any.
+  RecordingInfo? _playback;
+
+  /// The FFT of the last analysed frame, before the sensitivity display
+  /// scale, and whether it was a complex (DC-centred) spectrum. Kept for CSV
+  /// export, which should record the signal rather than the dial position.
+  List<double> _lastRawFft = const [];
+  bool _lastFftComplex = false;
 
   final FftService _fftService = FftService();
   final AudioOutputService _audioOutputService = AudioOutputService();
@@ -131,6 +152,17 @@ class SignalController extends ChangeNotifier {
     return _settings.rfBandwidth * 1e6;
   }
 
+  /// Centre of the RF band being analysed: the recording's own tuning while
+  /// one is replayed, since it was captured wherever the dongle was parked
+  /// then, otherwise the configured centre frequency.
+  double get centerFrequencyHz {
+    final playback = _playback;
+    if (playback != null && playback.isComplex) {
+      return playback.centerFrequencyHz ?? 0;
+    }
+    return _settings.centerFrequency * 1e6;
+  }
+
   /// Selects the slice of the captured band to demodulate, in absolute Hz.
   /// Driven by the frequency slider, so tuning a station is a drag rather than
   /// a trip into settings.
@@ -167,9 +199,14 @@ class SignalController extends ChangeNotifier {
     if (isShowingDemodulated) {
       return (start: 0, end: analysisSampleRate / 2);
     }
-    if ((_hasSource && _signalSource.isComplex) ||
-        _settings.signalSource == SignalSourceType.rf) {
-      final double centre = _settings.centerFrequency * 1e6;
+    // A replayed recording is whatever it was captured as, regardless of the
+    // source the settings currently select.
+    final bool isRfBand = _playback != null
+        ? _playback!.isComplex
+        : (_hasSource && _signalSource.isComplex) ||
+            _settings.signalSource == SignalSourceType.rf;
+    if (isRfBand) {
+      final double centre = centerFrequencyHz;
       final double half = rfSpanHz / 2;
       return (start: centre - half, end: centre + half);
     }
@@ -196,7 +233,7 @@ class SignalController extends ChangeNotifier {
     return planChannel(
       startHz: start,
       endHz: end,
-      centerHz: _settings.centerFrequency * 1e6,
+      centerHz: centerFrequencyHz,
       captureRateHz: _signalSource.sampleRate.toDouble(),
     );
   }
@@ -264,6 +301,7 @@ class SignalController extends ChangeNotifier {
       snr = null;
       fftHistory.clear();
       currentFftData = const [];
+      _lastRawFft = const [];
     }
   }
 
@@ -298,6 +336,11 @@ class SignalController extends ChangeNotifier {
       final currentSettings = _settings;
       final bool wasCapturing = _isCapturing;
 
+      // A recording holds a single rate and format, so it ends with the
+      // source that produced it.
+      await stopRecording();
+      if (_disposed) return;
+
       // Gracefully stop and dispose of the current source.
       if (wasCapturing) {
         await _signalSource.stopCapture();
@@ -310,16 +353,21 @@ class SignalController extends ChangeNotifier {
       _lastI = null;
       _lastQ = null;
 
+      final playback = _playback;
+
       // Ensure the native driver is initialized before using the integrated
       // RF source. This is a side effect of selecting that source.
       if (playFile == null &&
+          playback == null &&
           currentSettings.signalSource == SignalSourceType.rf &&
           currentSettings.rfSource == RfSourceType.integrated &&
           !NativeSdrDriver().isInitialized) {
         _setupIntegratedDriver();
       }
 
-      _signalSource = _sourceFactory(currentSettings, playFile);
+      _signalSource = playback != null
+          ? recordingStore.openPlayback(playback)
+          : _sourceFactory(currentSettings, playFile);
       _hasSource = true;
 
       // Reset audio-output filters and the down-converter for the new stream.
@@ -337,6 +385,11 @@ class SignalController extends ChangeNotifier {
 
       _signalSubscription = _signalSource.dataStream.listen((data) {
         if (_disposed) return;
+        final recorder = _recorder;
+        if (recorder != null) {
+          recorder.add(data);
+          if (recorder.isFull) unawaited(stopRecording());
+        }
         try {
           // Hot path: mutate visualization state directly and repaint only the
           // live layers via [frame].
@@ -495,6 +548,8 @@ class SignalController extends ChangeNotifier {
 
   void _processFftFrame(List<double> rawFft, {required bool isComplex}) {
     if (rawFft.isEmpty) return;
+    _lastRawFft = rawFft;
+    _lastFftComplex = isComplex;
 
     final double sensitivity = this.sensitivity;
 
@@ -572,6 +627,7 @@ class SignalController extends ChangeNotifier {
     if (!isDemoMode && !_hasSource) return;
     try {
       if (_isCapturing) {
+        await stopRecording();
         if (isDemoMode) {
           _demoTimer?.cancel();
           _demoTimer = null;
@@ -584,6 +640,7 @@ class SignalController extends ChangeNotifier {
         audioHistory.clear();
         currentFftData = [];
         fftHistory.clear();
+        _lastRawFft = const [];
         detectedTone = null;
         snr = null;
         _lastI = null;
@@ -619,6 +676,7 @@ class SignalController extends ChangeNotifier {
   bool get _usingIntegratedSource =>
       playFile == null &&
       !isDemoMode &&
+      _playback == null &&
       _settings.signalSource == SignalSourceType.rf &&
       _settings.rfSource == RfSourceType.integrated;
 
@@ -678,9 +736,109 @@ class SignalController extends ChangeNotifier {
     await _setupIntegratedDriver();
   }
 
+  // ---- Recording, playback and export ----
+
+  bool get isRecording => _recorder != null;
+  Duration get recordingDuration => _recorder?.duration ?? Duration.zero;
+  int get recordingBytes => _recorder?.bytesWritten ?? 0;
+
+  /// The recording replayed in place of the live source, if any.
+  RecordingInfo? get playbackRecording => _playback;
+
+  /// Recording captures a live source; replaying a file or the synthesized
+  /// demo tone into a new file would only duplicate it.
+  bool get canRecord =>
+      recordingStore.isSupported &&
+      _isCapturing &&
+      _hasSource &&
+      !isDemoMode &&
+      _playback == null;
+
+  /// Starts writing the raw source stream to the library: WAV for audio,
+  /// SigMF for I/Q. Returns false when recording is not possible right now.
+  Future<bool> startRecording() async {
+    if (!canRecord || _recorder != null) return false;
+    try {
+      final sink = await recordingStore.startRecording(
+        sampleRate: _signalSource.sampleRate,
+        isComplex: _signalSource.isComplex,
+        centerFrequencyHz:
+            _signalSource.isComplex ? centerFrequencyHz : null,
+      );
+      if (_disposed || !canRecord) {
+        await sink.close();
+        return false;
+      }
+      _recorder = sink;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Failed to start recording: $e');
+      return false;
+    }
+  }
+
+  /// Finalizes the current recording, if any, and returns its entry.
+  Future<RecordingInfo?> stopRecording() async {
+    final recorder = _recorder;
+    if (recorder == null) return null;
+    // Detach first, so frames arriving during the close are not written.
+    _recorder = null;
+    if (!_disposed) notifyListeners();
+    try {
+      return await recorder.close();
+    } catch (e) {
+      debugPrint('Failed to finalize recording: $e');
+      return null;
+    }
+  }
+
+  /// Replays [recording] through the full analysis chain in place of the live
+  /// source, starting capture if it was stopped.
+  Future<void> startPlayback(RecordingInfo recording) async {
+    if (!recording.isPlayable) return;
+    _playback = recording;
+    await reconfigure();
+    if (_disposed) return;
+    if (!_isCapturing) await toggleCapture();
+    notifyListeners();
+  }
+
+  /// Returns to the live source, idle.
+  Future<void> stopPlayback() async {
+    if (_playback == null) return;
+    if (_isCapturing) await toggleCapture();
+    _playback = null;
+    await reconfigure();
+    if (!_disposed) notifyListeners();
+  }
+
+  /// Whether a spectrum has been analysed, i.e. whether [spectrumCsv] has
+  /// anything to export.
+  bool get hasSpectrum => _lastRawFft.isNotEmpty;
+
+  /// The last analysed spectrum as CSV, or null before any frame has been
+  /// analysed. Magnitudes are exported without the sensitivity display scale.
+  String? spectrumCsv() {
+    final fft = List<double>.of(_lastRawFft);
+    if (fft.isEmpty) return null;
+    final band = analysisBandHz;
+    final peak = _settings.peakHoldEnabled ? _fftService.peakHoldBuffer : null;
+    return buildSpectrumCsv(
+      magnitudes: fft,
+      peakHold: peak == null ? null : List<double>.of(peak),
+      bandStartHz: band.start,
+      bandEndHz: band.end,
+      isComplex: _lastFftComplex,
+    );
+  }
+
   @override
   void dispose() {
     _disposed = true;
+    final recorder = _recorder;
+    _recorder = null;
+    if (recorder != null) unawaited(recorder.close());
     _signalSubscription?.cancel();
     _driverStateSubscription?.cancel();
     _demoTimer?.cancel();

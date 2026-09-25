@@ -14,7 +14,9 @@
     "spectrum_view_rf": "Bande radio affichée — touchez pour analyser l'audio démodulé",
     "spectrum_view_demodulated": "Audio démodulé affiché — touchez pour analyser la bande radio",
     "spectrum_view_needs_demod": "Choisissez un mode de démodulation pour analyser l'audio",
-    "focus_toggle": "Basculer le mode focus"
+    "focus_toggle": "Basculer le mode focus",
+    "recording": "ENREGISTREMENT",
+    "playback": "LECTURE"
   },
   "settings": {
     "title": "Paramètres",
@@ -123,5 +125,26 @@
   "common": {
     "start_capture": "Démarrer la Capture",
     "stop_capture": "Arrêter la Capture"
+  },
+  "recordings": {
+    "title": "Enregistrements",
+    "start": "Démarrer l'enregistrement",
+    "stop": "Arrêter l'enregistrement",
+    "needs_capture": "Lancez une capture en direct pour l'enregistrer.",
+    "export_csv": "Exporter le spectre (CSV)",
+    "export_unavailable": "Rien à exporter tant que le spectre n'affiche pas de signal.",
+    "empty": "Aucun enregistrement pour l'instant.",
+    "play": "Lire",
+    "stop_playback": "Arrêter la lecture",
+    "share": "Partager",
+    "delete": "Supprimer",
+    "delete_confirm": "Supprimer cet enregistrement ?",
+    "cancel": "Annuler",
+    "saved": "Enregistrement sauvegardé",
+    "exported": "Spectre exporté",
+    "error": "Impossible d'enregistrer le fichier",
+    "kind_audio": "Audio",
+    "kind_iq": "I/Q",
+    "kind_csv": "CSV du spectre"
   }
 }

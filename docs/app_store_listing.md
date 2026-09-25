@@ -25,6 +25,7 @@ Spectral is a powerful and elegant tool for real-time visualization of signals a
 - **Time-Frequency Waterfall:** Detect long-term signal patterns with a built-in waterfall display for tracking changes over time.
 - **SDR Integration (RF Support):** Plug in an RTL-SDR dongle over USB, or connect through `rtl_tcp`, and watch the live radio spectrum.
 - **Listen While You Look:** AM/FM demodulation with drag-to-tune — drag the frequency window onto a peak in the waterfall and hear that station.
+- **Record, Replay & Export:** Save audio or raw radio I/Q, replay it through every analysis tool, and export spectrum data as CSV.
 - **Advanced Analysis Tools:** Peak Hold, FFT Averaging, SNR estimation, harmonic overlays, and tap-to-place spectral markers for detailed signal inspection.
 - **Tactile Edge Dials:** Space-saving, intuitive Gain and Sensitivity controls designed for mobile interaction.
 - **HUD Focus Mode:** Immerse yourself in the data with a streamlined interface that puts the spectrum center stage.

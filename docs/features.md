@@ -87,6 +87,35 @@ placed directly on the chart.
 - **Visual:** Dashed vertical lines labeled `2H`, `3H`, etc.
 - **Use Case:** Identifying harmonic distortion or musical overtone structures.
 
+## 💾 Recording, Playback & Export
+
+The folder icon in the header opens the recordings library. It needs a
+filesystem, so it is available in the native apps but not on web.
+
+- **Recording:** While a live capture runs, **Start recording** writes the raw
+  source stream (before gain, filtering, or demodulation) to the device. The
+  header shows **RECORDING** until you stop. Stopping capture, switching
+  source, or retuning ends the recording, since one file holds one sample
+  rate and format. Recordings stop on their own at 1 GiB.
+- **Formats:**
+  - **Audio** is saved as 16-bit mono WAV at the capture rate, which any audio tool can open.
+  - **I/Q** is saved as [SigMF](https://sigmf.org/): a `.sigmf-data` file of
+    interleaved 16-bit samples (`ci16_le`) plus a `.sigmf-meta` JSON sidecar
+    with the sample rate, centre frequency, and start time. Tools such as
+    inspectrum and GNU Radio read it directly. At 2 MS/s this is about
+    8 MB per second.
+- **Playback:** **Play** replays a recording in real time through the full
+  analysis chain, looping at the end, in place of the live source. The
+  header shows **PLAYBACK**. An I/Q recording keeps its own centre
+  frequency, so you can tune and demodulate stations inside it exactly as
+  you would live. **Stop playback** returns to the live source.
+- **Spectrum export (CSV):** Saves the spectrum currently on screen with one
+  row per FFT bin: `frequency_hz`, `magnitude`, and `magnitude_db`, plus
+  `peak_hold` and `peak_hold_db` when Peak Hold is on. Magnitudes are
+  exported without the Sensitivity dial's display scale.
+- **Sharing:** Every entry can be sent anywhere through the system share sheet.
+  Sharing an I/Q recording sends the data file and its sidecar together.
+
 ## 🌊 Waterfall Focus Mode (Slick HUD)
 
 Waterfall Focus Mode transforms the UI into an immersive, data-first dashboard.

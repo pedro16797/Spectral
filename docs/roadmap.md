@@ -24,8 +24,7 @@ Ranked by importance to the product and estimated implementation complexity.
 
 | Feature | Importance | Complexity | Notes |
 | --- | --- | --- | --- |
-| **Data recording, playback & export (CSV / raw I/Q)** | High | Medium | The natural next analysis tool; replaying saved captures also removes the need for live hardware when developing and testing. |
-| **Expanded hardware support (SDR front-ends beyond RTL-SDR)** | Medium | High | Each front-end (Airspy, HackRF, SDRplay, …) needs its own native driver or bridge protocol. |
+| **Expanded hardware support (SDR front-ends beyond RTL-SDR)** | Medium | High | Each front-end (Airspy, HackRF, SDRplay, …) needs its own native driver or bridge protocol, and physical hardware to validate it. Best started once the RTL-SDR driver's tuner validation is done. |
 
 ---
 
@@ -41,3 +40,4 @@ Ranked by importance to the product and estimated implementation complexity.
 - **Sprint 4.2: Advanced Spectral Analysis:** Implemented Peak Hold, FFT Averaging, SNR estimation, Spectral Markers, Harmonic Overlays, and AM/FM Demodulation with Audio Output.
 - **Sprint 4.3: Mobile Expansion & Multi-Language Support:** Achieved iOS parity, tablet-optimized multi-pane layouts, and added support for 10 new global and regional languages.
 - **Sprint 4.4: Distribution Readiness:** Established automated versioning, custom icon generation, and a complete distribution packaging pipeline for app store readiness.
+- **Sprint 4.5: Recording, Playback & Export:** Raw capture recording (WAV for audio, SigMF `ci16_le` for I/Q), real-time looping playback through the full analysis chain, spectrum CSV export, and a shareable on-device recordings library.
