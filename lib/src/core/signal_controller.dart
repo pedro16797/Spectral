@@ -267,6 +267,11 @@ class SignalController extends ChangeNotifier {
   /// FFT row is committed to [fftHistory]; the live FFT bar chart still updates
   /// every frame.
   double waterfallSpeed = 1.0;
+
+  /// Running sum of the frames since the last waterfall row, and how many it
+  /// holds. Each row is their mean, so a slow waterfall still reflects every
+  /// frame in its slot instead of one arbitrary snapshot of it.
+  Float64List? _waterfallSum;
   int _waterfallFrameCounter = 0;
 
   bool _isCapturing = false;
@@ -300,6 +305,7 @@ class SignalController extends ChangeNotifier {
       detectedTone = null;
       snr = null;
       fftHistory.clear();
+      _waterfallSum = null;
       currentFftData = const [];
       _lastRawFft = const [];
     }
@@ -567,16 +573,31 @@ class SignalController extends ChangeNotifier {
         : _fftService.detectPrimaryTone(adjustedFft, analysisSampleRate.round());
     snr = _fftService.calculateSNR(adjustedFft);
 
-    // Commit a waterfall row only every Nth frame, where N is set by the
-    // waterfall speed dial (higher speed -> more rows -> faster fall).
+    // Commit a waterfall row every Nth frame, where N is set by the waterfall
+    // speed dial (higher speed -> more rows -> faster fall). The row averages
+    // all N frames: sampling just one of them made slow speeds flicker with
+    // noise and drop anything shorter than a slot.
+    Float64List? sum = _waterfallSum;
+    if (sum == null || sum.length != adjustedFft.length) {
+      // A window-size or real/complex change: bins no longer line up.
+      sum = _waterfallSum = Float64List(adjustedFft.length);
+      _waterfallFrameCounter = 0;
+    }
+    for (int i = 0; i < sum.length; i++) {
+      sum[i] += adjustedFft[i];
+    }
     _waterfallFrameCounter++;
+
     final int interval = (4.0 / waterfallSpeed).round().clamp(1, 50);
     if (_waterfallFrameCounter >= interval) {
-      _waterfallFrameCounter = 0;
-      fftHistory.insert(0, adjustedFft);
+      final int count = _waterfallFrameCounter;
+      fftHistory.insert(
+          0, List<double>.generate(sum.length, (i) => sum![i] / count));
       if (fftHistory.length > _maxHistory) {
         fftHistory.removeLast();
       }
+      sum.fillRange(0, sum.length, 0);
+      _waterfallFrameCounter = 0;
     }
   }
 
@@ -640,6 +661,7 @@ class SignalController extends ChangeNotifier {
         audioHistory.clear();
         currentFftData = [];
         fftHistory.clear();
+        _waterfallSum = null;
         _lastRawFft = const [];
         detectedTone = null;
         snr = null;

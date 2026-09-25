@@ -410,6 +410,40 @@ void main() {
     expect(slow, 0);
   });
 
+  test('a waterfall row averages every frame in its slot', () async {
+    late FakeSignalSource src;
+    final c = makeController(const AppSettings(), (s) => src = s);
+    c.waterfallSpeed = 2.0; // One row per 2 frames.
+    await settle();
+
+    // Constant (DC) chunks: the FFT's DC bin scales linearly with amplitude,
+    // and each chunk fills the 1024-point window on its own.
+    Float64List chunk(double v) => Float64List(2048)..fillRange(0, 2048, v);
+
+    src.emit(chunk(0.2));
+    await settle();
+    final double dcLow = c.currentFftData.first;
+    expect(c.fftHistory, isEmpty, reason: 'slot not full yet');
+
+    src.emit(chunk(0.6));
+    await settle();
+    final double dcHigh = c.currentFftData.first;
+    expect(dcHigh, closeTo(dcLow * 3, dcLow * 1e-6));
+
+    expect(c.fftHistory, hasLength(1));
+    expect(c.fftHistory.single.first, closeTo((dcLow + dcHigh) / 2, 1e-9),
+        reason: 'the mean of the slot, not its last snapshot');
+
+    // The accumulator starts over for the next slot.
+    src.emit(chunk(0.2));
+    await settle();
+    src.emit(chunk(0.2));
+    await settle();
+    expect(c.fftHistory, hasLength(2));
+    expect(c.fftHistory.first.first, closeTo(dcLow, 1e-9));
+    c.dispose();
+  });
+
   group('recording, playback and export', () {
     late FakeRecordingStore store;
     setUp(() => store = FakeRecordingStore());
