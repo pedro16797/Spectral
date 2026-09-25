@@ -201,6 +201,9 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
 
   late AnimationController _pulseController;
 
+  final WaterfallTexture _waterfall =
+      WaterfallTexture(rows: SignalController.maxWaterfallRows);
+
   @override
   void initState() {
     super.initState();
@@ -445,6 +448,7 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _pulseController.dispose();
+    _waterfall.dispose();
     super.dispose();
   }
 
@@ -478,19 +482,31 @@ class _SpectralHomePageState extends State<SpectralHomePage> with TickerProvider
               child: RepaintBoundary(
                 child: AnimatedBuilder(
                   animation: _controller.frame,
-                  builder: (context, _) => CustomPaint(
-                    size: Size.infinite,
-                    painter: WaterfallPainter(
-                      fftHistory: _controller.fftHistory,
-                      minFreq: _freqRange.start,
-                      maxFreq: _freqRange.end,
-                      bandStart: _fullRange.start,
-                      bandEnd: _fullRange.end,
-                      sampleRate: _controller.analysisSampleRate.round(),
-                      theme: widget.settings.theme,
-                      frequencySkew: _squish,
-                    ),
-                  ),
+                  builder: (context, _) {
+                    // Draws only rows committed since the last frame; the
+                    // whole texture only when the view itself changed.
+                    _waterfall.sync(
+                      history: _controller.fftHistory,
+                      revision: _controller.waterfallRevision,
+                      epoch: _controller.waterfallEpoch,
+                      view: WaterfallView(
+                        minFreq: _freqRange.start,
+                        maxFreq: _freqRange.end,
+                        bandStart: _fullRange.start,
+                        bandEnd: _fullRange.end,
+                        frequencySkew: _squish,
+                        theme: widget.settings.theme,
+                      ),
+                    );
+                    return CustomPaint(
+                      size: Size.infinite,
+                      painter: WaterfallPainter(
+                        image: _waterfall.image,
+                        rows: _waterfall.rows,
+                        scrollProgress: _controller.waterfallProgress,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),

@@ -11,7 +11,7 @@ Spectral uses a unique, space-saving interaction model for signal adjustments.
 - **Interaction:** Tap any trigger in the interaction bar (**GAIN**, **SPEED**, **SQUISH**, **SENS**) to make the large edge dials persistent. Alternatively, **long-press and drag** the triggers vertically to adjust values on the fly.
 - **Gain:** Adjusts the input signal amplification. Higher gain makes weak signals more visible in the waveform but may cause clipping.
 - **Sensitivity:** Adjusts the scaling of the FFT (frequency) data. Higher sensitivity makes spectral peaks more prominent in the bar chart and waterfall.
-- **Speed:** How fast the waterfall falls. Each waterfall row is the average of every spectrum frame since the previous row, so slow speeds show a smoothed, complete record of their time slot rather than occasional snapshots.
+- **Speed:** How fast the waterfall falls. Each waterfall row is the average of every spectrum frame since the previous row, so slow speeds show a smoothed, complete record of their time slot rather than occasional snapshots. The waterfall keeps 160 rows and scrolls smoothly between them.
 - **Squish:** Skews the frequency axis to give crowded parts of the spectrum more room: above 1.00 it spreads out the low end, below 1.00 the high end, and 1.00 is linear. Also available as **Frequency Skew** in Settings.
 - **Tactile Feedback:** The dials provide haptic ticks every 0.1 increment to ensure precise control without needing to look at the numbers.
 

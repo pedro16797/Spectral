@@ -60,8 +60,13 @@ is a thin **view** that observes the controller:
           driver itself lives in
           `android/app/src/main/kotlin/gal/lendas/spectral/usb/`.
     - **`ui/`**: Rendering and interaction.
-        - `waveform_painter.dart`, `fft_bar_chart_painter.dart`,
-          `waterfall_painter.dart`: `CustomPainter` visualizations.
+        - `waveform_painter.dart`, `fft_bar_chart_painter.dart`:
+          `CustomPainter` visualizations.
+        - `waterfall_painter.dart`: `WaterfallTexture` keeps the waterfall as
+          a 160×160 GPU texture. Each committed row copies the texture one row
+          down and draws only the new row, and the whole texture is redrawn
+          only when zoom, skew, or theme change. `WaterfallPainter` draws it
+          with the age fade and smooth scrolling between commits.
         - `radio_dial_focus_slider.dart`: frequency zoom/pan control.
         - `edge_dial.dart`: the small dial-trigger chips and the large
           edge-mounted dial they expand into.

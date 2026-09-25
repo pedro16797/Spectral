@@ -240,7 +240,7 @@ class SignalController extends ChangeNotifier {
 
   /// Waterfall rows kept on screen. Each is drawn at 1/[maxWaterfallRows] of
   /// the height, so more rows means finer steps as the waterfall falls.
-  static const int maxWaterfallRows = 80;
+  static const int maxWaterfallRows = 160;
   static const int _maxAudioHistory = 5;
 
   // ---- Visualization state (read by painters via [frame]) ----
@@ -275,6 +275,28 @@ class SignalController extends ChangeNotifier {
   /// frame in its slot instead of one arbitrary snapshot of it.
   Float64List? _waterfallSum;
   int _waterfallFrameCounter = 0;
+  int _waterfallInterval = 1;
+
+  /// Bumped on every committed row, so a renderer can tell how many rows are
+  /// new since it last looked and draw only those.
+  int waterfallRevision = 0;
+
+  /// Bumped whenever [fftHistory] is cleared, telling a renderer to start over.
+  int waterfallEpoch = 0;
+
+  /// How far the slot being accumulated has filled, in (0, 1]. Lets the
+  /// waterfall slide smoothly between commits instead of stepping a row.
+  double get waterfallProgress =>
+      // Raising the speed mid-slot can leave the counter past the new
+      // interval until the next frame commits.
+      ((_waterfallFrameCounter + 1) / _waterfallInterval).clamp(0.0, 1.0);
+
+  void _clearWaterfall() {
+    fftHistory.clear();
+    _waterfallSum = null;
+    _waterfallFrameCounter = 0;
+    waterfallEpoch++;
+  }
 
   bool _isCapturing = false;
   bool get isCapturing => _isCapturing;
@@ -306,8 +328,7 @@ class SignalController extends ChangeNotifier {
       _fftService.clearAveraging();
       detectedTone = null;
       snr = null;
-      fftHistory.clear();
-      _waterfallSum = null;
+      _clearWaterfall();
       currentFftData = const [];
       _lastRawFft = const [];
     }
@@ -591,10 +612,17 @@ class SignalController extends ChangeNotifier {
     _waterfallFrameCounter++;
 
     final int interval = (4.0 / waterfallSpeed).round().clamp(1, 50);
+    _waterfallInterval = interval;
     if (_waterfallFrameCounter >= interval) {
       final int count = _waterfallFrameCounter;
-      fftHistory.insert(
-          0, List<double>.generate(sum.length, (i) => sum![i] / count));
+      // Unboxed rows: a List<double> would box each of up to 4096 bins, in
+      // every one of the kept rows.
+      final row = Float64List(sum.length);
+      for (int i = 0; i < row.length; i++) {
+        row[i] = sum[i] / count;
+      }
+      fftHistory.insert(0, row);
+      waterfallRevision++;
       if (fftHistory.length > maxWaterfallRows) {
         fftHistory.removeLast();
       }
@@ -662,8 +690,7 @@ class SignalController extends ChangeNotifier {
         currentAudioData = Float64List(0);
         audioHistory.clear();
         currentFftData = [];
-        fftHistory.clear();
-        _waterfallSum = null;
+        _clearWaterfall();
         _lastRawFft = const [];
         detectedTone = null;
         snr = null;

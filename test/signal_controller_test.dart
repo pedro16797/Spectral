@@ -421,7 +421,34 @@ void main() {
       await settle();
     }
     expect(c.fftHistory, hasLength(SignalController.maxWaterfallRows));
-    expect(SignalController.maxWaterfallRows, 80);
+    expect(SignalController.maxWaterfallRows, 160);
+    c.dispose();
+  });
+
+  test('waterfall counters track commits, clears and slot progress',
+      () async {
+    late FakeSignalSource src;
+    final c = makeController(const AppSettings(), (s) => src = s);
+    c.waterfallSpeed = 1.0; // One row per 4 frames.
+    await settle();
+    await c.toggleCapture();
+    final chunk = Float64List(2048)..fillRange(0, 2048, 0.5);
+
+    final progress = <double>[];
+    for (int f = 0; f < 4; f++) {
+      src.emit(chunk);
+      await settle();
+      progress.add(c.waterfallProgress);
+    }
+    // The slot fills a quarter per frame, then the commit starts the next.
+    expect(progress, [0.5, 0.75, 1.0, 0.25]);
+    expect(c.waterfallRevision, 1);
+    expect(c.fftHistory.single, isA<Float64List>());
+
+    final epoch = c.waterfallEpoch;
+    await c.toggleCapture();
+    expect(c.fftHistory, isEmpty);
+    expect(c.waterfallEpoch, epoch + 1);
     c.dispose();
   });
 
