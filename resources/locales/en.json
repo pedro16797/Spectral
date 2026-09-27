@@ -14,7 +14,9 @@
     "spectrum_view_rf": "Showing the radio band — tap to analyse the demodulated audio",
     "spectrum_view_demodulated": "Showing the demodulated audio — tap to analyse the radio band",
     "spectrum_view_needs_demod": "Set a demodulation mode to analyse the audio",
-    "focus_toggle": "Toggle focus mode"
+    "focus_toggle": "Toggle focus mode",
+    "recording": "RECORDING",
+    "playback": "PLAYBACK"
   },
   "settings": {
     "title": "Settings",
@@ -123,5 +125,26 @@
   "common": {
     "start_capture": "Start Capture",
     "stop_capture": "Stop Capture"
+  },
+  "recordings": {
+    "title": "Recordings",
+    "start": "Start recording",
+    "stop": "Stop recording",
+    "needs_capture": "Start a live capture to record it.",
+    "export_csv": "Export spectrum (CSV)",
+    "export_unavailable": "Nothing to export until the spectrum shows a signal.",
+    "empty": "No recordings yet.",
+    "play": "Play",
+    "stop_playback": "Stop playback",
+    "share": "Share",
+    "delete": "Delete",
+    "delete_confirm": "Delete this recording?",
+    "cancel": "Cancel",
+    "saved": "Recording saved",
+    "exported": "Spectrum exported",
+    "error": "Could not save the file",
+    "kind_audio": "Audio",
+    "kind_iq": "I/Q",
+    "kind_csv": "Spectrum CSV"
   }
 }

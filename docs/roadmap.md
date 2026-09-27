@@ -1,19 +1,30 @@
-# Roadmap & Sprint Plan
+# Roadmap
 
 This document outlines the strategic plan for Spectral, from MVP to future iterations.
 
 ## Phase 4: Active Development
-- **Native SDR driver hardware validation:** the RTL2832U/R82xx/FC0013 bring-up is transcribed from librtlsdr but has not yet been validated against physical dongles (see `Rtl2832u.selfTest` and the notes in `docs/sdr_usage_guide.md`).
-- **Release signing:** generate an upload keystore and provide it via `android/key.properties` before any store publish (see `docs/distribution_guide.md`); the application ID is now `gal.lendas.spectral`.
+
+- **Native SDR driver hardware validation** — *importance: high* (gates
+  promoting the integrated driver from experimental), *complexity: medium*
+  (needs physical dongles; R82xx hardware in particular). The bring-up is
+  transcribed from librtlsdr. The RTL2832U layer has been confirmed on real
+  hardware, but the tuner drivers have not — FC0013 PLL/gain is untested and
+  R82xx is entirely unexercised (see the validation-status section of
+  `docs/sdr_usage_guide.md`).
+- **Release signing** — *importance: high* (blocks any store publish),
+  *complexity: low*. Generate an upload keystore and provide it via
+  `android/key.properties` (see `docs/distribution_guide.md`). The
+  application ID is `gal.lendas.spectral`.
 
 ---
 
-## Future Sprints & Upgrades
-- **Professional Analysis Tools:** Data recording, playback, and export (CSV/IQ).
-- **SIGINT Module:** Automated protocol identification for common digital signals (DMR, AIS, ADS-B).
-- **Remote SDR Clusters:** Support for connecting to multiple distributed `rtl_tcp` nodes simultaneously.
-- **Expanded Hardware Support:** Integration with additional SDR front-ends beyond RTL-SDR.
-- **Spectrum Archiving:** Efficient storage and indexing of historical signal activity.
+## Future Features
+
+Ranked by importance to the product and estimated implementation complexity.
+
+| Feature | Importance | Complexity | Notes |
+| --- | --- | --- | --- |
+| **Expanded hardware support (SDR front-ends beyond RTL-SDR)** | Medium | High | Each front-end (Airspy, HackRF, SDRplay, …) needs its own native driver or bridge protocol, and physical hardware to validate it. Best started once the RTL-SDR driver's tuner validation is done. |
 
 ---
 
@@ -29,3 +40,4 @@ This document outlines the strategic plan for Spectral, from MVP to future itera
 - **Sprint 4.2: Advanced Spectral Analysis:** Implemented Peak Hold, FFT Averaging, SNR estimation, Spectral Markers, Harmonic Overlays, and AM/FM Demodulation with Audio Output.
 - **Sprint 4.3: Mobile Expansion & Multi-Language Support:** Achieved iOS parity, tablet-optimized multi-pane layouts, and added support for 10 new global and regional languages.
 - **Sprint 4.4: Distribution Readiness:** Established automated versioning, custom icon generation, and a complete distribution packaging pipeline for app store readiness.
+- **Sprint 4.5: Recording, Playback & Export:** Raw capture recording (WAV for audio, SigMF `ci16_le` for I/Q), real-time looping playback through the full analysis chain, spectrum CSV export, and a shareable on-device recordings library.

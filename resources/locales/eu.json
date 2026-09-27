@@ -14,7 +14,9 @@
     "spectrum_view_rf": "Irrati-banda erakusten: sakatu demodulatutako audioa aztertzeko",
     "spectrum_view_demodulated": "Demodulatutako audioa erakusten: sakatu irrati-banda aztertzeko",
     "spectrum_view_needs_demod": "Ezarri demodulazio-modu bat audioa aztertzeko",
-    "focus_toggle": "Txandakatu foku modua"
+    "focus_toggle": "Txandakatu foku modua",
+    "recording": "GRABATZEN",
+    "playback": "ERREPRODUKZIOA"
   },
   "settings": {
     "title": "Ezarpenak",
@@ -123,5 +125,26 @@
   "common": {
     "start_capture": "Hasi Captura",
     "stop_capture": "Gelditu Captura"
+  },
+  "recordings": {
+    "title": "Grabazioak",
+    "start": "Hasi grabatzen",
+    "stop": "Gelditu grabazioa",
+    "needs_capture": "Hasi zuzeneko kaptura bat grabatzeko.",
+    "export_csv": "Esportatu espektroa (CSV)",
+    "export_unavailable": "Ez dago ezer esportatzeko espektroak seinalerik erakutsi arte.",
+    "empty": "Oraindik ez dago grabaziorik.",
+    "play": "Erreproduzitu",
+    "stop_playback": "Gelditu erreprodukzioa",
+    "share": "Partekatu",
+    "delete": "Ezabatu",
+    "delete_confirm": "Grabazio hau ezabatu?",
+    "cancel": "Utzi",
+    "saved": "Grabazioa gorde da",
+    "exported": "Espektroa esportatu da",
+    "error": "Ezin izan da fitxategia gorde",
+    "kind_audio": "Audioa",
+    "kind_iq": "I/Q",
+    "kind_csv": "Espektroaren CSVa"
   }
 }

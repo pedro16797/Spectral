@@ -16,6 +16,7 @@ Spectral aims to provide users with a powerful yet user-friendly tool to observe
 - **Slick HUD Architecture:** Immersive "Waterfall Focus Mode" for a data-centric experience.
 - **SDR (RF Support):** Real RTL-SDR hardware over USB OTG (native RTL2832U driver) or via an `rtl_tcp` bridge, with drag-to-tune digital down-conversion and AM/FM demodulation — see the [SDR Usage Guide](docs/sdr_usage_guide.md).
 - **Frequency Focus (Zoom):** Advanced Radio Dial Slider for panning and zooming into specific frequency bands.
+- **Recording & Export:** Record audio (WAV) or raw I/Q (SigMF), replay recordings through the full analysis chain, and export spectrum snapshots as CSV.
 - **Edge Dial Interaction:** Space-saving, tactile dials for Gain and Sensitivity adjustments.
 - **Highly Configurable:** Customizable themes (Frost, Magma, Gray, Emerald, Rainbow) and technical parameters (FFT Window Size/Type).
 - **Modern UI:** Elegant, glassmorphic interface designed for mobile.
@@ -23,9 +24,9 @@ Spectral aims to provide users with a powerful yet user-friendly tool to observe
 
 For a deep dive into these features, see [docs/features.md](docs/features.md).
 
-## 🛠 Project Status
+## 📈 Project Status
 
-The core feature set — real-time visualization, SDR capture, demodulation, localization, and the distribution pipeline — is implemented. Current work focuses on validating the native USB driver against physical hardware; see [docs/roadmap.md](docs/roadmap.md).
+The core feature set — real-time visualization, SDR capture, demodulation, recording and playback, localization, and the distribution pipeline — is implemented. Current work focuses on validating the native USB driver against physical hardware; see [docs/roadmap.md](docs/roadmap.md).
 
 ## 🛠 Getting Started
 

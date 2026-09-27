@@ -14,7 +14,9 @@
     "spectrum_view_rf": "電波帯を表示中 — タップで復調音声を解析",
     "spectrum_view_demodulated": "復調音声を表示中 — タップで電波帯を解析",
     "spectrum_view_needs_demod": "音声を解析するには復調モードを設定してください",
-    "focus_toggle": "フォーカスモード切替"
+    "focus_toggle": "フォーカスモード切替",
+    "recording": "記録中",
+    "playback": "再生中"
   },
   "settings": {
     "title": "設定",
@@ -123,5 +125,26 @@
   "common": {
     "start_capture": "キャプチャ開始",
     "stop_capture": "キャプチャ停止"
+  },
+  "recordings": {
+    "title": "記録",
+    "start": "記録開始",
+    "stop": "記録停止",
+    "needs_capture": "記録するにはライブキャプチャを開始してください。",
+    "export_csv": "スペクトルをエクスポート (CSV)",
+    "export_unavailable": "スペクトルに信号が表示されるまでエクスポートできません。",
+    "empty": "記録はまだありません。",
+    "play": "再生",
+    "stop_playback": "再生停止",
+    "share": "共有",
+    "delete": "削除",
+    "delete_confirm": "この記録を削除しますか？",
+    "cancel": "キャンセル",
+    "saved": "記録を保存しました",
+    "exported": "スペクトルをエクスポートしました",
+    "error": "ファイルを保存できませんでした",
+    "kind_audio": "オーディオ",
+    "kind_iq": "I/Q",
+    "kind_csv": "スペクトル CSV"
   }
 }

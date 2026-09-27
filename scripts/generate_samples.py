@@ -30,6 +30,32 @@ for i in range(int(sr * duration)):
     audio_samples.append(s)
 write_wav('resources/samples/audio/sine_440_880.wav', audio_samples, sr)
 
+# Audio: a chirp sweeping 500 Hz -> 15 kHz and back, over a steady 2 kHz
+# tone, so the waterfall shows a moving signal crossing a fixed one.
+#
+# The file loops seamlessly: its length is a whole number of the playback
+# source's 1024-sample reads (a partial read at the end is skipped), and the
+# sweep is scaled so each loop spans a whole number of cycles, which keeps the
+# phase continuous across the wrap. Either seam would draw a click as a
+# horizontal line across the waterfall once per loop.
+chirp_len = 1024 * 345  # ~8 s at 44.1 kHz
+f_lo, f_hi = 500.0, 15000.0
+sweep = []
+for i in range(chirp_len):
+    u = i / chirp_len  # Triangle: up for the first half, down for the second.
+    tri = 2 * u if u < 0.5 else 2 * (1 - u)
+    sweep.append(f_lo + (f_hi - f_lo) * tri)
+cycles = sum(sweep) / sr
+sweep = [f * round(cycles) / cycles for f in sweep]
+tone = round(2000 * chirp_len / sr) * sr / chirp_len  # ~2 kHz, whole cycles.
+chirp_samples = []
+phase = 0.0
+for i in range(chirp_len):
+    chirp_samples.append(0.6 * math.sin(phase) +
+                         0.2 * math.sin(2 * math.pi * tone * i / sr))
+    phase += 2 * math.pi * sweep[i] / sr
+write_wav('resources/samples/audio/chirp_sweep.wav', chirp_samples, sr)
+
 # SDR: IQ Data (Complex)
 # We'll save it as a .wav file but treat it as IQ (I in Left, Q in Right channel)
 # For simplicity, let's just create a raw binary file for now

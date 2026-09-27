@@ -6,12 +6,14 @@ maturity:
 
 | Path | Status | How it reaches the dongle |
 | --- | --- | --- |
-| **Integrated (native USB)** | 🧪 Android only, unvalidated | The app claims the dongle itself over USB host (OTG) and runs the RTL2832U + R82xx bring-up in-process. No bridge app needed. See [The integrated USB driver](#the-integrated-usb-driver). |
+| **Integrated (native USB)** | 🧪 Android only, partially validated | The app claims the dongle itself over USB host (OTG) and runs the RTL2832U + R82xx bring-up in-process. No bridge app needed. See [The integrated USB driver](#the-integrated-usb-driver). |
 | **rtl_tcp** | ✅ Supported | Connects to an `rtl_tcp` server that owns the USB device (a helper app on Android, or the `rtl_tcp` binary on desktop / a Pi). |
 
 The integrated path is the one that "just works" from a plugged-in dongle, but
-its register-level driver has **not yet been validated against real hardware**.
-If it misbehaves, the **rtl_tcp** path is the proven fallback.
+its register-level driver is **not yet fully validated on real hardware** —
+the RTL2832U layer is confirmed, the tuner drivers are not (see the
+validation-status section below). If it misbehaves, the **rtl_tcp** path is
+the proven fallback.
 
 ## Prerequisites
 
@@ -155,7 +157,7 @@ and differ only in the ID byte (`0xa1` vs `0xa3`), so a dongle reporting
 
 Recognised USB IDs live in three places that must stay in sync:
 - `android/app/src/main/res/xml/device_filter.xml` (decimal; drives the attach dialog)
-- `android/app/src/main/kotlin/com/example/spectral/usb/RtlUsbIds.kt`
+- `android/app/src/main/kotlin/gal/lendas/spectral/usb/RtlUsbIds.kt`
 - `lib/src/rf/rtl2832u.dart` (`RtlUsbIds.knownDevices`)
 
 ### Troubleshooting
@@ -186,7 +188,7 @@ Recognised USB IDs live in three places that must stay in sync:
 ## The integrated USB driver
 
 The register-level driver lives on the Android side, in
-`android/app/src/main/kotlin/com/example/spectral/usb/`, so it can use
+`android/app/src/main/kotlin/gal/lendas/spectral/usb/`, so it can use
 `UsbDeviceConnection` directly — no libusb, no FFI:
 
 | File | Responsibility |
